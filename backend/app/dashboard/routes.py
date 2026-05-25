@@ -24,6 +24,16 @@ def metricas():
     try:
         _, clinica_id = get_user_clinica(token)
 
+        # Usuário ainda sem clínica vinculada — devolve métricas zeradas
+        if not clinica_id:
+            return jsonify({
+                "total_pacientes": 0,
+                "consultas_hoje": 0,
+                "total_especialistas": 0,
+                "receita_mes": 0,
+                "pendente_mes": 0,
+            }), 200
+
         hoje = date.today().isoformat()
         primeiro_dia_mes = date.today().replace(day=1).isoformat()
 
@@ -66,10 +76,10 @@ def metricas():
             .execute()
         )
         receita_mes = sum(
-            float(f["valor"]) for f in fat_mes.data if f.get("status_pagamento") == "Pago"
+            float(f.get("valor") or 0) for f in fat_mes.data if f.get("status_pagamento") == "Pago"
         )
         pendente_mes = sum(
-            float(f["valor"]) for f in fat_mes.data if f.get("status_pagamento") == "Pendente"
+            float(f.get("valor") or 0) for f in fat_mes.data if f.get("status_pagamento") == "Pendente"
         )
 
         return jsonify({

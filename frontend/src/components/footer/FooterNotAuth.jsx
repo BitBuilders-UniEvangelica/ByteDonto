@@ -1,10 +1,16 @@
+import ToothIcon from '../icons/ToothIcon'
 import '../../styles/Footer.css'
 
 function FooterNotAuth() {
     return (
         <>
             <footer className='not-auth'>
-                <h1 id="logo">BYTE DONTO</h1>
+                <h1 id="logo">
+                    <span className="brand-mark">
+                        <ToothIcon size={22} />
+                    </span>
+                    BYTE DONTO
+                </h1>
                 <div className='medio'>
                     <div>
                         <p id='title'>Navegue</p>

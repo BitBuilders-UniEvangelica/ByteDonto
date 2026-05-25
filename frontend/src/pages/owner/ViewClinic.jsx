@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { apiGetClinic } from "../../services/api";
+import { apiGetClinic, apiGetMetricas, apiGetConsultas } from "../../services/api";
+import { formatCNPJ, formatPhone } from "../../utils/formatters";
 import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
 import Card from "../../components/card/CardInfo";
 import IMG from "../../assets/img/icon01.png";
 import { useOwnerSidebar } from "../../hooks/useSidebar";
 import ButtonP from "../../components/buttons/ButtonsRediText";
+import { ArrowLeft } from "lucide-react";
 import '../../styles/clinic.css';
 
 function ViewClinic() {
@@ -16,6 +18,8 @@ function ViewClinic() {
     const navigate = useNavigate();
 
     const [clinica, setClinica] = useState(null);
+    const [metricas, setMetricas] = useState(null);
+    const [consultas, setConsultas] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const opc_bar = useOwnerSidebar("clinic");
@@ -26,6 +30,21 @@ function ViewClinic() {
             .catch(() => navigate("/owner/clinic"))
             .finally(() => setLoading(false));
     }, [id, token]);
+
+    useEffect(() => {
+        Promise.all([
+            apiGetMetricas(token).catch(() => null),
+            apiGetConsultas(token).catch(() => []),
+        ]).then(([m, c]) => {
+            setMetricas(m);
+            setConsultas(Array.isArray(c) ? c : []);
+        });
+    }, [token]);
+
+    const totalConsultas = consultas.length;
+    const consultasFinalizadas = consultas.filter(
+        c => c.status === "Finalizada" || c.status === "Concluída" || c.status === "Concluida"
+    ).length;
 
     if (loading) {
         return (
@@ -45,15 +64,17 @@ function ViewClinic() {
             <SideBar opc={opc_bar} styles="owner" />
 
             <main className="mainBar owner">
-                <Link className="view-back-link text75" to="/owner/clinic">← Voltar para Minhas Clínicas</Link>
+                <Link className="view-back-link text75" to="/owner/clinic" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                    <ArrowLeft size={16} strokeWidth={2} /> Voltar para Minhas Clínicas
+                </Link>
 
                 <div className="view-header">
                     <div className="circle">
                         <img src={clinica.logo || IMG} alt="Logo" />
                     </div>
                     <div className="text">
-                        <h1>{clinica.nome}</h1>
-                        <p>{clinica.cnpj} | {clinica.whatsapp}</p>
+                        <h1>{clinica.nome || clinica.nome_fantasia}</h1>
+                        <p>{formatCNPJ(clinica.cnpj)} | {formatPhone(clinica.telefone)}</p>
                         <Link to={`/owner/edit-clinic/${id}`}>Editar Informações da Clínica</Link>
                     </div>
                 </div>
@@ -62,26 +83,20 @@ function ViewClinic() {
                     <div>
                         <h2>Informações Gerais</h2>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
-                            <p className="text75" style={{ margin: 0 }}>Filtro de Tempo:</p>
-                            <select style={{ width: 'auto' }}>
-                                <option>Hoje</option>
-                                <option>Nesta semana</option>
-                                <option>Neste mês</option>
-                                <option>Este ano</option>
-                            </select>
+                            <p className="text75" style={{ margin: 0 }}>Visão geral</p>
                         </div>
                         <div className="cards">
-                            <Card title="Nº Pacientes Cadastrados" date="0" />
-                            <Card title="Nº Consultas Cadastradas" date="0" />
-                            <Card title="Nº de Consultas Finalizadas" date="0" />
+                            <Card title="Nº Pacientes Cadastrados" date={String(metricas?.total_pacientes ?? 0)} />
+                            <Card title="Nº Consultas Cadastradas" date={String(totalConsultas)} />
+                            <Card title="Nº de Consultas Finalizadas" date={String(consultasFinalizadas)} />
                         </div>
                     </div>
 
                     <div style={{ marginTop: '1rem' }}>
                         <h2>Membros da Equipe</h2>
                         <div className="cards">
-                            <Card title="Nº de Especialistas Ativos" date="0" />
-                            <Card title="Nº de Atendimentos Ativos" date="0" />
+                            <Card title="Nº de Especialistas Ativos" date={String(metricas?.total_especialistas ?? 0)} />
+                            <Card title="Nº de Consultas Hoje" date={String(metricas?.consultas_hoje ?? 0)} />
                         </div>
                         <div style={{ width: "100%", display: "flex", justifyContent: "flex-end", marginTop: "2rem" }}>
                             <ButtonP text={"Gerenciar Equipe"} url={`/owner/bind-clinic/${id}`} />

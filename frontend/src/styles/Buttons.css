@@ -1,98 +1,141 @@
+/* BASE BUTTON */
 button {
-    padding: 10px 20px;
-    border-radius: 12px;
-    border: 0px;
+    padding: 10px 18px;
+    min-height: 40px;
+    border-radius: 10px;
+    border: 1px solid transparent;
     cursor: pointer;
     font-size: 14px;
     font-weight: 600;
-    transition: all 0.2s ease;
+    transition: background-color var(--transition-fast),
+                border-color var(--transition-fast),
+                color var(--transition-fast);
     font-family: var(--font-primary, 'Inter', sans-serif);
 }
 
+button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* PRIMARY — petrol filled */
 button.camp,
-form button.submit {
+form button.submit,
+button.redi {
     background-color: var(--PrimaryColors);
     color: var(--ThemeColor);
-    box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.39);
+    border-color: var(--PrimaryColors);
+}
+
+button.redi {
+    min-width: 180px;
 }
 
 button.camp h1,
 button.camp p,
 form button.submit,
-form button.submit h1 {
+form button.submit h1,
+button.redi h1 {
     color: var(--ThemeColor);
     margin: 0;
     font-size: 14px;
+    font-weight: 600;
     font-family: var(--font-primary);
 }
 
-button.camp:hover,
-form button.submit:hover {
-    background-color: var(--PrimaryColorsTheme);
-    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
-    transform: translateY(-1px);
+button.redi h1 {
+    font-size: 15px;
 }
 
+button.camp:hover,
+form button.submit:hover,
+button.redi:hover {
+    background-color: var(--PrimaryColorsTheme);
+    border-color: var(--PrimaryColorsTheme);
+}
+
+button.camp:active,
+form button.submit:active,
+button.redi:active {
+    background-color: var(--PrimaryColorsTheme);
+}
+
+/* DANGER VARIANT */
 button.camp.not {
     background-color: var(--NotPrimaryColors);
-    box-shadow: 0 4px 14px 0 rgba(239, 68, 68, 0.39);
+    border-color: var(--NotPrimaryColors);
 }
 
 button.camp.not:hover {
     background-color: var(--NotPrimaryColorsTheme);
-    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+    border-color: var(--NotPrimaryColorsTheme);
 }
 
-button.redi {
-    background-color: var(--PrimaryColors);
-    color: var(--ThemeColor);
-    border: none;
-    box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.39);
-    min-width: 180px;
+/* SECONDARY — white surface with subtle border */
+button.secondary,
+button.outline {
+    background-color: var(--ThemeColor);
+    color: var(--TextColor);
+    border-color: var(--LineColor);
 }
 
-button.redi:hover {
-    background-color: var(--PrimaryColorsTheme);
-    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
-    transform: translateY(-1px);
+button.secondary:hover,
+button.outline:hover {
+    background-color: var(--BackColor);
+    border-color: #CBD5E1;
 }
 
-button.redi h1 {
-    color: var(--ThemeColor);
-    font-size: 16px;
-    margin: 0;
-    font-weight: 600;
-}
-
+/* SIDEBAR ITEM BUTTON */
 button.bar {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 12px 16px;
+    gap: 0.75rem;
+    padding: 10px 14px;
+    min-height: 42px;
     width: 100%;
     background-color: transparent;
-    border-radius: 12px;
+    border: 1px solid transparent;
+    border-radius: 10px;
     color: var(--TextColor75);
-    transition: all 0.2s;
+    transition: background-color var(--transition-fast),
+                color var(--transition-fast);
     font-family: var(--font-primary);
+    position: relative;
 }
 
 button.bar:hover {
-    background-color: rgba(37, 99, 235, 0.05); /* very soft blue */
-    color: var(--PrimaryColors);
-    transform: translateX(4px);
+    background-color: var(--BackColor);
+    color: var(--TextColor);
 }
 
 button.bar.select {
     background-color: var(--PrimaryColorsBack);
     color: var(--PrimaryColorsTheme);
-    box-shadow: inset 4px 0 0 var(--PrimaryColors);
+}
+
+/* Left accent bar on the active item */
+button.bar.select::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    border-radius: 999px;
+    background-color: var(--PrimaryColors);
+}
+
+button.bar .bar-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: currentColor;
+    flex-shrink: 0;
 }
 
 button.bar img {
     width: 20px;
     opacity: 0.7;
-    transition: all 0.2s;
 }
 
 button.bar.select img {
@@ -104,4 +147,12 @@ button.bar p {
     font-weight: 600;
     font-size: 14px;
     color: inherit;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+    /* Ensure comfortable tap targets on touch devices */
+    button {
+        min-height: 44px;
+    }
 }

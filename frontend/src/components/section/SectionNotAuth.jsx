@@ -1,17 +1,19 @@
 /* IMPORTS OF COMPONENTS */
 import ButtonsCamps from "../buttons/ButtonsCamps";
+import ToothIcon from "../icons/ToothIcon";
 import '../../styles/Section.css'
-
-import { useNavigate } from "react-router-dom";
 
 /* MAIN COMPONENT */
 function SectionNotAuth() {
-    const navigate = useNavigate();
-
     return (
         <>
             <section>
-                <h1 id="logo">BYTE DONTO</h1>
+                <h1 id="logo">
+                    <span className="brand-mark">
+                        <ToothIcon size={22} />
+                    </span>
+                    BYTE DONTO
+                </h1>
                 <div>
                     <ButtonsCamps type={"LOGIN"} url="/login" />
                     <div className="out">

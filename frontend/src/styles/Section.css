@@ -1,19 +1,17 @@
+/* Topbar — white surface, calm, bottom border */
 section {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: rgba(248, 250, 252, 0.6);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background-color: var(--ThemeColor);
     padding: 1rem 3rem;
     width: 100%;
     box-sizing: border-box;
-    border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+    border-bottom: 1px solid var(--LineColor);
     position: fixed;
     top: 0;
     left: 0;
-    z-index: 50;
-    transition: all 0.3s ease;
+    z-index: var(--z-sidebar);
 }
 
 section div {
@@ -23,29 +21,52 @@ section div {
 }
 
 section #logo {
-    font-size: 24px;
-    font-weight: 900;
-    letter-spacing: -0.025em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
     color: var(--TextColor);
-    background: linear-gradient(90deg, #0F172A, #334155);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
     margin: 0;
 }
 
-/* PREMIUM ADM TOPBAR */
+section #logo .brand-mark {
+    color: var(--PrimaryColors);
+    display: flex;
+    align-items: center;
+}
+
+/* ADM TOPBAR */
 .premium-topbar {
     height: 80px;
-    background-color: rgba(255, 255, 255, 0.85);
 }
 
 .topbar-actions {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
+    gap: 1.25rem;
 }
 
 .user-profile {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    background-color: var(--PrimaryColorsBack);
+    color: var(--PrimaryColors);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.user-meta {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
@@ -63,39 +84,46 @@ section #logo {
     font-size: 10px;
     font-weight: 800;
     letter-spacing: 0.1em;
+    color: var(--TextColor75);
 }
 
 .user-role.owner-badge {
-    color: #B8860B;
+    color: var(--PrimaryColors);
 }
 
 .logout-btn {
-    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--ThemeColor);
     border: 1px solid var(--LineColor);
-    padding: 8px 16px;
-    border-radius: 8px;
+    padding: 8px 14px;
+    min-height: 38px;
+    border-radius: var(--radius-sm);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background-color var(--transition-fast),
+                color var(--transition-fast),
+                border-color var(--transition-fast);
     color: var(--TextColor75);
     font-family: var(--font-primary);
 }
 
 .logout-btn:hover {
-    background: #FEF2F2;
-    color: #DC2626;
+    background: var(--DangerBack);
+    color: var(--DangerText);
     border-color: #FECACA;
 }
 
-@media (max-width: 765px) {
+@media (max-width: 768px) {
     .out {
         display: none;
     }
     section {
         padding: 1rem;
     }
-    .user-profile {
+    .user-meta {
         display: none;
     }
 }

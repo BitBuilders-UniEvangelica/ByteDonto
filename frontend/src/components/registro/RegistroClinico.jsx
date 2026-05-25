@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
+import { Plus, X } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const STATUS_BADGE = {
-    "Agendado":   { bg: "#FEF9C3", color: "#92400E", label: "Agendado" },
-    "Finalizado": { bg: "#DCFCE7", color: "#166534", label: "Finalizado" },
-    "Cancelado":  { bg: "#FEE2E2", color: "#991B1B", label: "Cancelado" },
-    "Faltou":     { bg: "#F3F4F6", color: "#374151", label: "Faltou" },
+    "Agendado":   { bg: "var(--PrimaryColorsBack)", color: "var(--PrimaryColorsTheme)", label: "Agendado" },
+    "Finalizado": { bg: "var(--SuccessBack)", color: "var(--SuccessText)", label: "Finalizado" },
+    "Cancelado":  { bg: "var(--DangerBack)", color: "var(--DangerText)", label: "Cancelado" },
+    "Faltou":     { bg: "var(--BackColor)", color: "var(--TextColor75)", label: "Faltou" },
 };
 
-const TIPOS_ATENDIMENTO = ["Avaliacao", "Retorno", "Procedimento", "Emergencia", "Manutencao"];
+const TIPOS_ATENDIMENTO = ["Avaliação", "Retorno", "Procedimento", "Emergência", "Manutenção"];
 
 function formatarData(dataString) {
     if (!dataString) return "";
@@ -36,13 +37,13 @@ function formatarHora(dataString) {
 }
 
 function BadgeStatus({ status }) {
-    const config = STATUS_BADGE[status] || { bg: "#F3F4F6", color: "#374151", label: status || "—" };
+    const config = STATUS_BADGE[status] || { bg: "var(--BackColor)", color: "var(--TextColor75)", label: status || "—" };
     return (
         <span style={{
             background: config.bg,
             color: config.color,
             padding: "3px 10px",
-            borderRadius: "20px",
+            borderRadius: "999px",
             fontSize: "12px",
             fontWeight: 700,
             whiteSpace: "nowrap",
@@ -58,30 +59,31 @@ function CardConsulta({ consulta, onEvolucaoChange }) {
 
     return (
         <div style={{
-            background: "white",
-            border: "1px solid var(--LineColor, #E5E7EB)",
-            borderRadius: "12px",
+            background: "var(--ThemeColor)",
+            border: "1px solid var(--LineColor)",
+            borderRadius: "var(--radius-md)",
             padding: "1.25rem",
             display: "flex",
             flexDirection: "column",
             gap: "0.75rem",
             position: "relative",
+            boxShadow: "var(--shadow-sm)",
         }}>
             {/* Linha de tempo */}
-            <div style={{ position: "absolute", left: "-20px", top: "20px", width: "10px", height: "10px", borderRadius: "50%", background: "var(--PrimaryColorsTheme, #2563EB)", border: "2px solid white", boxShadow: "0 0 0 2px var(--PrimaryColorsTheme, #2563EB)" }} />
+            <div style={{ position: "absolute", left: "-19px", top: "20px", width: "10px", height: "10px", borderRadius: "50%", background: "var(--PrimaryColorsTheme)", border: "2px solid var(--ThemeColor)", outline: "2px solid var(--PrimaryColorsTheme)" }} />
 
-            {/* Cabecalho */}
+            {/* Cabeçalho */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem", flexWrap: "wrap" }}>
                 <div>
-                    <span style={{ fontSize: "13px", color: "var(--TextColor75, #6B7280)" }}>
+                    <span style={{ fontSize: "13px", color: "var(--TextColor75)" }}>
                         {formatarData(consulta.data_agendada)}
                         {formatarHora(consulta.data_agendada) ? ` às ${formatarHora(consulta.data_agendada)}` : ""}
                     </span>
-                    <h4 style={{ margin: "2px 0 0 0", fontSize: "16px", color: "var(--TextColor, #111827)", fontWeight: 700 }}>
+                    <h4 style={{ margin: "2px 0 0 0", fontSize: "16px", color: "var(--TextColor)", fontWeight: 700 }}>
                         {consulta.tipo_atendimento || "Atendimento"}
                     </h4>
                     {consulta.dentista?.nome && (
-                        <span style={{ fontSize: "12px", color: "var(--TextColor75, #6B7280)" }}>
+                        <span style={{ fontSize: "12px", color: "var(--TextColor75)" }}>
                             Dr(a). {consulta.dentista.nome}
                         </span>
                     )}
@@ -92,25 +94,25 @@ function CardConsulta({ consulta, onEvolucaoChange }) {
             {/* Procedimentos */}
             {consulta.procedimentos_descritos && (
                 <div>
-                    <p style={{ margin: "0 0 4px 0", fontSize: "12px", fontWeight: 700, color: "var(--TextColor75, #6B7280)", textTransform: "uppercase", letterSpacing: "0.4px" }}>
+                    <p style={{ margin: "0 0 4px 0", fontSize: "12px", fontWeight: 700, color: "var(--TextColor75)", textTransform: "uppercase", letterSpacing: "0.4px" }}>
                         Procedimentos
                     </p>
-                    <p style={{ margin: 0, fontSize: "14px", color: "var(--TextColor, #111827)" }}>
+                    <p style={{ margin: 0, fontSize: "14px", color: "var(--TextColor)" }}>
                         {consulta.procedimentos_descritos}
                     </p>
                 </div>
             )}
 
-            {/* Evolucao clinica — editavel inline */}
+            {/* Evolução clínica — editável inline */}
             <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                    <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--TextColor75, #6B7280)", textTransform: "uppercase", letterSpacing: "0.4px" }}>
-                        Evolucao Clinica
+                    <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--TextColor75)", textTransform: "uppercase", letterSpacing: "0.4px" }}>
+                        Evolução Clínica
                     </p>
                     {!editando && (
                         <button
                             onClick={() => setEditando(true)}
-                            style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px", color: "var(--PrimaryColorsTheme, #2563EB)", fontWeight: 600, padding: 0 }}
+                            style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px", color: "var(--PrimaryColorsTheme)", fontWeight: 600, padding: 0 }}
                         >
                             Editar
                         </button>
@@ -122,12 +124,12 @@ function CardConsulta({ consulta, onEvolucaoChange }) {
                             value={evolucao}
                             onChange={e => setEvolucao(e.target.value)}
                             rows={3}
-                            placeholder="Descricao da evolucao clinica..."
+                            placeholder="Descrição da evolução clínica..."
                             style={{
                                 width: "100%",
                                 padding: "8px 10px",
-                                borderRadius: "8px",
-                                border: "1px solid var(--LineColor, #E5E7EB)",
+                                borderRadius: "var(--radius-sm)",
+                                border: "1px solid var(--LineColor)",
                                 fontSize: "14px",
                                 resize: "vertical",
                                 fontFamily: "inherit",
@@ -137,21 +139,21 @@ function CardConsulta({ consulta, onEvolucaoChange }) {
                         <div style={{ display: "flex", gap: "8px" }}>
                             <button
                                 onClick={() => { onEvolucaoChange(consulta.id, evolucao); setEditando(false); }}
-                                style={{ padding: "6px 14px", background: "var(--PrimaryColorsTheme, #2563EB)", color: "white", border: "none", borderRadius: "6px", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
+                                style={{ padding: "6px 14px", background: "var(--PrimaryColorsTheme)", color: "white", border: "none", borderRadius: "var(--radius-sm)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
                             >
                                 Salvar
                             </button>
                             <button
                                 onClick={() => { setEvolucao(consulta.evolucao_clinica || ""); setEditando(false); }}
-                                style={{ padding: "6px 14px", background: "transparent", color: "var(--TextColor75, #6B7280)", border: "1px solid var(--LineColor, #E5E7EB)", borderRadius: "6px", fontSize: "13px", cursor: "pointer" }}
+                                style={{ padding: "6px 14px", background: "transparent", color: "var(--TextColor75)", border: "1px solid var(--LineColor)", borderRadius: "var(--radius-sm)", fontSize: "13px", cursor: "pointer" }}
                             >
                                 Cancelar
                             </button>
                         </div>
                     </div>
                 ) : (
-                    <p style={{ margin: 0, fontSize: "14px", color: evolucao ? "var(--TextColor, #111827)" : "var(--TextColor75, #6B7280)", fontStyle: evolucao ? "normal" : "italic" }}>
-                        {evolucao || "Nenhuma evolucao registrada."}
+                    <p style={{ margin: 0, fontSize: "14px", color: evolucao ? "var(--TextColor)" : "var(--TextColor75)", fontStyle: evolucao ? "normal" : "italic" }}>
+                        {evolucao || "Nenhuma evolução registrada."}
                     </p>
                 )}
             </div>
@@ -165,7 +167,7 @@ const horaAtual = new Date().toTimeString().slice(0, 5);
 const FORM_INICIAL = {
     data: hoje,
     hora: horaAtual,
-    tipo_atendimento: "Avaliacao",
+    tipo_atendimento: "Avaliação",
     procedimentos_descritos: "",
     evolucao_clinica: "",
     status: "Agendado",
@@ -262,28 +264,31 @@ export default function RegistroClinico({ pacienteId, token }) {
                 <button
                     onClick={() => { setMostrarForm(v => !v); setErroForm(null); }}
                     style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
                         padding: "10px 20px",
-                        background: mostrarForm ? "transparent" : "var(--PrimaryColorsTheme, #2563EB)",
-                        color: mostrarForm ? "var(--TextColor75, #6B7280)" : "white",
-                        border: mostrarForm ? "1px solid var(--LineColor, #E5E7EB)" : "none",
-                        borderRadius: "10px",
+                        background: mostrarForm ? "transparent" : "var(--PrimaryColorsTheme)",
+                        color: mostrarForm ? "var(--TextColor75)" : "white",
+                        border: mostrarForm ? "1px solid var(--LineColor)" : "none",
+                        borderRadius: "var(--radius-md)",
                         fontWeight: 700,
                         fontSize: "14px",
                         cursor: "pointer",
                     }}
                 >
-                    {mostrarForm ? "Cancelar" : "+ Adicionar Registro Clinico"}
+                    {mostrarForm ? <><X size={16} strokeWidth={2.5} /> Cancelar</> : <><Plus size={16} strokeWidth={2.5} /> Adicionar Registro Clínico</>}
                 </button>
             </div>
 
-            {/* Formulario inline */}
+            {/* Formulário inline */}
             {mostrarForm && (
                 <form
                     onSubmit={handleSubmitForm}
                     style={{
-                        background: "white",
-                        border: "1px solid var(--LineColor, #E5E7EB)",
-                        borderRadius: "14px",
+                        background: "var(--ThemeColor)",
+                        border: "1px solid var(--LineColor)",
+                        borderRadius: "var(--radius-lg)",
                         padding: "1.5rem",
                         display: "flex",
                         flexDirection: "column",
@@ -291,36 +296,36 @@ export default function RegistroClinico({ pacienteId, token }) {
                         animation: "fadeIn 0.25s",
                     }}
                 >
-                    <h4 style={{ margin: 0, color: "var(--PrimaryColorsTheme, #2563EB)", fontSize: "16px" }}>
-                        Novo Registro Clinico
+                    <h4 style={{ margin: 0, color: "var(--PrimaryColorsTheme)", fontSize: "16px" }}>
+                        Novo Registro Clínico
                     </h4>
 
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
                         <div>
-                            <p style={{ margin: "0 0 6px 0", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75, #6B7280)" }}>Data</p>
+                            <p style={{ margin: "0 0 6px 0", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75)" }}>Data</p>
                             <input
                                 type="date"
                                 value={form.data}
                                 onChange={e => setForm(p => ({ ...p, data: e.target.value }))}
                                 required
-                                style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--LineColor, #E5E7EB)", fontSize: "14px", boxSizing: "border-box" }}
+                                style={{ width: "100%", padding: "8px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--LineColor)", fontSize: "14px", boxSizing: "border-box" }}
                             />
                         </div>
                         <div>
-                            <p style={{ margin: "0 0 6px 0", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75, #6B7280)" }}>Hora</p>
+                            <p style={{ margin: "0 0 6px 0", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75)" }}>Hora</p>
                             <input
                                 type="time"
                                 value={form.hora}
                                 onChange={e => setForm(p => ({ ...p, hora: e.target.value }))}
-                                style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--LineColor, #E5E7EB)", fontSize: "14px", boxSizing: "border-box" }}
+                                style={{ width: "100%", padding: "8px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--LineColor)", fontSize: "14px", boxSizing: "border-box" }}
                             />
                         </div>
                         <div>
-                            <p style={{ margin: "0 0 6px 0", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75, #6B7280)" }}>Status</p>
+                            <p style={{ margin: "0 0 6px 0", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75)" }}>Status</p>
                             <select
                                 value={form.status}
                                 onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
-                                style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--LineColor, #E5E7EB)", fontSize: "14px", background: "white", boxSizing: "border-box" }}
+                                style={{ width: "100%", padding: "8px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--LineColor)", fontSize: "14px", background: "var(--ThemeColor)", boxSizing: "border-box" }}
                             >
                                 {Object.keys(STATUS_BADGE).map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
@@ -328,40 +333,40 @@ export default function RegistroClinico({ pacienteId, token }) {
                     </div>
 
                     <div>
-                        <p style={{ margin: "0 0 6px 0", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75, #6B7280)" }}>Tipo de Atendimento</p>
+                        <p style={{ margin: "0 0 6px 0", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75)" }}>Tipo de Atendimento</p>
                         <select
                             value={form.tipo_atendimento}
                             onChange={e => setForm(p => ({ ...p, tipo_atendimento: e.target.value }))}
-                            style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--LineColor, #E5E7EB)", fontSize: "14px", background: "white", boxSizing: "border-box" }}
+                            style={{ width: "100%", padding: "8px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--LineColor)", fontSize: "14px", background: "var(--ThemeColor)", boxSizing: "border-box" }}
                         >
                             {TIPOS_ATENDIMENTO.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                     </div>
 
                     <div>
-                        <p style={{ margin: "0 0 6px 0", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75, #6B7280)" }}>Procedimentos Realizados</p>
+                        <p style={{ margin: "0 0 6px 0", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75)" }}>Procedimentos Realizados</p>
                         <textarea
                             value={form.procedimentos_descritos}
                             onChange={e => setForm(p => ({ ...p, procedimentos_descritos: e.target.value }))}
                             rows={2}
                             placeholder="Descreva os procedimentos realizados..."
-                            style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--LineColor, #E5E7EB)", fontSize: "14px", resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }}
+                            style={{ width: "100%", padding: "8px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--LineColor)", fontSize: "14px", resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }}
                         />
                     </div>
 
                     <div>
-                        <p style={{ margin: "0 0 6px 0", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75, #6B7280)" }}>Evolucao Clinica / Observacoes</p>
+                        <p style={{ margin: "0 0 6px 0", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75)" }}>Evolução Clínica / Observações</p>
                         <textarea
                             value={form.evolucao_clinica}
                             onChange={e => setForm(p => ({ ...p, evolucao_clinica: e.target.value }))}
                             rows={3}
-                            placeholder="Evolucao clinica, resposta ao tratamento, observacoes..."
-                            style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--LineColor, #E5E7EB)", fontSize: "14px", resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }}
+                            placeholder="Evolução clínica, resposta ao tratamento, observações..."
+                            style={{ width: "100%", padding: "8px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--LineColor)", fontSize: "14px", resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }}
                         />
                     </div>
 
                     {erroForm && (
-                        <div style={{ background: "#FEE2E2", border: "1px solid #FCA5A5", borderRadius: "8px", padding: "10px 14px", color: "#991B1B", fontSize: "14px" }}>
+                        <div style={{ background: "var(--DangerBack)", border: "1px solid var(--LineColor)", borderRadius: "var(--radius-sm)", padding: "10px 14px", color: "var(--DangerText)", fontSize: "14px" }}>
                             {erroForm}
                         </div>
                     )}
@@ -372,10 +377,10 @@ export default function RegistroClinico({ pacienteId, token }) {
                             disabled={salvando}
                             style={{
                                 padding: "10px 24px",
-                                background: salvando ? "#93C5FD" : "var(--PrimaryColorsTheme, #2563EB)",
+                                background: "var(--PrimaryColorsTheme)", opacity: salvando ? 0.7 : 1,
                                 color: "white",
                                 border: "none",
-                                borderRadius: "8px",
+                                borderRadius: "var(--radius-sm)",
                                 fontWeight: 700,
                                 fontSize: "14px",
                                 cursor: salvando ? "not-allowed" : "pointer",
@@ -386,7 +391,7 @@ export default function RegistroClinico({ pacienteId, token }) {
                         <button
                             type="button"
                             onClick={() => { setMostrarForm(false); setForm(FORM_INICIAL); setErroForm(null); }}
-                            style={{ padding: "10px 16px", background: "transparent", color: "var(--TextColor75, #6B7280)", border: "1px solid var(--LineColor, #E5E7EB)", borderRadius: "8px", fontWeight: 600, fontSize: "14px", cursor: "pointer" }}
+                            style={{ padding: "10px 16px", background: "transparent", color: "var(--TextColor75)", border: "1px solid var(--LineColor)", borderRadius: "var(--radius-sm)", fontWeight: 600, fontSize: "14px", cursor: "pointer" }}
                         >
                             Cancelar
                         </button>
@@ -396,25 +401,25 @@ export default function RegistroClinico({ pacienteId, token }) {
 
             {/* Timeline */}
             {loading && (
-                <p style={{ color: "var(--TextColor75, #6B7280)", fontSize: "14px" }}>Carregando historico...</p>
+                <p style={{ color: "var(--TextColor75)", fontSize: "14px" }}>Carregando histórico...</p>
             )}
 
             {erro && !loading && (
-                <div style={{ background: "#FEE2E2", border: "1px solid #FCA5A5", borderRadius: "10px", padding: "1rem", color: "#991B1B", fontSize: "14px" }}>
+                <div style={{ background: "var(--DangerBack)", border: "1px solid var(--LineColor)", borderRadius: "var(--radius-md)", padding: "1rem", color: "var(--DangerText)", fontSize: "14px" }}>
                     Erro ao carregar registros: {erro}
                 </div>
             )}
 
             {!loading && !erro && consultas.length === 0 && (
-                <p style={{ color: "var(--TextColor75, #6B7280)", fontSize: "14px", fontStyle: "italic" }}>
-                    Nenhum registro clinico encontrado para este paciente.
+                <p style={{ color: "var(--TextColor75)", fontSize: "14px", fontStyle: "italic" }}>
+                    Nenhum registro clínico encontrado para este paciente.
                 </p>
             )}
 
             {!loading && !erro && consultas.length > 0 && (
                 <div style={{ position: "relative", paddingLeft: "28px", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
                     {/* Linha vertical da timeline */}
-                    <div style={{ position: "absolute", left: "15px", top: "20px", bottom: "20px", width: "2px", background: "var(--LineColor, #E5E7EB)", borderRadius: "1px" }} />
+                    <div style={{ position: "absolute", left: "15px", top: "20px", bottom: "20px", width: "2px", background: "var(--LineColor)", borderRadius: "1px" }} />
 
                     {consultas.map(consulta => (
                         <CardConsulta

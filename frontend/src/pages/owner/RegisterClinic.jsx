@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { apiCreateClinic } from "../../services/api";
+import { maskCNPJ, maskPhone, validarCNPJ } from "../../utils/formatters";
 import Section from "../../components/section/SectionAuth"
 import SideBar from "../../components/bar/SideBar"
 import { useOwnerSidebar } from "../../hooks/useSidebar";
+import { ArrowLeft } from "lucide-react";
 import '../../styles/clinic.css';
 import '../../styles/Forms.css';
 
@@ -29,22 +31,28 @@ function RegisterClinic() {
     const [pais, setPais] = useState("");
     const [estado, setEstado] = useState("");
     const [cidade, setCidade] = useState("");
-    const [esdereco, setEndereco] = useState("");
+    const [endereco, setEndereco] = useState("");
 
     const opc_bar = useOwnerSidebar("clinic");
 
     async function handleSubmit(e) {
         e.preventDefault();
         setError("");
+
+        if (CNPJ && !validarCNPJ(CNPJ)) {
+            setError("CNPJ inválido.");
+            return;
+        }
+
         setLoading(true);
 
         const newClinic = {
             nome: name_clinic,
             nome_fantasia: name_clinic,
-            cnpj: CNPJ,
-            telefone: telefone,
+            cnpj: CNPJ.replace(/\D/g, ""),
+            telefone: telefone.replace(/\D/g, ""),
             endereco: {
-                logradouro: esdereco,
+                logradouro: endereco,
                 cidade: cidade,
                 estado: estado,
                 pais: pais,
@@ -70,7 +78,9 @@ function RegisterClinic() {
             
             <main className="mainBar owner register">
                 <p>
-                    <Link className="text75" to="/owner/clinic">← Voltar para Minhas Clínicas</Link>
+                    <Link className="text75" to="/owner/clinic" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                        <ArrowLeft size={16} strokeWidth={2} /> Voltar para Minhas Clínicas
+                    </Link>
                 </p>
                 <div className="camp-clinic camp-register">
                     <div>
@@ -99,7 +109,7 @@ function RegisterClinic() {
                                             id="CNPJ"
                                             type="text"
                                             value={CNPJ}
-                                            onChange={(e) => setCNPJ(e.target.value)}
+                                            onChange={(e) => setCNPJ(maskCNPJ(e.target.value))}
                                         />
                                     </div>
                                     
@@ -135,7 +145,7 @@ function RegisterClinic() {
                                             id="whatsapp"
                                             type="text"
                                             value={whatsapp}
-                                            onChange={(e) => setWhatsapp(e.target.value)}
+                                            onChange={(e) => setWhatsapp(maskPhone(e.target.value))}
                                         />
                                     </div>
                                     
@@ -145,7 +155,7 @@ function RegisterClinic() {
                                             id="telefone"
                                             type="text"
                                             value={telefone}
-                                            onChange={(e) => setTelefone(e.target.value)}
+                                            onChange={(e) => setTelefone(maskPhone(e.target.value))}
                                         />
                                     </div>
                                 </div>
@@ -209,11 +219,11 @@ function RegisterClinic() {
                                 </div>
 
                                 <div className="field">
-                                    <label htmlFor="esdereco">Endereço Completo</label>
+                                    <label htmlFor="endereco">Endereço Completo</label>
                                     <input
-                                        id="esdereco"
+                                        id="endereco"
                                         type="text"
-                                        value={esdereco}
+                                        value={endereco}
                                         onChange={(e) => setEndereco(e.target.value)}
                                     />
                                 </div>

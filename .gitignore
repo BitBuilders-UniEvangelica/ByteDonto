@@ -1,0 +1,10 @@
+# Configuração local do Claude Code / agentes (Dr. Consultor etc.)
+.claude/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/

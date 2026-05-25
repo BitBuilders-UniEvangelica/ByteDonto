@@ -51,9 +51,10 @@ def listar_equipe():
     try:
         _, clinica_id, _ = get_user_e_clinica(token)
 
+        # select("*") — robusto: funciona com ou sem a coluna 'ativo'
         result = (
             supabase.table("usuarios")
-            .select("id, nome, papel, permissoes, created_at")
+            .select("*")
             .eq("clinica_id", clinica_id)
             .order("created_at")
             .execute()
@@ -104,7 +105,9 @@ def criar_membro():
 
         novo_usuario_id = auth_response.user.id
 
-        # Cria o perfil na tabela usuarios vinculado à clínica
+        # Cria o perfil na tabela usuarios vinculado à clínica.
+        # 'ativo' não é enviado: a coluna tem default TRUE, então a criação
+        # funciona mesmo se a migração 'ativo' ainda não tiver sido aplicada.
         supabase_admin.table("usuarios").insert({
             "id": novo_usuario_id,
             "clinica_id": clinica_id,
@@ -180,7 +183,7 @@ def atualizar_membro(usuario_id):
         if papel_solicitante != "Dono":
             return jsonify({"error": "Apenas o proprietário pode editar membros"}), 403
 
-        membro = supabase.table("usuarios").select("clinica_id").eq("id", usuario_id).single().execute()
+        membro = supabase.table("usuarios").select("clinica_id, papel").eq("id", usuario_id).single().execute()
         if not membro.data or membro.data["clinica_id"] != clinica_id:
             return jsonify({"error": "Membro não encontrado nesta clínica"}), 404
 
@@ -190,6 +193,33 @@ def atualizar_membro(usuario_id):
             atualizacao["nome"] = data["nome"].strip()
         if "papel" in data and data["papel"] in ["Especialista", "Recepção"]:
             atualizacao["papel"] = data["papel"]
+        if "percentual_repasse" in data:
+            try:
+                pct = float(data["percentual_repasse"])
+            except (TypeError, ValueError):
+                return jsonify({"error": "Percentual de repasse deve ser um número."}), 400
+            if pct < 0 or pct > 100:
+                return jsonify({"error": "Percentual de repasse deve estar entre 0 e 100."}), 400
+            atualizacao["percentual_repasse"] = pct
+        if "ativo" in data:
+            valor = data["ativo"]
+            if isinstance(valor, bool):
+                ativo = valor
+            elif isinstance(valor, str):
+                if valor.strip().lower() in ("true", "1"):
+                    ativo = True
+                elif valor.strip().lower() in ("false", "0"):
+                    ativo = False
+                else:
+                    return jsonify({"error": "O campo 'ativo' deve ser um booleano"}), 400
+            elif isinstance(valor, (int,)):
+                ativo = bool(valor)
+            else:
+                return jsonify({"error": "O campo 'ativo' deve ser um booleano"}), 400
+
+            if ativo is False and membro.data.get("papel") == "Dono":
+                return jsonify({"error": "Não é possível desativar o acesso de um proprietário"}), 400
+            atualizacao["ativo"] = ativo
 
         if not atualizacao:
             return jsonify({"error": "Nenhum campo válido para atualizar"}), 400

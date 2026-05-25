@@ -8,7 +8,7 @@ function ArtAuthReg({ type, img }) {
                 BYTE DONTO
             </span>
 
-            <img src={img} />
+            <img src={img} alt="" />
         </div>
     );
 }

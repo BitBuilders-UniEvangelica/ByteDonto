@@ -75,6 +75,25 @@ def login():
         user = response.user
         session = response.session
 
+        # Verifica se o acesso do usuário foi desativado pelo proprietário.
+        # Se a coluna 'ativo' ainda não existir (migração não aplicada), o valor
+        # será None e o usuário é tratado como ativo.
+        try:
+            perfil_response = (
+                supabase.table("usuarios")
+                .select("ativo")
+                .eq("id", user.id)
+                .execute()
+            )
+            perfil = perfil_response.data[0] if perfil_response.data else None
+        except Exception:
+            perfil = None
+
+        if perfil is not None and perfil.get("ativo") is False:
+            return jsonify({
+                "error": "Seu acesso foi desativado. Contate o proprietário da clínica."
+            }), 403
+
         return jsonify({
             "access_token": session.access_token,
             "user": {
@@ -116,19 +135,28 @@ def me():
     if not token:
         return jsonify({"error": "Token não fornecido"}), 401
 
+    # Etapa 1: validar o token (falha aqui = problema de autenticação -> 401)
     try:
         user_response = supabase.auth.get_user(token)
         user = user_response.user
-
-        # Buscar perfil do usuário na tabela usuarios
-        perfil_response = supabase.table("usuarios").select("*").eq("id", user.id).execute()
-        perfil_data = perfil_response.data[0] if perfil_response.data else None
-
-        return jsonify({
-            "id": user.id,
-            "email": user.email,
-            "perfil": perfil_data
-        }), 200
-
     except Exception as e:
         return jsonify({"error": "Token inválido", "detail": str(e)}), 401
+
+    if not user:
+        return jsonify({"error": "Token inválido"}), 401
+
+    # Etapa 2: buscar o perfil (falha aqui = problema de banco -> 500, não 401)
+    try:
+        perfil_response = supabase.table("usuarios").select("*").eq("id", user.id).execute()
+        perfil_data = perfil_response.data[0] if perfil_response.data else None
+    except Exception as e:
+        return jsonify({
+            "error": "Erro ao buscar perfil do usuário. Verifique se as tabelas do banco foram criadas.",
+            "detail": str(e)
+        }), 500
+
+    return jsonify({
+        "id": user.id,
+        "email": user.email,
+        "perfil": perfil_data
+    }), 200

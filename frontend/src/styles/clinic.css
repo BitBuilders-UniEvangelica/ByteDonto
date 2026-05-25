@@ -1,5 +1,5 @@
 main {
-    background-color: #f8fafc;
+    background-color: var(--BackColor);
     margin-top: 80px;
     width: 100%;
     min-height: calc(100vh - 80px);
@@ -10,23 +10,17 @@ main {
     box-sizing: border-box;
 }
 
-/* Background Thematic Gradients */
-main.mainBar.owner {
-    background: radial-gradient(ellipse at top, rgba(184, 134, 11, 0.12) 0%, #f8fafc 40%);
-}
-
-main.mainBar.specialist {
-    background: radial-gradient(ellipse at top, rgba(37, 99, 235, 0.12) 0%, #f8fafc 40%);
-}
-
+/* Os papéis usam a mesma superfície calma — sem gradientes por papel. */
+main.mainBar.owner,
+main.mainBar.specialist,
 main.mainBar.reception {
-    background: radial-gradient(ellipse at top, rgba(22, 163, 74, 0.12) 0%, #f8fafc 40%);
+    background-color: var(--BackColor);
 }
 
 /* Calendar Strip for Specialist */
 .calendar-strip {
     display: flex;
-    gap: 1rem;
+    gap: 0.75rem;
     overflow-x: auto;
     padding-bottom: 0.5rem;
     margin-bottom: 1.5rem;
@@ -39,24 +33,23 @@ main.mainBar.reception {
     justify-content: center;
     min-width: 65px;
     height: 80px;
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.6);
-    border: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: var(--radius-md);
+    background: var(--ThemeColor);
+    border: 1px solid var(--LineColor);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: border-color var(--transition-fast),
+                box-shadow var(--transition-fast);
 }
 
 .calendar-day:hover {
-    background: rgba(255, 255, 255, 1);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border-color: #CBD5E1;
+    box-shadow: var(--shadow-sm);
 }
 
 .calendar-day.active {
-    background: var(--PrimaryColorsTheme);
-    border-color: var(--PrimaryColorsTheme);
+    background: var(--PrimaryColors);
+    border-color: var(--PrimaryColors);
     color: white;
-    box-shadow: 0 8px 20px -4px rgba(37, 99, 235, 0.4);
 }
 
 .calendar-day.active p, .calendar-day.active h3 {
@@ -73,7 +66,7 @@ main.mainBar.reception {
 
 .calendar-day h3 {
     font-size: 22px;
-    font-weight: 800;
+    font-weight: 700;
     font-family: var(--font-secondary);
     color: var(--TextColor);
     margin: 0;
@@ -83,14 +76,12 @@ main.register {
     padding: 2.5rem 4rem;
 }
 
-/* Premium Main Cards Container */
+/* Main Cards Container — clean white surface */
 main .camp-clinic {
-    background-color: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
-    border-radius: 20px;
+    background-color: var(--ThemeColor);
+    border: 1px solid var(--LineColor);
+    box-shadow: var(--shadow-sm);
+    border-radius: var(--radius-lg);
     padding: 2rem;
 }
 
@@ -122,45 +113,35 @@ a {
     color: var(--TextColor75);
     cursor: pointer;
     text-decoration: none;
-    transition: all 0.2s ease;
+    transition: color var(--transition-fast);
 }
 
 a:hover {
     color: var(--PrimaryColorsTheme);
 }
 
-/* owner/view/clinic Premium Header */
+/* View Header — solid petrol panel, no gradient/neon shadow */
 .view-header {
-    background: linear-gradient(135deg, var(--PrimaryColorsTheme), var(--PrimaryColors));
-    border-radius: 24px;
+    background: var(--PrimaryColorsTheme);
+    border-radius: var(--radius-lg);
     padding: 2.5rem;
     display: flex;
     align-items: center;
     gap: 2.5rem;
-    box-shadow: 0 10px 30px -5px rgba(37, 99, 235, 0.3);
     margin-bottom: 2rem;
     position: relative;
     overflow: hidden;
 }
 
-.view-header::after {
-    content: '';
-    position: absolute;
-    top: 0; right: 0; width: 300px; height: 300px;
-    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%);
-    border-radius: 50%;
-    transform: translate(30%, -30%);
-}
-
 .view-header .circle {
     background-color: white;
     border-radius: 100%;
-    width: 120px;
-    height: 120px;
+    width: 110px;
+    height: 110px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    flex-shrink: 0;
     z-index: 1;
 }
 
@@ -194,7 +175,7 @@ a:hover {
 .view-header .text a {
     color: white;
     text-decoration: underline;
-    opacity: 0.8;
+    opacity: 0.85;
     font-size: 13px;
     margin-top: 0.5rem;
     display: inline-block;
@@ -202,6 +183,7 @@ a:hover {
 
 .view-header .text a:hover {
     opacity: 1;
+    color: white;
 }
 
 .view-back-link {
@@ -209,7 +191,7 @@ a:hover {
     display: inline-block;
 }
 
-@media (max-width: 765px) {
+@media (max-width: 768px) {
     main.register {
         padding: 1.5rem 1rem;
     }

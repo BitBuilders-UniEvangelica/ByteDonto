@@ -16,31 +16,60 @@
     --TextColor75: #475569;
     --LineColor: #E2E8F0;
 
-    --PrimaryColors: #2563EB; /* Especialista */
-    --PrimaryColorsTheme: #1D4ED8;
-    --PrimaryColorsBack: #EFF6FF;
+    /* PETROL / TEAL — paleta única para todo o app */
+    --PrimaryColors: #0E7490;
+    --PrimaryColorsTheme: #155E75;
+    --PrimaryColorsBack: #ECFEFF;
 
-    --NotPrimaryColors: #EF4444;
-    --NotPrimaryColorsTheme: #DC2626;
+    --NotPrimaryColors: #DC2626;
+    --NotPrimaryColorsTheme: #B91C1C;
+
+    /* STATUS COLORS */
+    --SuccessText: #15803D;
+    --SuccessBack: #DCFCE7;
+    --WarningText: #B45309;
+    --WarningBack: #FEF3C7;
+    --DangerText: #B91C1C;
+    --DangerBack: #FEE2E2;
 
     --font-primary: 'Inter', sans-serif;
     --font-secondary: 'JetBrains Mono', monospace;
 
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    /* SHADOWS — apenas sombras suaves, sem cor */
+    --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 2px 8px rgba(15, 23, 42, 0.08);
+
+    /* SPACING SCALE
+       Use for padding, margin and gap instead of hardcoded px/rem values. */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    --space-2xl: 48px;
+
+    /* BORDER-RADIUS SCALE
+       Use for rounding corners of cards, buttons, inputs, etc. */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+
+    /* Z-INDEX SCALE
+       Keep layered elements consistent and avoid arbitrary z-index values. */
+    --z-dropdown: 100;
+    --z-sidebar: 50;
+    --z-modal: 1000;
+    --z-toast: 1100;
+
+    /* TRANSITION TOKENS
+       Use for hover/focus/state transitions. */
+    --transition-fast: 0.15s ease;
+    --transition-base: 0.3s ease;
 }
 
-.owner {
-    --PrimaryColors: #B8860B;
-    --PrimaryColorsTheme: #946B09;
-    --PrimaryColorsBack: #FEFCE8;
-}
-
-.reception {
-    --PrimaryColors: #16A34A;
-    --PrimaryColorsTheme: #15803D;
-    --PrimaryColorsBack: #F0FDF4;
-}
+/* Os papéis (.owner, .reception, .specialist) permanecem como ganchos
+   de layout, porém o app inteiro usa UMA única paleta — sem cores por papel. */
 
 /* BODY STYLING */
 body {
@@ -49,6 +78,18 @@ body {
     font-family: var(--font-primary);
     margin: 0;
     -webkit-font-smoothing: antialiased;
+}
+
+/* KEYBOARD FOCUS STYLING (ACCESSIBILITY)
+   Visible focus ring for keyboard users; does not affect mouse interactions. */
+:focus-visible {
+    outline: 2px solid var(--PrimaryColors);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+:focus:not(:focus-visible) {
+    outline: none;
 }
 
 /* TEXT STYLING BASED ON SPEC */

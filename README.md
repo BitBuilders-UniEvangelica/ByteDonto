@@ -34,48 +34,12 @@ O projeto está dividido em duas pastas: `frontend` e `backend`. É recomendáve
 
 Abra a primeira aba no terminal e siga estes passos:
 
-<<<<<<< HEAD
-Entra dentro do back:
-```bash
-cd backend/
-```
-
-Criar um ambiente virtual:
-```bash
-python3 -m venv venv
-```
-
-Ativar o ambiente virtual:
-```bash
-source venv/bin/activate
-```
-
-Instalar as dependências:
-```bash
-pip install -r requirements.txt
-```
-
-Rodar o servidor:
-```bash
-python3 run.py
-```
-
-Em outro bash, entrar dentro do front:
-=======
->>>>>>> 1b2aa94 (redme atualizado)
 ```bash
 # Entre na pasta do frontend
 cd frontend/
 
-<<<<<<< HEAD
-Instalar as independencias:
-```bash
-npm install react-router-dom @supabase/supabase-js
-```
-=======
 # Instale todas as dependências do projeto
 npm install
->>>>>>> 1b2aa94 (redme atualizado)
 
 # Inicie o servidor de desenvolvimento
 npm run dev
@@ -107,7 +71,21 @@ pip install -r requirements.txt
 python run.py
 ```
 
-*(A API do backend será executada em `http://127.0.0.1:5000`)*
+*(A API do backend será executada em `http://127.0.0.1:8000`)*
+
+---
+
+## 🔑 Acessos de teste
+
+Contas de demonstração já cadastradas para testar o sistema (cada papel cai em uma área diferente, conforme as permissões):
+
+| Papel | E-mail | Senha |
+|---|---|---|
+| Proprietário (Dono) | `vitorhugosteam3@gmail.com` | `Bytedonto@2026` |
+| Atendente (Recepção) | `recepcao.demo@bytedonto.com` | `Recepcao@2026` |
+| Profissional (Especialista) | `profissional.demo@bytedonto.com` | `Profissional@2026` |
+
+> Os dados de demonstração (clínica, pacientes, consultas, financeiro) podem ser recriados rodando `python seed_demo.py` dentro da pasta `backend`.
 
 ---
 

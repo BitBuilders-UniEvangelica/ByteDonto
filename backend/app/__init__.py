@@ -1,3 +1,4 @@
+import os
 from flask import Flask
 from flask_cors import CORS
 from config import Config
@@ -6,7 +7,14 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    allowed_origins = [
+        origem.strip()
+        for origem in os.getenv(
+            "ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000"
+        ).split(",")
+        if origem.strip()
+    ]
+    CORS(app, resources={r"/api/*": {"origins": allowed_origins}})
 
     # Registrar blueprints
     from app.auth.routes import auth_bp

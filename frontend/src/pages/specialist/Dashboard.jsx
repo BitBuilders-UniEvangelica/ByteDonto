@@ -1,10 +1,11 @@
 /* IMPORTS */
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { apiGetConsultas, apiGetMetricas } from "../../services/api";
+import { apiGetConsultas, apiGetMetricas, apiAtualizarConsulta } from "../../services/api";
 import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
 import { useSpecialistSidebar } from "../../hooks/useSidebar";
+import { CalendarDays, Users, ChevronLeft, ChevronRight, X } from "lucide-react";
 import "../../styles/clinic.css";
 import "../../styles/Forms.css";
 
@@ -36,9 +37,9 @@ const DIAS_SEMANA = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const HORAS = Array.from({ length: 14 }, (_, i) => i + 7); // 07 .. 20
 
 const STATUS_BADGE = {
-    Agendado: { bg: "rgba(37,99,235,0.1)", color: "#1D4ED8" },
-    Finalizado: { bg: "rgba(22,163,74,0.1)", color: "#15803D" },
-    Cancelado: { bg: "rgba(239,68,68,0.1)", color: "#DC2626" },
+    Agendado: { bg: "var(--PrimaryColorsBack)", color: "var(--PrimaryColorsTheme)" },
+    Finalizado: { bg: "var(--SuccessBack)", color: "var(--SuccessText)" },
+    Cancelado: { bg: "var(--DangerBack)", color: "var(--DangerText)" },
 };
 
 /* ---- CALENDAR WEEK COMPONENT ---- */
@@ -56,24 +57,27 @@ function CalendarWeek({ consultas, semanaBase, onMudarSemana }) {
         });
 
     const STATUS_COR = {
-        Agendado: "#3B82F6",
-        Finalizado: "#22C55E",
-        Cancelado: "#EF4444",
-        Faltou: "#9CA3AF",
+        Agendado: { bg: "var(--PrimaryColorsBack)", color: "var(--PrimaryColorsTheme)" },
+        Finalizado: { bg: "var(--SuccessBack)", color: "var(--SuccessText)" },
+        Cancelado: { bg: "var(--DangerBack)", color: "var(--DangerText)" },
+        Faltou: { bg: "var(--BackColor)", color: "var(--TextColor75)" },
     };
 
     const NOMES_DIAS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
 
     return (
-        <div style={{ background: "white", borderRadius: "16px", border: "1px solid var(--LineColor)", padding: "1.5rem", marginBottom: "0.5rem" }}>
+        <div style={{ background: "var(--ThemeColor)", borderRadius: "var(--radius-lg)", border: "1px solid var(--LineColor)", padding: "1.5rem", marginBottom: "0.5rem", boxShadow: "var(--shadow-sm)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-                <h3 style={{ margin: 0, color: "var(--TextColor)", fontSize: "16px", fontWeight: 700 }}>Visao Semanal</h3>
+                <h3 style={{ margin: 0, color: "var(--TextColor)", fontSize: "16px", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <CalendarDays size={18} strokeWidth={2} /> Visão Semanal
+                </h3>
                 <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
                     <button
+                        aria-label="Semana anterior"
                         onClick={() => onMudarSemana(-7)}
-                        style={{ background: "var(--BackColor)", border: "1px solid var(--LineColor)", borderRadius: "8px", padding: "6px 12px", cursor: "pointer", fontWeight: 700 }}
+                        style={{ background: "var(--BackColor)", border: "1px solid var(--LineColor)", borderRadius: "var(--radius-sm)", padding: "6px 8px", cursor: "pointer", color: "var(--TextColor75)", display: "flex", alignItems: "center" }}
                     >
-                        &lsaquo;
+                        <ChevronLeft size={18} strokeWidth={2} />
                     </button>
                     <span style={{ fontSize: "13px", color: "var(--TextColor75)", fontWeight: 600 }}>
                         {dias[0].toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
@@ -81,10 +85,11 @@ function CalendarWeek({ consultas, semanaBase, onMudarSemana }) {
                         {dias[6].toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
                     </span>
                     <button
+                        aria-label="Próxima semana"
                         onClick={() => onMudarSemana(7)}
-                        style={{ background: "var(--BackColor)", border: "1px solid var(--LineColor)", borderRadius: "8px", padding: "6px 12px", cursor: "pointer", fontWeight: 700 }}
+                        style={{ background: "var(--BackColor)", border: "1px solid var(--LineColor)", borderRadius: "var(--radius-sm)", padding: "6px 8px", cursor: "pointer", color: "var(--TextColor75)", display: "flex", alignItems: "center" }}
                     >
-                        &rsaquo;
+                        <ChevronRight size={18} strokeWidth={2} />
                     </button>
                 </div>
             </div>
@@ -97,10 +102,10 @@ function CalendarWeek({ consultas, semanaBase, onMudarSemana }) {
                             key={i}
                             style={{
                                 minHeight: "90px",
-                                borderRadius: "10px",
-                                border: `2px solid ${hoje ? "var(--PrimaryColorsTheme)" : "var(--LineColor)"}`,
+                                borderRadius: "var(--radius-md)",
+                                border: `1px solid ${hoje ? "var(--PrimaryColorsTheme)" : "var(--LineColor)"}`,
                                 padding: "8px",
-                                background: hoje ? "var(--PrimaryColorsBack)" : "white",
+                                background: hoje ? "var(--PrimaryColorsBack)" : "var(--ThemeColor)",
                             }}
                         >
                             <p style={{ margin: "0 0 6px 0", fontSize: "11px", fontWeight: 700, color: hoje ? "var(--PrimaryColorsTheme)" : "var(--TextColor75)", textAlign: "center" }}>
@@ -110,17 +115,19 @@ function CalendarWeek({ consultas, semanaBase, onMudarSemana }) {
                                     {dia.getDate()}
                                 </span>
                             </p>
-                            {consultasDia.slice(0, 3).map((c, j) => (
+                            {consultasDia.slice(0, 3).map((c, j) => {
+                                const cor = STATUS_COR[c.status] || STATUS_COR["Agendado"];
+                                return (
                                 <div
                                     key={j}
                                     style={{
                                         fontSize: "10px",
                                         fontWeight: 600,
-                                        background: (STATUS_COR[c.status] || STATUS_COR["Agendado"]) + "20",
-                                        color: STATUS_COR[c.status] || STATUS_COR["Agendado"],
-                                        borderRadius: "4px",
-                                        padding: "2px 5px",
-                                        marginBottom: "2px",
+                                        background: cor.bg,
+                                        color: cor.color,
+                                        borderRadius: "999px",
+                                        padding: "2px 8px",
+                                        marginBottom: "3px",
                                         overflow: "hidden",
                                         whiteSpace: "nowrap",
                                         textOverflow: "ellipsis",
@@ -129,7 +136,8 @@ function CalendarWeek({ consultas, semanaBase, onMudarSemana }) {
                                     {new Date(c.data_agendada).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}{" "}
                                     {c.pacientes?.nome?.split(" ")[0] || "—"}
                                 </div>
-                            ))}
+                                );
+                            })}
                             {consultasDia.length > 3 && (
                                 <p style={{ fontSize: "10px", color: "var(--TextColor75)", margin: "2px 0 0 0" }}>
                                     +{consultasDia.length - 3}
@@ -172,16 +180,58 @@ function SpecialistDashboard() {
     /* modal encerrar */
     const [showEncerrar, setShowEncerrar] = useState(false);
     const [activePatient, setActivePatient] = useState("");
+    const [consultaAtiva, setConsultaAtiva] = useState(null);
+    const [procedimentos, setProcedimentos] = useState("");
+    const [evolucao, setEvolucao] = useState("");
+    const [salvandoEncerrar, setSalvandoEncerrar] = useState(false);
+    const [erroEncerrar, setErroEncerrar] = useState("");
 
     /* fetch consultas quando data muda */
-    useEffect(() => {
+    const carregarConsultas = () => {
         if (!token) return;
         setLoadingConsultas(true);
         apiGetConsultas(token)
             .then(data => setConsultas(Array.isArray(data) ? data : []))
             .catch(err => console.error("Erro ao carregar consultas", err))
             .finally(() => setLoadingConsultas(false));
+    };
+
+    useEffect(() => {
+        carregarConsultas();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [token, dataSelecionada]);
+
+    /* abrir modal de encerramento */
+    function abrirEncerrar(consulta) {
+        setConsultaAtiva(consulta);
+        setActivePatient(consulta.pacientes?.nome || consulta.paciente?.nome || "Paciente");
+        setProcedimentos(consulta.procedimentos_descritos || "");
+        setEvolucao(consulta.evolucao_clinica || "");
+        setErroEncerrar("");
+        setShowEncerrar(true);
+    }
+
+    /* salvar encerramento */
+    async function salvarEncerramento() {
+        if (!consultaAtiva) return;
+        setErroEncerrar("");
+        setSalvandoEncerrar(true);
+        try {
+            await apiAtualizarConsulta(token, consultaAtiva.id, {
+                procedimentos_descritos: procedimentos,
+                evolucao_clinica: evolucao,
+                status: "Finalizado",
+            });
+            setShowEncerrar(false);
+            setConsultaAtiva(null);
+            carregarConsultas();
+        } catch (err) {
+            console.error("Erro ao encerrar consulta", err);
+            setErroEncerrar(err.message || "Não foi possível salvar o atendimento.");
+        } finally {
+            setSalvandoEncerrar(false);
+        }
+    }
 
     /* fetch métricas uma vez */
     useEffect(() => {
@@ -217,38 +267,54 @@ function SpecialistDashboard() {
 
                 {/* ---- MODAL ENCERRAR ATENDIMENTO ---- */}
                 {showEncerrar && (
-                    <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(15,23,42,0.4)", backdropFilter: "blur(8px)", zIndex: 9999, display: "flex", justifyContent: "center", alignItems: "center" }}>
-                        <div style={{ background: "white", padding: "3rem", borderRadius: "32px", width: "100%", maxWidth: "600px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", animation: "fadeIn 0.2s", border: "1px solid rgba(226,232,240,0.8)" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2.5rem" }}>
+                    <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(15,23,42,0.4)", backdropFilter: "blur(8px)", zIndex: 1000, display: "flex", justifyContent: "center", alignItems: "center" }}>
+                        <div style={{ background: "var(--ThemeColor)", padding: "2.5rem", borderRadius: "var(--radius-lg)", width: "100%", maxWidth: "600px", boxShadow: "var(--shadow-md)", animation: "fadeIn 0.2s", border: "1px solid var(--LineColor)" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem" }}>
                                 <div>
-                                    <span style={{ background: "rgba(37,99,235,0.1)", color: "var(--PrimaryColorsTheme)", padding: "6px 12px", borderRadius: "12px", fontSize: "13px", fontWeight: 800, marginBottom: "12px", display: "inline-block" }}>ENCERRAR CONSULTA</span>
-                                    <h2 style={{ color: "var(--TextColor)", margin: 0, fontSize: "28px" }}>Resumo do Atendimento</h2>
+                                    <span className="ui-label" style={{ background: "var(--PrimaryColorsBack)", color: "var(--PrimaryColorsTheme)", padding: "6px 12px", borderRadius: "var(--radius-sm)", marginBottom: "12px", display: "inline-block" }}>ENCERRAR CONSULTA</span>
+                                    <h2 className="section" style={{ color: "var(--TextColor)", margin: "8px 0 0 0", fontSize: "24px" }}>Resumo do Atendimento</h2>
                                     <p style={{ color: "var(--TextColor75)", margin: "8px 0 0 0" }}>Paciente: <strong style={{ color: "var(--PrimaryColorsTheme)" }}>{activePatient}</strong></p>
                                 </div>
-                                <button onClick={() => setShowEncerrar(false)} style={{ background: "var(--LineColor)", border: "none", width: "40px", height: "40px", borderRadius: "50%", cursor: "pointer", color: "var(--TextColor)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>✕</button>
+                                <button aria-label="Fechar" onClick={() => setShowEncerrar(false)} style={{ background: "var(--BackColor)", border: "1px solid var(--LineColor)", width: "40px", height: "40px", borderRadius: "50%", cursor: "pointer", color: "var(--TextColor75)", display: "flex", alignItems: "center", justifyContent: "center" }}><X size={18} strokeWidth={2} /></button>
                             </div>
 
                             <div className="forms-section" style={{ padding: 0 }}>
                                 <div className="field" style={{ marginBottom: "1rem" }}>
                                     <label>Procedimentos Realizados Hoje *</label>
-                                    <input type="text" placeholder="Ex: Avaliação de Rotina, Limpeza (Profilaxia)..." style={{ width: "100%" }} />
-                                </div>
-                                <div className="field" style={{ marginBottom: "1rem" }}>
-                                    <label>Evolução Clínica (Anotações do Prontuário Central) *</label>
-                                    <textarea rows="3" placeholder="Descreva tecnicamente o que foi feito, materiais usados e observações médicas..." style={{ width: "100%" }}></textarea>
+                                    <input
+                                        type="text"
+                                        placeholder="Ex: Avaliação de Rotina, Limpeza (Profilaxia)..."
+                                        style={{ width: "100%" }}
+                                        value={procedimentos}
+                                        onChange={(e) => setProcedimentos(e.target.value)}
+                                    />
                                 </div>
                                 <div className="field" style={{ marginBottom: 0 }}>
-                                    <label>Status do Tratamento</label>
-                                    <select style={{ width: "100%" }}>
-                                        <option>Tratamento em Andamento (Agendar Retorno)</option>
-                                        <option>Alta Médica (Tratamento Finalizado)</option>
-                                    </select>
+                                    <label>Evolução Clínica (Anotações do Prontuário Central) *</label>
+                                    <textarea
+                                        rows="3"
+                                        placeholder="Descreva tecnicamente o que foi feito, materiais usados e observações médicas..."
+                                        style={{ width: "100%" }}
+                                        value={evolucao}
+                                        onChange={(e) => setEvolucao(e.target.value)}
+                                    ></textarea>
                                 </div>
                             </div>
 
-                            <div style={{ display: "flex", justifyContent: "flex-end", gap: "1rem", borderTop: "1px solid var(--LineColor)", paddingTop: "2rem", marginTop: "2.5rem" }}>
-                                <button onClick={() => setShowEncerrar(false)} className="submit" style={{ padding: "16px 24px", background: "var(--BackColor)", color: "var(--TextColor)", boxShadow: "none" }}>Continuar Atendendo</button>
-                                <button className="submit" onClick={() => setShowEncerrar(false)} style={{ padding: "16px 40px", background: "var(--PrimaryColorsTheme)", boxShadow: "0 8px 20px rgba(37,99,235,0.3)" }}>Salvar no Prontuário</button>
+                            {erroEncerrar && (
+                                <p style={{ color: "var(--DangerText)", background: "var(--DangerBack)", padding: "10px 14px", borderRadius: "var(--radius-sm)", fontSize: "14px", margin: "1.5rem 0 0 0" }}>{erroEncerrar}</p>
+                            )}
+
+                            <div style={{ display: "flex", justifyContent: "flex-end", gap: "1rem", borderTop: "1px solid var(--LineColor)", paddingTop: "1.5rem", marginTop: "2rem" }}>
+                                <button onClick={() => setShowEncerrar(false)} className="submit" style={{ padding: "14px 24px", background: "var(--BackColor)", color: "var(--TextColor)", boxShadow: "none" }}>Continuar Atendendo</button>
+                                <button
+                                    className="submit"
+                                    onClick={salvarEncerramento}
+                                    disabled={salvandoEncerrar}
+                                    style={{ padding: "14px 40px", background: "var(--PrimaryColorsTheme)", boxShadow: "none", opacity: salvandoEncerrar ? 0.7 : 1 }}
+                                >
+                                    {salvandoEncerrar ? "Salvando..." : "Salvar no Prontuário"}
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -265,17 +331,27 @@ function SpecialistDashboard() {
 
                 {/* ---- MÉTRICAS RÁPIDAS ---- */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1rem", marginBottom: "0.5rem" }}>
-                    <div style={{ background: "white", borderRadius: "16px", border: "1px solid var(--LineColor)", padding: "1.5rem", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-                        <p style={{ margin: "0 0 0.25rem 0", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Consultas Hoje</p>
-                        <p style={{ margin: 0, fontSize: "32px", fontWeight: 800, color: "var(--PrimaryColorsTheme)", fontFamily: "var(--font-secondary)" }}>
-                            {metricas ? metricas.consultas_hoje ?? "—" : "—"}
-                        </p>
+                    <div style={{ background: "var(--ThemeColor)", borderRadius: "var(--radius-lg)", border: "1px solid var(--LineColor)", padding: "1.5rem", boxShadow: "var(--shadow-sm)", display: "flex", alignItems: "center", gap: "1rem" }}>
+                        <div style={{ width: "48px", height: "48px", borderRadius: "var(--radius-md)", background: "var(--PrimaryColorsBack)", color: "var(--PrimaryColorsTheme)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <CalendarDays size={22} strokeWidth={2} />
+                        </div>
+                        <div>
+                            <p style={{ margin: "0 0 0.25rem 0", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Consultas Hoje</p>
+                            <p style={{ margin: 0, fontSize: "32px", fontWeight: 800, color: "var(--PrimaryColorsTheme)", fontFamily: "var(--font-secondary)" }}>
+                                {metricas ? metricas.consultas_hoje ?? "—" : "—"}
+                            </p>
+                        </div>
                     </div>
-                    <div style={{ background: "white", borderRadius: "16px", border: "1px solid var(--LineColor)", padding: "1.5rem", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-                        <p style={{ margin: "0 0 0.25rem 0", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total de Pacientes</p>
-                        <p style={{ margin: 0, fontSize: "32px", fontWeight: 800, color: "var(--PrimaryColorsTheme)", fontFamily: "var(--font-secondary)" }}>
-                            {metricas ? metricas.total_pacientes ?? "—" : "—"}
-                        </p>
+                    <div style={{ background: "var(--ThemeColor)", borderRadius: "var(--radius-lg)", border: "1px solid var(--LineColor)", padding: "1.5rem", boxShadow: "var(--shadow-sm)", display: "flex", alignItems: "center", gap: "1rem" }}>
+                        <div style={{ width: "48px", height: "48px", borderRadius: "var(--radius-md)", background: "var(--PrimaryColorsBack)", color: "var(--PrimaryColorsTheme)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <Users size={22} strokeWidth={2} />
+                        </div>
+                        <div>
+                            <p style={{ margin: "0 0 0.25rem 0", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total de Pacientes</p>
+                            <p style={{ margin: 0, fontSize: "32px", fontWeight: 800, color: "var(--PrimaryColorsTheme)", fontFamily: "var(--font-secondary)" }}>
+                                {metricas ? metricas.total_pacientes ?? "—" : "—"}
+                            </p>
+                        </div>
                     </div>
                 </div>
 
@@ -319,7 +395,7 @@ function SpecialistDashboard() {
                 <div className="camp-clinic" style={{ padding: "2.5rem" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
                         <h2 style={{ margin: 0 }}>Agenda de Hoje</h2>
-                        <span style={{ background: "rgba(37,99,235,0.1)", color: "var(--PrimaryColorsTheme)", padding: "6px 14px", borderRadius: "12px", fontSize: "13px", fontWeight: 700, textTransform: "capitalize" }}>
+                        <span style={{ background: "var(--PrimaryColorsBack)", color: "var(--PrimaryColorsTheme)", padding: "6px 14px", borderRadius: "999px", fontSize: "13px", fontWeight: 700, textTransform: "capitalize" }}>
                             {dataFormatada}
                         </span>
                     </div>
@@ -352,7 +428,7 @@ function SpecialistDashboard() {
 
                                         {/* slot */}
                                         {consulta ? (
-                                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--PrimaryColorsBack)", border: "1px solid rgba(37,99,235,0.15)", borderRadius: "12px", padding: "0.75rem 1.25rem" }}>
+                                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--PrimaryColorsBack)", border: "1px solid var(--LineColor)", borderRadius: "var(--radius-md)", padding: "0.75rem 1.25rem" }}>
                                                 <div>
                                                     <p style={{ margin: 0, fontWeight: 700, color: "var(--TextColor)", fontSize: "15px" }}>
                                                         {consulta.pacientes?.nome || consulta.paciente?.nome || "Paciente"}
@@ -362,21 +438,21 @@ function SpecialistDashboard() {
                                                     </p>
                                                 </div>
                                                 <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                                                    <span style={{ background: badge.bg, color: badge.color, padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 700 }}>
+                                                    <span style={{ background: badge.bg, color: badge.color, padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700 }}>
                                                         {consulta.status || "Agendado"}
                                                     </span>
                                                     <button
-                                                        onClick={() => { setActivePatient(consulta.pacientes?.nome || consulta.paciente?.nome || "Paciente"); setShowEncerrar(true); }}
+                                                        onClick={() => abrirEncerrar(consulta)}
                                                         className="submit"
-                                                        style={{ padding: "6px 14px", fontSize: "13px", borderRadius: "8px", background: "var(--PrimaryColorsTheme)", boxShadow: "none" }}
+                                                        style={{ padding: "6px 14px", fontSize: "13px", borderRadius: "var(--radius-sm)", background: "var(--PrimaryColorsTheme)", boxShadow: "none" }}
                                                     >
                                                         Encerrar
                                                     </button>
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div style={{ background: "rgba(248,250,252,0.8)", border: "1px dashed var(--LineColor)", borderRadius: "12px", padding: "0.75rem 1.25rem" }}>
-                                                <p style={{ margin: 0, fontSize: "13px", color: "var(--LineColor)", fontStyle: "italic" }}>Disponível</p>
+                                            <div style={{ background: "var(--BackColor)", border: "1px dashed var(--LineColor)", borderRadius: "var(--radius-md)", padding: "0.75rem 1.25rem" }}>
+                                                <p style={{ margin: 0, fontSize: "13px", color: "var(--TextColor75)", fontStyle: "italic" }}>Disponível</p>
                                             </div>
                                         )}
                                     </div>

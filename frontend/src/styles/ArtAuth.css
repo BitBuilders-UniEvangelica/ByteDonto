@@ -46,7 +46,7 @@ div.art.dir-right img {
     right: 0;
 }
 
-@media (max-width: 765px) {
+@media (max-width: 768px) {
     div.art {
         display: none;
     }

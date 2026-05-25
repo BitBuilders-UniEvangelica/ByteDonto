@@ -105,7 +105,7 @@ button.btn-google {
     justify-content: center;
     gap: 12px;
     padding: 12px;
-    background-color: #ffffff;
+    background-color: #FFFFFF;
     border: 1px solid var(--LineColor);
     border-radius: 12px;
     cursor: pointer;
@@ -190,7 +190,7 @@ div.auth-divider::after {
 
 .auth-form input:focus {
     border-color: var(--PrimaryColors);
-    background-color: #ffffff;
+    background-color: #FFFFFF;
     box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
 }
 

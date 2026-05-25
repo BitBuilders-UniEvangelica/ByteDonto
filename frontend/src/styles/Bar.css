@@ -1,22 +1,20 @@
-/* Premium Sidebar Dashboard */
+/* Sidebar — light, clean clinical surface */
 
 .sidebar {
     width: 260px;
     height: calc(100vh - 80px); /* Discount topbar */
-    top: 80px; 
-    background: rgba(255, 255, 255, 0.4);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border-right: 1px solid rgba(226, 232, 240, 0.8);
+    top: 80px;
+    background: var(--ThemeColor);
+    border-right: 1px solid var(--LineColor);
     position: fixed;
     left: 0;
-    padding: 1.5rem 1rem;
+    padding: 1.25rem 0.75rem;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    z-index: 40;
+    gap: 0.25rem;
+    z-index: var(--z-sidebar);
     box-sizing: border-box;
-    transition: all 0.3s ease;
+    transition: transform var(--transition-base);
 }
 
 .mainBar {

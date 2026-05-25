@@ -69,3 +69,76 @@ export function maskCEP(v) {
 export function maskRG(v) {
     return String(v).replace(/\D/g, "").slice(0, 9);
 }
+
+export function maskCNPJ(v) {
+    const d = String(v).replace(/\D/g, "").slice(0, 14);
+    if (d.length <= 2)  return d;
+    if (d.length <= 5)  return `${d.slice(0,2)}.${d.slice(2)}`;
+    if (d.length <= 8)  return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5)}`;
+    if (d.length <= 12) return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8)}`;
+    return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`;
+}
+
+// Exibição de CNPJ — recebe valor bruto do banco, retorna string formatada
+
+export function formatCNPJ(v) {
+    if (!v) return "—";
+    const d = String(v).replace(/\D/g, "").slice(0, 14);
+    if (d.length === 14) return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`;
+    return v;
+}
+
+// Validações — recebem valor com ou sem máscara, retornam true/false
+
+export function validarCPF(v) {
+    const d = String(v || "").replace(/\D/g, "");
+    if (d.length !== 11) return false;
+    if (/^(\d)\1{10}$/.test(d)) return false;
+
+    let soma = 0;
+    for (let i = 0; i < 9; i++) soma += Number(d[i]) * (10 - i);
+    let resto = (soma * 10) % 11;
+    if (resto === 10) resto = 0;
+    if (resto !== Number(d[9])) return false;
+
+    soma = 0;
+    for (let i = 0; i < 10; i++) soma += Number(d[i]) * (11 - i);
+    resto = (soma * 10) % 11;
+    if (resto === 10) resto = 0;
+    if (resto !== Number(d[10])) return false;
+
+    return true;
+}
+
+export function validarCNPJ(v) {
+    const d = String(v || "").replace(/\D/g, "");
+    if (d.length !== 14) return false;
+    if (/^(\d)\1{13}$/.test(d)) return false;
+
+    const calcDigito = (base, pesos) => {
+        let soma = 0;
+        for (let i = 0; i < pesos.length; i++) soma += Number(base[i]) * pesos[i];
+        const resto = soma % 11;
+        return resto < 2 ? 0 : 11 - resto;
+    };
+
+    const pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const pesos2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+
+    const dig1 = calcDigito(d, pesos1);
+    if (dig1 !== Number(d[12])) return false;
+
+    const dig2 = calcDigito(d, pesos2);
+    if (dig2 !== Number(d[13])) return false;
+
+    return true;
+}
+
+export function validarEmail(v) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").trim());
+}
+
+export function validarTelefone(v) {
+    const d = String(v || "").replace(/\D/g, "");
+    return d.length === 10 || d.length === 11;
+}

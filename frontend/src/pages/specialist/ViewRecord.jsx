@@ -9,6 +9,7 @@ import Odontograma from "../../components/odontograma/Odontograma";
 import RegistroClinico from "../../components/registro/RegistroClinico";
 import PlanoDeTratamento from "../../components/plano/PlanoDeTratamento";
 import GaleriaImagens from "../../components/imagens/GaleriaImagens";
+import { UserRound, Printer, Plus, X, AlertTriangle, Check } from "lucide-react";
 import "../../styles/clinic.css";
 import "../../styles/Forms.css";
 import { formatDate, calcIdade } from "../../utils/formatters";
@@ -27,8 +28,8 @@ function Receituario({ paciente, dentista }) {
         w.document.write(`
             <html><head><title>Receituário</title><style>
                 body{font-family:Arial,sans-serif;max-width:700px;margin:40px auto;color:#111}
-                h2{color:#1D4ED8;border-bottom:2px solid #1D4ED8;padding-bottom:8px}
-                .med{margin:16px 0;padding:12px;border-left:4px solid #1D4ED8;background:#f8fafc}
+                h2{color:#155E75;border-bottom:2px solid #155E75;padding-bottom:8px}
+                .med{margin:16px 0;padding:12px;border-left:4px solid #155E75;background:#f8fafc}
                 .footer{margin-top:60px;border-top:1px solid #ccc;padding-top:16px;font-size:13px;color:#666}
             </style></head><body>
             <h2>Receituário Odontológico</h2>
@@ -55,22 +56,22 @@ function Receituario({ paciente, dentista }) {
                     <h3 style={{margin:"0 0 4px 0",color:"var(--PrimaryColorsTheme)"}}>Receituário</h3>
                     <p style={{margin:0,fontSize:"13px",color:"var(--TextColor75)"}}>Preencha e imprima uma prescrição para o paciente.</p>
                 </div>
-                <button onClick={imprimir} style={{padding:"10px 24px",background:"var(--PrimaryColorsTheme)",color:"white",border:"none",borderRadius:"10px",fontWeight:700,cursor:"pointer"}}>
-                    Imprimir Receituário
+                <button onClick={imprimir} style={{display:"flex",alignItems:"center",gap:"8px",padding:"10px 24px",background:"var(--PrimaryColorsTheme)",color:"white",border:"none",borderRadius:"var(--radius-md)",fontWeight:700,cursor:"pointer"}}>
+                    <Printer size={18} strokeWidth={2} /> Imprimir Receituário
                 </button>
             </div>
 
             <div style={{display:"flex",flexDirection:"column",gap:"12px",marginBottom:"1.5rem"}}>
                 {medicamentos.map((m,i)=>(
-                    <div key={i} style={{display:"grid",gridTemplateColumns:"2fr 2fr 1fr 36px",gap:"8px",background:"white",border:"1px solid var(--LineColor)",borderRadius:"10px",padding:"12px",alignItems:"center"}}>
-                        <input value={m.nome} onChange={e=>updateMed(i,"nome",e.target.value)} placeholder="Medicamento (ex: Amoxicilina 500mg)" style={{padding:"8px 10px",borderRadius:"8px",border:"1px solid var(--LineColor)",fontSize:"13px"}} />
-                        <input value={m.posologia} onChange={e=>updateMed(i,"posologia",e.target.value)} placeholder="Posologia (ex: 1 comprimido 8/8h)" style={{padding:"8px 10px",borderRadius:"8px",border:"1px solid var(--LineColor)",fontSize:"13px"}} />
-                        <input value={m.duracao} onChange={e=>updateMed(i,"duracao",e.target.value)} placeholder="Duração (ex: 7 dias)" style={{padding:"8px 10px",borderRadius:"8px",border:"1px solid var(--LineColor)",fontSize:"13px"}} />
-                        <button onClick={()=>removeMed(i)} style={{background:"#FEE2E2",color:"#EF4444",border:"none",borderRadius:"8px",width:"36px",height:"36px",cursor:"pointer",fontWeight:700}}>×</button>
+                    <div key={i} style={{display:"grid",gridTemplateColumns:"2fr 2fr 1fr 36px",gap:"8px",background:"var(--ThemeColor)",border:"1px solid var(--LineColor)",borderRadius:"var(--radius-md)",padding:"12px",alignItems:"center"}}>
+                        <input value={m.nome} onChange={e=>updateMed(i,"nome",e.target.value)} placeholder="Medicamento (ex: Amoxicilina 500mg)" style={{padding:"8px 10px",borderRadius:"var(--radius-sm)",border:"1px solid var(--LineColor)",fontSize:"13px"}} />
+                        <input value={m.posologia} onChange={e=>updateMed(i,"posologia",e.target.value)} placeholder="Posologia (ex: 1 comprimido 8/8h)" style={{padding:"8px 10px",borderRadius:"var(--radius-sm)",border:"1px solid var(--LineColor)",fontSize:"13px"}} />
+                        <input value={m.duracao} onChange={e=>updateMed(i,"duracao",e.target.value)} placeholder="Duração (ex: 7 dias)" style={{padding:"8px 10px",borderRadius:"var(--radius-sm)",border:"1px solid var(--LineColor)",fontSize:"13px"}} />
+                        <button aria-label="Remover medicamento" onClick={()=>removeMed(i)} style={{background:"var(--DangerBack)",color:"var(--DangerText)",border:"none",borderRadius:"var(--radius-sm)",width:"36px",height:"36px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><X size={16} strokeWidth={2.5} /></button>
                     </div>
                 ))}
-                <button onClick={addMed} style={{alignSelf:"flex-start",fontSize:"13px",color:"var(--PrimaryColorsTheme)",background:"none",border:"1px dashed var(--PrimaryColorsTheme)",borderRadius:"8px",padding:"6px 14px",cursor:"pointer",fontWeight:600}}>
-                    + Adicionar medicamento
+                <button onClick={addMed} style={{display:"flex",alignItems:"center",gap:"6px",alignSelf:"flex-start",fontSize:"13px",color:"var(--PrimaryColorsTheme)",background:"none",border:"1px dashed var(--PrimaryColorsTheme)",borderRadius:"var(--radius-sm)",padding:"8px 14px",cursor:"pointer",fontWeight:600}}>
+                    <Plus size={16} strokeWidth={2.5} /> Adicionar medicamento
                 </button>
             </div>
 
@@ -96,6 +97,9 @@ export default function SpecialistViewRecord() {
     const [odontograma, setOdontograma] = useState({});
     const [salvandoOdontograma, setSalvandoOdontograma] = useState(false);
     const [odontogramaSucesso, setOdontogramaSucesso] = useState(false);
+    // Quando o dentista usa "+ Adicionar ao Plano" no odontograma, guardamos o
+    // item aqui e a aba do plano abre o formulário já pré-preenchido.
+    const [itemSugeridoPlano, setItemSugeridoPlano] = useState(null);
 
     const opc_bar = useSpecialistSidebar("patients");
 
@@ -181,19 +185,18 @@ export default function SpecialistViewRecord() {
             
             <main className="mainBar specialist">
                 {/* CABEÇALHO CLÍNICO DO DENTISTA */}
-                <div style={{background: 'var(--PrimaryColorsTheme)', borderRadius: '24px', padding: '2rem', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', boxShadow: '0 10px 25px rgba(37, 99, 235, 0.2)'}}>
-                    <div style={{display: 'flex', gap: '2rem', alignItems: 'center'}}>
-                        <div style={{width: '90px', height: '90px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px'}}>
-                            {paciente.genero === "Feminino" ? "👩🏽" : "👨🏻"}
+                <div style={{background: 'var(--PrimaryColorsTheme)', borderRadius: 'var(--radius-lg)', padding: '2rem', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem'}}>
+                    <div style={{display: 'flex', gap: '1.5rem', alignItems: 'center'}}>
+                        <div style={{width: '72px', height: '72px', borderRadius: '50%', background: 'rgba(255,255,255,0.15)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0}}>
+                            <UserRound size={36} strokeWidth={1.8} />
                         </div>
                         <div>
                             <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-                                <h1 style={{margin: '0', fontSize: '28px'}}>{paciente.nome}</h1>
-                                <span style={{background: 'rgba(255,255,255,0.2)', padding: '4px 12px', borderRadius: '12px', fontSize: '13px', fontWeight: 600}}>Tratamento</span>
+                                <h1 style={{margin: '0', fontSize: '26px', color: 'white'}}>{paciente.nome}</h1>
+                                <span style={{background: 'rgba(255,255,255,0.18)', padding: '4px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700}}>Em Tratamento</span>
                             </div>
-                            <div style={{display: 'flex', gap: '2rem', marginTop: '1rem', fontFamily: 'var(--font-secondary)'}}>
-                                <span><strong style={{opacity: 0.8}}>Convênio/Origem:</strong> Particular</span>
-                                <span><strong style={{opacity: 0.8}}>Nascimento:</strong> {formatDate(paciente.data_nascimento)} ({calcIdade(paciente.data_nascimento)} anos)</span>
+                            <div style={{display: 'flex', gap: '2rem', marginTop: '0.75rem', fontFamily: 'var(--font-secondary)'}}>
+                                <span style={{fontSize: '13px', fontWeight: 500}}><strong style={{opacity: 0.7, fontWeight: 700}}>Nascimento:</strong> {formatDate(paciente.data_nascimento)} ({calcIdade(paciente.data_nascimento)} anos)</span>
                             </div>
                         </div>
                     </div>
@@ -221,16 +224,16 @@ export default function SpecialistViewRecord() {
                             <div>
                                 <h3 style={{color: 'var(--TextColor)', margin: '0 0 1.5rem 0'}}>Avisos Críticos</h3>
                                 {anamnese.alergias ? (
-                                    <div style={{background: '#FEF2F2', border: '1px solid #FCA5A5', padding: '1rem', borderRadius: '12px', marginBottom: '1rem', color: '#991B1B'}}>
-                                        <strong>Alergia Medica:</strong>
-                                        <p style={{margin: '4px 0 0 0', fontSize: '14px'}}>{anamnese.alergias}</p>
+                                    <div style={{background: 'var(--DangerBack)', border: '1px solid var(--LineColor)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem', color: 'var(--DangerText)'}}>
+                                        <strong style={{display: 'flex', alignItems: 'center', gap: '6px'}}><AlertTriangle size={16} strokeWidth={2.5} /> Alergia Médica:</strong>
+                                        <p style={{margin: '4px 0 0 0', fontSize: '14px', color: 'var(--DangerText)'}}>{anamnese.alergias}</p>
                                     </div>
                                 ) : null}
 
                                 {anamnese.condicoes ? (
-                                    <div style={{background: '#FFFBEB', border: '1px solid #FCD34D', padding: '1rem', borderRadius: '12px', color: '#92400E'}}>
-                                        <strong>Doença Sistêmica:</strong>
-                                        <p style={{margin: '4px 0 0 0', fontSize: '14px'}}>{anamnese.condicoes}</p>
+                                    <div style={{background: 'var(--WarningBack)', border: '1px solid var(--LineColor)', padding: '1rem', borderRadius: 'var(--radius-md)', color: 'var(--WarningText)'}}>
+                                        <strong style={{display: 'flex', alignItems: 'center', gap: '6px'}}><AlertTriangle size={16} strokeWidth={2.5} /> Doença Sistêmica:</strong>
+                                        <p style={{margin: '4px 0 0 0', fontSize: '14px', color: 'var(--WarningText)'}}>{anamnese.condicoes}</p>
                                     </div>
                                 ) : null}
 
@@ -252,6 +255,10 @@ export default function SpecialistViewRecord() {
                             dados={odontograma}
                             onChange={setOdontograma}
                             readOnly={false}
+                            onAdicionarAoPlano={(item) => {
+                                setItemSugeridoPlano(item);
+                                setActiveTab("plano");
+                            }}
                         />
 
                         <div style={{display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.5rem'}}>
@@ -260,21 +267,22 @@ export default function SpecialistViewRecord() {
                                 disabled={salvandoOdontograma}
                                 className="submit"
                                 style={{
-                                    background: salvandoOdontograma ? '#93C5FD' : 'var(--PrimaryColorsTheme)',
+                                    background: 'var(--PrimaryColorsTheme)',
                                     color: 'white',
                                     padding: '12px 28px',
-                                    borderRadius: '12px',
+                                    borderRadius: 'var(--radius-md)',
                                     border: 'none',
                                     fontWeight: 700,
                                     fontSize: '14px',
+                                    opacity: salvandoOdontograma ? 0.7 : 1,
                                     cursor: salvandoOdontograma ? 'not-allowed' : 'pointer',
                                 }}
                             >
                                 {salvandoOdontograma ? 'Salvando...' : 'Salvar Odontograma'}
                             </button>
                             {odontogramaSucesso && (
-                                <span style={{color: '#059669', fontWeight: 700, fontSize: '14px'}}>
-                                    Salvo com sucesso!
+                                <span style={{color: 'var(--SuccessText)', fontWeight: 700, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px'}}>
+                                    <Check size={16} strokeWidth={2.5} /> Salvo com sucesso!
                                 </span>
                             )}
                         </div>
@@ -286,7 +294,12 @@ export default function SpecialistViewRecord() {
                     <div className="forms-section" style={{animation: 'fadeIn 0.3s'}}>
                         <h3 style={{color: 'var(--PrimaryColorsTheme)', margin: '0 0 0.5rem 0'}}>Plano de Tratamento</h3>
                         <p className="text75" style={{marginBottom: '1.5rem'}}>Crie orçamentos e acompanhe a evolução de cada procedimento.</p>
-                        <PlanoDeTratamento pacienteId={pacienteId} token={token} />
+                        <PlanoDeTratamento
+                            pacienteId={pacienteId}
+                            token={token}
+                            itemInicial={itemSugeridoPlano}
+                            onConsumirItemInicial={() => setItemSugeridoPlano(null)}
+                        />
                     </div>
                 )}
 
@@ -326,7 +339,7 @@ export default function SpecialistViewRecord() {
                                 <button type="submit" className="submit" disabled={salvandoAnamnese}>
                                     {salvandoAnamnese ? "Salvando..." : "Atualizar Ficha Médica"}
                                 </button>
-                                {anamneseSucesso && <span style={{color: '#059669', fontWeight: 700, fontSize: '14px'}}>Salvo com sucesso!</span>}
+                                {anamneseSucesso && <span style={{color: 'var(--SuccessText)', fontWeight: 700, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px'}}><Check size={16} strokeWidth={2.5} /> Salvo com sucesso!</span>}
                             </div>
                         </form>
                     </div>

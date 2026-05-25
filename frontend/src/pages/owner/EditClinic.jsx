@@ -3,9 +3,11 @@ import { useState, useEffect } from "react";
 import { Link, useParams, Navigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { apiGetClinic, apiUpdateClinic } from "../../services/api";
+import { maskCNPJ, maskPhone, validarCNPJ } from "../../utils/formatters";
 import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
 import { useOwnerSidebar } from "../../hooks/useSidebar";
+import { ArrowLeft } from "lucide-react";
 import '../../styles/clinic.css';
 import '../../styles/Forms.css';
 
@@ -40,13 +42,13 @@ function EditClinic() {
         if (id && token) {
             apiGetClinic(token, id)
                 .then((clinicData) => {
-                    setNameClinic(clinicData.name || "");
-                    setCNPJ(clinicData.cnpj || "");
+                    setNameClinic(clinicData.nome || clinicData.nome_fantasia || "");
+                    setCNPJ(maskCNPJ(clinicData.cnpj || ""));
                     setRazaoSocial(clinicData.razao_social || "");
                     setResumo(clinicData.resumo || "");
 
-                    setWhatsapp(clinicData.whatsapp || "");
-                    setTelefone(clinicData.telefone || "");
+                    setWhatsapp(maskPhone(clinicData.telefone || ""));
+                    setTelefone(maskPhone(clinicData.telefone || ""));
                     setInstagram(clinicData.instagram || "");
                     setFacebook(clinicData.facebook || "");
 
@@ -66,13 +68,24 @@ function EditClinic() {
     /* SUBMIT */
     async function handleSubmit(e) {
         e.preventDefault();
+
+        if (CNPJ && !validarCNPJ(CNPJ)) {
+            alert("CNPJ inválido.");
+            return;
+        }
+
         setSaving(true);
 
         const updatedClinic = {
             nome: name_clinic,
-            cnpj: CNPJ,
-            telefone: telefone,
-            endereco: `${endereco}, ${cidade} - ${estado}, ${pais}`
+            cnpj: CNPJ.replace(/\D/g, ""),
+            telefone: telefone.replace(/\D/g, ""),
+            endereco: {
+                logradouro: endereco,
+                cidade: cidade,
+                estado: estado,
+                pais: pais,
+            },
         };
 
         try {
@@ -95,7 +108,9 @@ function EditClinic() {
             
             <main className="mainBar owner register">
                 <p>
-                    <Link className="text75" to={`/owner/view-clinic/${id}`}>← Voltar para Visão Geral</Link>
+                    <Link className="text75" to={`/owner/view-clinic/${id}`} style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                        <ArrowLeft size={16} strokeWidth={2} /> Voltar para Visão Geral
+                    </Link>
                 </p>
 
                 <div className="camp-clinic camp-register">
@@ -126,7 +141,7 @@ function EditClinic() {
                                         <input
                                             type="text"
                                             value={CNPJ}
-                                            onChange={(e) => setCNPJ(e.target.value)}
+                                            onChange={(e) => setCNPJ(maskCNPJ(e.target.value))}
                                         />
                                     </div>
                                     
@@ -159,7 +174,7 @@ function EditClinic() {
                                         <input
                                             type="text"
                                             value={whatsapp}
-                                            onChange={(e) => setWhatsapp(e.target.value)}
+                                            onChange={(e) => setWhatsapp(maskPhone(e.target.value))}
                                         />
                                     </div>
                                     
@@ -168,7 +183,7 @@ function EditClinic() {
                                         <input
                                             type="text"
                                             value={telefone}
-                                            onChange={(e) => setTelefone(e.target.value)}
+                                            onChange={(e) => setTelefone(maskPhone(e.target.value))}
                                         />
                                     </div>
                                 </div>

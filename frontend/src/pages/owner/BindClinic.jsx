@@ -5,6 +5,8 @@ import { apiGetEquipe, apiCriarMembro, apiRemoverMembro, apiAtualizarMembro, api
 import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
 import { useOwnerSidebar } from "../../hooks/useSidebar";
+import { validarEmail, formatDate } from "../../utils/formatters";
+import { ArrowLeft, CheckCircle2, Plus, AlertTriangle } from "lucide-react";
 import "../../styles/clinic.css";
 import "../../styles/Forms.css";
 import "../../styles/Table.css";
@@ -23,9 +25,9 @@ const LABELS_PERMISSAO = {
 };
 
 const PAPEL_LABEL = {
-    Dono: { label: "Proprietário", cor: "#7C3AED" },
-    Especialista: { label: "Especialista", cor: "#2563EB" },
-    "Recepção": { label: "Recepção", cor: "#059669" },
+    Dono: { label: "Proprietário", bg: "var(--PrimaryColorsBack)", cor: "var(--PrimaryColorsTheme)" },
+    Especialista: { label: "Especialista", bg: "var(--PrimaryColorsBack)", cor: "var(--PrimaryColors)" },
+    "Recepção": { label: "Recepção", bg: "var(--SuccessBack)", cor: "var(--SuccessText)" },
 };
 
 const FORM_INICIAL = { nome: "", email: "", senha: "", papel: "Especialista" };
@@ -48,7 +50,7 @@ function BindClinic() {
     // Modal de edição
     const [showEdit, setShowEdit] = useState(false);
     const [membroEditando, setMembroEditando] = useState(null);
-    const [editForm, setEditForm] = useState({ nome: "", papel: "" });
+    const [editForm, setEditForm] = useState({ nome: "", papel: "", percentual_repasse: 0 });
     const [editEnviando, setEditEnviando] = useState(false);
     const [editErro, setEditErro] = useState(null);
 
@@ -62,6 +64,9 @@ function BindClinic() {
 
     // Confirmação de remoção
     const [removendoId, setRemovendoId] = useState(null);
+
+    // Ativar / desativar membro
+    const [statusId, setStatusId] = useState(null);
 
     const carregarEquipe = useCallback(async () => {
         setCarregando(true);
@@ -95,9 +100,15 @@ function BindClinic() {
 
     async function handleCriar(e) {
         e.preventDefault();
-        setEnviando(true);
         setFormErro(null);
         setFormSucesso(null);
+
+        if (!validarEmail(form.email)) {
+            setFormErro("E-mail inválido.");
+            return;
+        }
+
+        setEnviando(true);
         try {
             const novo = await apiCriarMembro(token, form);
             setFormSucesso(`${novo.nome} adicionado com sucesso!`);
@@ -116,7 +127,11 @@ function BindClinic() {
     // --- Editar membro ---
     function abrirEdit(membro) {
         setMembroEditando(membro);
-        setEditForm({ nome: membro.nome, papel: membro.papel });
+        setEditForm({
+            nome: membro.nome,
+            papel: membro.papel,
+            percentual_repasse: Number(membro.percentual_repasse || 0),
+        });
         setEditErro(null);
         setShowEdit(true);
     }
@@ -163,6 +178,27 @@ function BindClinic() {
         }
     }
 
+    // --- Ativar / desativar membro ---
+    async function handleAlternarStatus(membro) {
+        const atual = membro.ativo !== false;
+        setStatusId(membro.id);
+        try {
+            const atualizado = await apiAtualizarMembro(token, membro.id, { ativo: !atual });
+            setEquipe(prev => prev.map(m =>
+                m.id === membro.id ? { ...m, ativo: atualizado.ativo ?? !atual } : m
+            ));
+        } catch (e) {
+            // A coluna "ativo" pode não existir se a migração do banco não foi aplicada
+            alert(
+                "Não foi possível alterar o status do membro. " +
+                "Verifique se a atualização do banco de dados foi aplicada.\n\n" +
+                e.message
+            );
+        } finally {
+            setStatusId(null);
+        }
+    }
+
     // --- Remover membro ---
     async function handleRemover(id) {
         setRemovendoId(id);
@@ -197,14 +233,14 @@ function BindClinic() {
 
                         {formSucesso ? (
                             <div style={{ textAlign: "center", padding: "2rem 0" }}>
-                                <p style={{ fontSize: "2rem" }}>✅</p>
-                                <p style={{ fontWeight: 700, color: "#059669" }}>{formSucesso}</p>
+                                <CheckCircle2 size={48} strokeWidth={2} color="var(--SuccessText)" />
+                                <p style={{ fontWeight: 700, color: "var(--SuccessText)", marginTop: "0.75rem" }}>{formSucesso}</p>
                             </div>
                         ) : (
                             <form onSubmit={handleCriar}>
                                 {formErro && (
-                                    <div style={{ background: "rgba(239,68,68,0.1)", color: "#EF4444", padding: "10px 14px", borderRadius: "8px", marginBottom: "1rem", fontSize: "14px" }}>
-                                        {formErro}
+                                    <div style={{ background: "var(--DangerBack)", color: "var(--DangerText)", padding: "10px 14px", borderRadius: "8px", marginBottom: "1rem", fontSize: "14px", display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <AlertTriangle size={16} strokeWidth={2} /> {formErro}
                                     </div>
                                 )}
                                 <div className="field">
@@ -260,8 +296,8 @@ function BindClinic() {
                         </div>
                         <form onSubmit={handleEditar}>
                             {editErro && (
-                                <div style={{ background: "rgba(239,68,68,0.1)", color: "#EF4444", padding: "10px 14px", borderRadius: "8px", marginBottom: "1rem", fontSize: "14px" }}>
-                                    {editErro}
+                                <div style={{ background: "var(--DangerBack)", color: "var(--DangerText)", padding: "10px 14px", borderRadius: "8px", marginBottom: "1rem", fontSize: "14px", display: "flex", alignItems: "center", gap: "8px" }}>
+                                    <AlertTriangle size={16} strokeWidth={2} /> {editErro}
                                 </div>
                             )}
                             <div className="field">
@@ -278,6 +314,23 @@ function BindClinic() {
                                     ))}
                                 </select>
                             </div>
+                            {editForm.papel === "Especialista" && (
+                                <div className="field">
+                                    <label htmlFor="edit-pct">Percentual de repasse (%)</label>
+                                    <input
+                                        id="edit-pct"
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        step="0.5"
+                                        value={editForm.percentual_repasse}
+                                        onChange={e => setEditForm(p => ({ ...p, percentual_repasse: e.target.value }))}
+                                    />
+                                    <p style={{ fontSize: "12px", color: "var(--TextColor75)", margin: "6px 0 0 0" }}>
+                                        Quanto este dentista recebe sobre o valor dos procedimentos pagos por seus pacientes.
+                                    </p>
+                                </div>
+                            )}
                             <div style={{ display: "flex", justifyContent: "flex-end", gap: "1rem", marginTop: "2rem" }}>
                                 <button type="button" className="submit"
                                     style={{ background: "var(--LineColor)", color: "var(--TextColor)", boxShadow: "none" }}
@@ -306,26 +359,26 @@ function BindClinic() {
 
                         {permSucesso ? (
                             <div style={{ textAlign: "center", padding: "2rem 0" }}>
-                                <p style={{ fontSize: "2rem" }}>✅</p>
-                                <p style={{ fontWeight: 700, color: "#059669" }}>Permissões salvas!</p>
+                                <CheckCircle2 size={48} strokeWidth={2} color="var(--SuccessText)" />
+                                <p style={{ fontWeight: 700, color: "var(--SuccessText)", marginTop: "0.75rem" }}>Permissões salvas!</p>
                             </div>
                         ) : (
                             <form onSubmit={handleSalvarPermissoes}>
                                 {permErro && (
-                                    <div style={{ background: "rgba(239,68,68,0.1)", color: "#EF4444", padding: "10px 14px", borderRadius: "8px", marginBottom: "1rem", fontSize: "14px" }}>
-                                        {permErro}
+                                    <div style={{ background: "var(--DangerBack)", color: "var(--DangerText)", padding: "10px 14px", borderRadius: "8px", marginBottom: "1rem", fontSize: "14px", display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <AlertTriangle size={16} strokeWidth={2} /> {permErro}
                                     </div>
                                 )}
 
                                 <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "1.5rem" }}>
                                     {Object.entries(LABELS_PERMISSAO).map(([chave, label]) => (
-                                        <label key={chave} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "var(--BackgroundColor2, #f8f9fa)", borderRadius: "8px", cursor: "pointer", gap: "1rem" }}>
+                                        <label key={chave} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "var(--BackColor)", border: "1px solid var(--LineColor)", borderRadius: "8px", cursor: "pointer", gap: "1rem" }}>
                                             <span style={{ fontSize: "14px", fontWeight: 500 }}>{label}</span>
                                             <div
                                                 onClick={() => setPermForm(p => ({ ...p, [chave]: !p[chave] }))}
                                                 style={{
                                                     width: "42px", height: "24px", borderRadius: "12px", flexShrink: 0,
-                                                    background: permForm[chave] ? "var(--PrimaryColorsTheme)" : "#D1D5DB",
+                                                    background: permForm[chave] ? "var(--PrimaryColorsTheme)" : "var(--LineColor)",
                                                     position: "relative", cursor: "pointer", transition: "background 0.2s",
                                                 }}>
                                                 <div style={{
@@ -357,7 +410,9 @@ function BindClinic() {
 
             <main className="mainBar owner register">
                 <p>
-                    <Link className="text75" to="/owner/clinic">← Voltar para Clínicas</Link>
+                    <Link className="text75" to="/owner/clinic" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                        <ArrowLeft size={16} strokeWidth={2} /> Voltar para Clínicas
+                    </Link>
                 </p>
 
                 <div className="camp-clinic camp-register">
@@ -366,8 +421,8 @@ function BindClinic() {
                             <h1 style={{ margin: "0 0 0.5rem 0" }}>Equipe da Clínica</h1>
                             <p className="text75">Gerencie os acessos dos profissionais. Você define o login e o nível de permissão de cada membro.</p>
                         </div>
-                        <button className="submit" onClick={abrirForm} style={{ padding: "12px 24px", fontSize: "15px" }}>
-                            + Adicionar Membro
+                        <button className="submit" onClick={abrirForm} style={{ padding: "12px 24px", fontSize: "15px", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                            <Plus size={18} strokeWidth={2} /> Adicionar Membro
                         </button>
                     </div>
 
@@ -377,7 +432,7 @@ function BindClinic() {
                         </div>
                     ) : erro ? (
                         <div style={{ textAlign: "center", padding: "3rem" }}>
-                            <p style={{ color: "#EF4444" }}>{erro}</p>
+                            <p style={{ color: "var(--DangerText)" }}>{erro}</p>
                             <button className="submit" onClick={carregarEquipe} style={{ marginTop: "1rem" }}>Tentar novamente</button>
                         </div>
                     ) : (
@@ -386,11 +441,11 @@ function BindClinic() {
                             {dono && (
                                 <div style={{ marginBottom: "2rem" }}>
                                     <p className="text75" style={{ marginBottom: "0.75rem", fontWeight: 700, fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Proprietário</p>
-                                    <div className="table-row" style={{ gridTemplateColumns: "2fr 1fr 1fr", background: "rgba(124,58,237,0.06)", borderRadius: "10px", padding: "14px 16px" }}>
+                                    <div className="table-row" style={{ gridTemplateColumns: "2fr 1fr 1fr", background: "var(--PrimaryColorsBack)", borderRadius: "10px", padding: "14px 16px" }}>
                                         <div>
                                             <p style={{ fontWeight: 700 }}>{dono.nome}</p>
                                         </div>
-                                        <span style={{ background: "rgba(124,58,237,0.12)", color: "#7C3AED", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: 700, alignSelf: "center" }}>
+                                        <span style={{ background: "var(--ThemeColor)", color: "var(--PrimaryColorsTheme)", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: 700, alignSelf: "center", width: "fit-content" }}>
                                             Proprietário
                                         </span>
                                         <p style={{ fontSize: "12px", color: "var(--TextColor75)", alignSelf: "center" }}>Acesso total</p>
@@ -412,39 +467,60 @@ function BindClinic() {
                                 </div>
                             ) : (
                                 <div className="table">
-                                    <div className="table-header" style={{ gridTemplateColumns: "2fr 1fr 1fr 180px" }}>
+                                    <div className="table-header" style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr 240px" }}>
                                         <p className="text75">Nome</p>
                                         <p className="text75">Nível de Acesso</p>
+                                        <p className="text75">Status</p>
                                         <p className="text75">Adicionado em</p>
                                         <p className="text75" style={{ textAlign: "right" }}>Ações</p>
                                     </div>
 
                                     <div className="table-body">
                                         {membrosNaoDono.map(membro => {
-                                            const config = PAPEL_LABEL[membro.papel] || { label: membro.papel, cor: "#6B7280" };
-                                            const dataFormatada = new Date(membro.created_at).toLocaleDateString("pt-BR");
+                                            const config = PAPEL_LABEL[membro.papel] || { label: membro.papel, bg: "var(--BackColor)", cor: "var(--TextColor75)" };
+                                            const dataFormatada = formatDate(membro.created_at);
+                                            const ativo = membro.ativo !== false;
                                             return (
-                                                <div className="table-row" key={membro.id} style={{ gridTemplateColumns: "2fr 1fr 1fr 180px" }}>
+                                                <div className="table-row" key={membro.id} style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr 240px" }}>
                                                     <p style={{ fontWeight: 600 }}>{membro.nome}</p>
-                                                    <span style={{ background: `${config.cor}18`, color: config.cor, padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: 700, alignSelf: "center", width: "fit-content" }}>
+                                                    <span style={{ background: config.bg, color: config.cor, padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: 700, alignSelf: "center", width: "fit-content" }}>
                                                         {config.label}
+                                                    </span>
+                                                    <span style={{
+                                                        background: ativo ? "var(--SuccessBack)" : "var(--DangerBack)",
+                                                        color: ativo ? "var(--SuccessText)" : "var(--DangerText)",
+                                                        padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: 700,
+                                                        alignSelf: "center", width: "fit-content",
+                                                    }}>
+                                                        {ativo ? "Ativo" : "Inativo"}
                                                     </span>
                                                     <p className="text75" style={{ fontSize: "13px", alignSelf: "center" }}>{dataFormatada}</p>
                                                     <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", alignSelf: "center" }}>
                                                         <button
+                                                            onClick={() => handleAlternarStatus(membro)}
+                                                            disabled={statusId === membro.id}
+                                                            style={{
+                                                                background: ativo ? "var(--WarningBack)" : "var(--SuccessBack)",
+                                                                color: ativo ? "var(--WarningText)" : "var(--SuccessText)",
+                                                                border: "none", padding: "6px 10px", borderRadius: "8px",
+                                                                fontSize: "12px", fontWeight: 700, cursor: "pointer",
+                                                            }}>
+                                                            {statusId === membro.id ? "..." : (ativo ? "Desativar" : "Ativar")}
+                                                        </button>
+                                                        <button
                                                             onClick={() => abrirPermissoes(membro)}
-                                                            style={{ background: "rgba(5,150,105,0.1)", color: "#059669", border: "none", padding: "6px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                                                            style={{ background: "var(--PrimaryColorsBack)", color: "var(--PrimaryColorsTheme)", border: "none", padding: "6px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                                                             Permissões
                                                         </button>
                                                         <button
                                                             onClick={() => abrirEdit(membro)}
-                                                            style={{ background: "rgba(37,99,235,0.1)", color: "#2563EB", border: "none", padding: "6px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                                                            style={{ background: "var(--PrimaryColorsBack)", color: "var(--PrimaryColors)", border: "none", padding: "6px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                                                             Editar
                                                         </button>
                                                         <button
                                                             onClick={() => handleRemover(membro.id)}
                                                             disabled={removendoId === membro.id}
-                                                            style={{ background: "rgba(239,68,68,0.1)", color: "#EF4444", border: "none", padding: "6px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                                                            style={{ background: "var(--DangerBack)", color: "var(--DangerText)", border: "none", padding: "6px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                                                             {removendoId === membro.id ? "..." : "Remover"}
                                                         </button>
                                                     </div>

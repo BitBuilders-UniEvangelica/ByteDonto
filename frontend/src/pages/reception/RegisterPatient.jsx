@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { apiCriarPaciente } from "../../services/api";
-import { maskCPF, maskPhone, maskCEP } from "../../utils/formatters";
+import { apiCriarPaciente, apiAtualizarPaciente, apiGetPaciente } from "../../services/api";
+import { maskCPF, maskPhone, maskCEP, validarCPF, validarTelefone, validarEmail } from "../../utils/formatters";
 import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
-import IMG from "../../assets/img/icon01.png";
+import { useReceptionSidebar } from "../../hooks/useSidebar";
+import { ArrowLeft } from "lucide-react";
 import '../../styles/clinic.css';
 import '../../styles/Forms.css';
 
@@ -13,12 +14,12 @@ import '../../styles/Forms.css';
 function RegisterPatient() {
     const { token } = useAuth();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const pacienteId = searchParams.get("id");
+    const isEditMode = Boolean(pacienteId);
 
     // Menu da recepção
-    const opc_bar = [
-        { id: 1, icon: IMG, name: "Painel Principal", url: "/reception/dashboard", style: "" },
-        { id: 3, icon: IMG, name: "Pacientes", url: "/reception/patients", style: "select" }
-    ];
+    const opc_bar = useReceptionSidebar("patients");
 
     // Controle de Abas
     const [activeTab, setActiveTab] = useState("dados");
@@ -52,6 +53,48 @@ function RegisterPatient() {
     const [estado, setEstado] = useState("");
     const [numero, setNumero] = useState("");
 
+    // EDIÇÃO: carrega e pré-preenche os dados do paciente existente
+    useEffect(() => {
+        if (!isEditMode) return;
+
+        const carregarPaciente = async () => {
+            try {
+                const p = await apiGetPaciente(token, pacienteId);
+                const end = p.endereco || {};
+                const anam = p.anamnese || {};
+
+                setFormData({
+                    nome: p.nome || '',
+                    cpf: maskCPF(p.cpf || ''),
+                    rg: p.rg || '',
+                    data_nascimento: p.data_nascimento ? String(p.data_nascimento).slice(0, 10) : '',
+                    genero: p.genero || 'Feminino',
+                    telefone_whatsapp: maskPhone(p.telefone_whatsapp || ''),
+                    email: p.email || '',
+                    emerg_nome: anam.emergencia_nome || '',
+                    emerg_tel: maskPhone(anam.emergencia_telefone || ''),
+                    alergias: anam.alergias || '',
+                    condicoes: anam.condicoes || '',
+                    medicacoes: anam.medicacoes || '',
+                    drogas: anam.drogas || '',
+                    cirurgias: anam.cirurgias || ''
+                });
+
+                setCep(maskCEP(end.cep || ''));
+                setRua(end.rua || '');
+                setBairro(end.bairro || '');
+                setCidade(end.cidade || '');
+                setEstado(end.estado || '');
+                setNumero(end.numero || '');
+            } catch (err) {
+                console.error("Erro ao carregar paciente para edição", err);
+                alert(`Erro ao carregar paciente: ${err.message}`);
+            }
+        };
+
+        carregarPaciente();
+    }, [isEditMode, pacienteId, token]);
+
     const buscarCEP = async () => {
         const cepLimpo = cep.replace(/\D/g, '');
         if (cepLimpo.length !== 8) return;
@@ -73,6 +116,36 @@ function RegisterPatient() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (!validarCPF(formData.cpf)) {
+            alert("CPF inválido.");
+            return;
+        }
+        if (!validarTelefone(formData.telefone_whatsapp)) {
+            alert("Telefone / WhatsApp inválido.");
+            return;
+        }
+        if (formData.email && !validarEmail(formData.email)) {
+            alert("E-mail inválido.");
+            return;
+        }
+
+        // Em odonto, anamnese sem alergia/medicação/condição documentada bloqueia
+        // anestesia. Backend rejeita; aqui pedimos antes de chegar lá pra dar mensagem clara.
+        if (!isEditMode) {
+            const faltando = [];
+            if (!formData.alergias.trim()) faltando.push("Alergias");
+            if (!formData.medicacoes.trim()) faltando.push("Medicações em uso");
+            if (!formData.condicoes.trim()) faltando.push("Condições sistêmicas");
+            if (faltando.length) {
+                alert(
+                    `Para cadastrar o paciente é preciso preencher: ${faltando.join(", ")}.\n\n` +
+                    `Se não houver, escreva "Nega" ou "Nenhuma".`
+                );
+                return;
+            }
+        }
+
         setIsLoading(true);
 
         // Montagem avançada de JSON usando a estratégia JSONB combinada com a API Python
@@ -104,9 +177,15 @@ function RegisterPatient() {
         };
 
         try {
-            await apiCriarPaciente(token, payload);
-            alert("Paciente cadastrado com sucesso!");
-            navigate("/reception/patients");
+            if (isEditMode) {
+                await apiAtualizarPaciente(token, pacienteId, payload);
+                alert("Alterações salvas com sucesso!");
+                navigate(`/reception/patient/view?id=${pacienteId}`);
+            } else {
+                await apiCriarPaciente(token, payload);
+                alert("Paciente cadastrado com sucesso!");
+                navigate("/reception/patients");
+            }
         } catch (err) {
             alert(`Erro: ${err.message}`);
             console.error(err);
@@ -122,23 +201,37 @@ function RegisterPatient() {
             
             <main className="mainBar reception register">
                 <p>
-                    <Link className="text75" to="/reception/dashboard">← Voltar para Dashboard</Link>
+                    {isEditMode ? (
+                        <Link className="text75" to={`/reception/patient/view?id=${pacienteId}`} style={{display: 'inline-flex', alignItems: 'center', gap: '6px'}}>
+                            <ArrowLeft size={16} strokeWidth={2} /> Voltar para a Ficha do Paciente
+                        </Link>
+                    ) : (
+                        <Link className="text75" to="/reception/dashboard" style={{display: 'inline-flex', alignItems: 'center', gap: '6px'}}>
+                            <ArrowLeft size={16} strokeWidth={2} /> Voltar para o Painel
+                        </Link>
+                    )}
                 </p>
 
                 <div className="camp-clinic camp-register" style={{marginTop: '1rem'}}>
                     <div style={{marginBottom: "2rem"}}>
-                        <h1 style={{margin: '0 0 0.5rem 0', color: 'var(--PrimaryColorsTheme)', fontSize: '28px'}}>Cadastrar Novo Paciente</h1>
-                        <p className="text75">Preencha a Ficha Clínica e Anamnese. Estes dados ficarão salvos no prontuário.</p>
+                        <h1 style={{margin: '0 0 0.5rem 0', color: 'var(--PrimaryColorsTheme)', fontSize: '28px'}}>
+                            {isEditMode ? "Editar Paciente" : "Cadastrar Novo Paciente"}
+                        </h1>
+                        <p className="text75">
+                            {isEditMode
+                                ? "Atualize a Ficha Clínica e Anamnese. As alterações ficarão salvas no prontuário."
+                                : "Preencha a Ficha Clínica e Anamnese. Estes dados ficarão salvos no prontuário."}
+                        </p>
                     </div>
 
                     {/* WIZARD TABS */}
-                    <div style={{display: 'flex', gap: '1rem', borderBottom: '2px solid rgba(226, 232, 240, 0.8)', paddingBottom: '1rem', marginBottom: '2rem'}}>
+                    <div style={{display: 'flex', gap: '1rem', borderBottom: '1px solid var(--LineColor)', paddingBottom: '1rem', marginBottom: '2rem'}}>
                         <button 
                             type="button"
                             onClick={() => setActiveTab("dados")}
                             style={{background: 'transparent', border: 'none', fontSize: '15px', fontWeight: activeTab === 'dados' ? 800 : 500, color: activeTab === 'dados' ? 'var(--PrimaryColorsTheme)' : 'var(--TextColor75)', cursor: 'pointer', padding: '0 0.5rem'}}
                         >
-                            <span style={{background: activeTab === 'dados' ? 'var(--PrimaryColorsTheme)' : 'var(--LineColor)', color: activeTab === 'dados' ? 'white' : 'var(--TextColor75)', padding: '2px 8px', borderRadius: '12px', marginRight: '8px', fontSize: '12px'}}>1</span>
+                            <span style={{background: activeTab === 'dados' ? 'var(--PrimaryColorsTheme)' : 'var(--LineColor)', color: activeTab === 'dados' ? 'white' : 'var(--TextColor75)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', marginRight: '8px', fontSize: '12px', fontWeight: 700}}>1</span>
                             Dados & Contato
                         </button>
                         <button 
@@ -146,7 +239,7 @@ function RegisterPatient() {
                             onClick={() => setActiveTab("endereco")}
                             style={{background: 'transparent', border: 'none', fontSize: '15px', fontWeight: activeTab === 'endereco' ? 800 : 500, color: activeTab === 'endereco' ? 'var(--PrimaryColorsTheme)' : 'var(--TextColor75)', cursor: 'pointer', padding: '0 0.5rem'}}
                         >
-                            <span style={{background: activeTab === 'endereco' ? 'var(--PrimaryColorsTheme)' : 'var(--LineColor)', color: activeTab === 'endereco' ? 'white' : 'var(--TextColor75)', padding: '2px 8px', borderRadius: '12px', marginRight: '8px', fontSize: '12px'}}>2</span>
+                            <span style={{background: activeTab === 'endereco' ? 'var(--PrimaryColorsTheme)' : 'var(--LineColor)', color: activeTab === 'endereco' ? 'white' : 'var(--TextColor75)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', marginRight: '8px', fontSize: '12px', fontWeight: 700}}>2</span>
                             Endereço
                         </button>
                         <button 
@@ -154,7 +247,7 @@ function RegisterPatient() {
                             onClick={() => setActiveTab("anamnese")}
                             style={{background: 'transparent', border: 'none', fontSize: '15px', fontWeight: activeTab === 'anamnese' ? 800 : 500, color: activeTab === 'anamnese' ? 'var(--PrimaryColorsTheme)' : 'var(--TextColor75)', cursor: 'pointer', padding: '0 0.5rem'}}
                         >
-                            <span style={{background: activeTab === 'anamnese' ? 'var(--PrimaryColorsTheme)' : 'var(--LineColor)', color: activeTab === 'anamnese' ? 'white' : 'var(--TextColor75)', padding: '2px 8px', borderRadius: '12px', marginRight: '8px', fontSize: '12px'}}>3</span>
+                            <span style={{background: activeTab === 'anamnese' ? 'var(--PrimaryColorsTheme)' : 'var(--LineColor)', color: activeTab === 'anamnese' ? 'white' : 'var(--TextColor75)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', marginRight: '8px', fontSize: '12px', fontWeight: 700}}>3</span>
                             Anamnese Médica
                         </button>
                     </div>
@@ -218,7 +311,7 @@ function RegisterPatient() {
                                 </div>
 
                                 <div style={{ display: "flex", justifyContent: "flex-end", marginTop: '2rem' }}>
-                                    <button type="button" className="submit" onClick={() => setActiveTab("endereco")}>Avançar para Endereço →</button>
+                                    <button type="button" className="submit" onClick={() => setActiveTab("endereco")}>Avançar para Endereço</button>
                                 </div>
                             </div>
                         )}
@@ -263,8 +356,8 @@ function RegisterPatient() {
                                 </div>
 
                                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: '2rem' }}>
-                                    <button type="button" className="submit" style={{background: 'var(--LineColor)', color: 'var(--TextColor)', boxShadow:'none'}} onClick={() => setActiveTab("dados")}>← Voltar</button>
-                                    <button type="button" className="submit" onClick={() => setActiveTab("anamnese")}>Avançar para Anamnese →</button>
+                                    <button type="button" className="submit" style={{background: 'var(--BackColor)', color: 'var(--TextColor)', border: '1px solid var(--LineColor)', boxShadow:'none'}} onClick={() => setActiveTab("dados")}>Voltar</button>
+                                    <button type="button" className="submit" onClick={() => setActiveTab("anamnese")}>Avançar para Anamnese</button>
                                 </div>
                             </div>
                         )}
@@ -276,18 +369,18 @@ function RegisterPatient() {
                                 <p className="text75" style={{fontSize: '13px', marginBottom: '1.5rem'}}>Este é o prontuário eletrônico. Mantenha os dados atualizados.</p>
 
                                 <div className="field">
-                                    <label>Alergias Conhecidas</label>
-                                    <textarea name="alergias" value={formData.alergias} onChange={handleChange} placeholder="Ex: Penicilina, Iodo, Látex... Deixe em branco se não houver." rows="3"></textarea>
+                                    <label>Alergias Conhecidas *</label>
+                                    <textarea name="alergias" value={formData.alergias} onChange={handleChange} required placeholder='Ex: Penicilina, Iodo, Látex... Se não houver, escreva "Nega".' rows="3"></textarea>
                                 </div>
 
                                 <div className="field">
-                                    <label>Condições Sistêmicas</label>
-                                    <textarea name="condicoes" value={formData.condicoes} onChange={handleChange} placeholder="Ex: Hipertensão, Diabetes, Problemas Reumatológicos..." rows="3"></textarea>
+                                    <label>Condições Sistêmicas *</label>
+                                    <textarea name="condicoes" value={formData.condicoes} onChange={handleChange} required placeholder='Ex: Hipertensão, Diabetes, gestante... Se não houver, escreva "Nenhuma".' rows="3"></textarea>
                                 </div>
 
                                 <div className="field">
-                                    <label>Medicações em uso contínuo</label>
-                                    <textarea name="medicacoes" value={formData.medicacoes} onChange={handleChange} placeholder="Liste os remédios que o paciente toma frequentemente." rows="3"></textarea>
+                                    <label>Medicações em uso contínuo *</label>
+                                    <textarea name="medicacoes" value={formData.medicacoes} onChange={handleChange} required placeholder='Liste os remédios que o paciente toma. Se não tomar, escreva "Nenhuma".' rows="3"></textarea>
                                 </div>
 
                                 <div className="field">
@@ -301,9 +394,11 @@ function RegisterPatient() {
                                 </div>
 
                                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: '2rem' }}>
-                                    <button type="button" className="submit" style={{background: 'var(--LineColor)', color: 'var(--TextColor)', boxShadow:'none'}} onClick={() => setActiveTab("endereco")}>← Voltar</button>
-                                    <button type="submit" disabled={isLoading} className="submit" style={{background: '#15803D', boxShadow: '0 4px 15px rgba(21, 128, 61, 0.4)'}}>
-                                        {isLoading ? "Salvando..." : "Finalizar Cadastro do Paciente"}
+                                    <button type="button" className="submit" style={{background: 'var(--BackColor)', color: 'var(--TextColor)', border: '1px solid var(--LineColor)', boxShadow:'none'}} onClick={() => setActiveTab("endereco")}>Voltar</button>
+                                    <button type="submit" disabled={isLoading} className="submit" style={{background: 'var(--PrimaryColorsTheme)', boxShadow: 'none'}}>
+                                        {isLoading
+                                            ? "Salvando..."
+                                            : isEditMode ? "Salvar Alterações" : "Finalizar Cadastro do Paciente"}
                                     </button>
                                 </div>
                             </div>

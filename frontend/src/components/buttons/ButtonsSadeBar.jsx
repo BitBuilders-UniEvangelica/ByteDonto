@@ -2,8 +2,9 @@
 import { useNavigate } from "react-router-dom";
 import '../../styles/Buttons.css'
 
-/* MAIN COMPONENT */
-function ButtonsCamps({ icon, name, style, url }) {
+/* MAIN COMPONENT
+   `icon` é um componente de ícone do lucide-react (ver useSidebar.js). */
+function ButtonsCamps({ icon: Icon, name, style, url }) {
     const navigate = useNavigate();
 
     function registration() {
@@ -11,12 +12,14 @@ function ButtonsCamps({ icon, name, style, url }) {
     }
 
     return (
-        <>
-            <button className={`bar ${style}`} onClick={registration}>
-                <img src={icon} />
-                <p>{name}</p>
-            </button>
-        </>
+        <button className={`bar ${style}`} onClick={registration}>
+            {Icon && (
+                <span className="bar-icon">
+                    <Icon size={20} strokeWidth={2} />
+                </span>
+            )}
+            <p>{name}</p>
+        </button>
     );
 
 }

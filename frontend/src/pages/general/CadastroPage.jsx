@@ -1,7 +1,9 @@
 /* IMPORTS */
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { apiRegistro } from "../../services/api";
+import { validarEmail } from "../../utils/formatters";
 import '../../styles/Auth.css';
 
 /* MAIN COMPONENT */
@@ -25,6 +27,16 @@ function CadastroPage() {
         e.preventDefault();
         setError("");
         setSuccess("");
+
+        if (!validarEmail(form.email)) {
+            setError("E-mail inválido.");
+            return;
+        }
+
+        if (form.password.length < 8) {
+            setError("A senha deve ter no mínimo 8 caracteres.");
+            return;
+        }
 
         if (form.password !== form.confirmPassword) {
             setError("As senhas não coincidem.");
@@ -112,13 +124,13 @@ function CadastroPage() {
                     {error && <p className="auth-error">{error}</p>}
                     {success && (
                         <p style={{
-                            color: "#2e7d32",
+                            color: "var(--SuccessText)",
                             fontSize: "13px",
                             textAlign: "center",
                             padding: "10px",
-                            backgroundColor: "#e8f5e9",
-                            borderRadius: "8px",
-                            border: "1px solid #b7dfBA",
+                            backgroundColor: "var(--SuccessBack)",
+                            borderRadius: "var(--radius-sm)",
+                            border: "1px solid var(--LineColor)",
                             fontWeight: "500"
                         }}>
                             {success}
@@ -140,7 +152,7 @@ function CadastroPage() {
                         Já tem uma conta?{" "}
                         <Link to="/login">Fazer login</Link>
                     </p>
-                    <p style={{marginTop: "8px"}}><Link to="/">← Voltar p/ o início</Link></p>
+                    <p style={{marginTop: "8px"}}><Link to="/" style={{display: "inline-flex", alignItems: "center", gap: "4px"}}><ArrowLeft size={14} strokeWidth={2.5} /> Voltar para o início</Link></p>
                 </div>
             </div>
         </div>

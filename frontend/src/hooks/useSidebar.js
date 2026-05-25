@@ -1,59 +1,84 @@
 import { useAuth } from "../context/AuthContext";
 import { usePermissao } from "./usePermissao";
-import IMG from "../assets/img/icon01.png";
+import { Building2, Users, CalendarDays, UserRound, Wallet } from "lucide-react";
 
-const OWNER_ITEMS = [
-    { id: "clinic",    name: "Clínica",      url: "/owner/clinic" },
-    { id: "team",      name: "Equipe",       url: "/owner/team" },
-    { id: "agenda",    name: "Minha Agenda", url: "/specialist/dashboard" },
-    { id: "patients",  name: "Pacientes",    url: "/specialist/patients" },
-    { id: "financial", name: "Financeiro",   url: "/owner/financial" },
+/* Definição única do menu, dirigida por permissões.
+   Cada item declara como sua visibilidade é decidida:
+   - donoOnly: visível apenas para o papel "Dono"
+   - perm: chave de permissão (Dono sempre tem tudo via usePermissao)
+   O campo `icon` é um componente de ícone do lucide-react.
+   As URLs de Agenda/Pacientes dependem do papel: o Especialista usa as
+   telas clínicas (/specialist/*); o Dono e a Recepção usam as telas de
+   gestão (/reception/*), que têm agendamento e cadastro de pacientes. */
+const MENU = [
+    { id: "clinic",    name: "Clínica",    icon: Building2,    donoOnly: true },
+    { id: "team",      name: "Equipe",     icon: Users,        donoOnly: true },
+    { id: "agenda",    name: "Agenda",     icon: CalendarDays, perm: "ver_agenda" },
+    { id: "patients",  name: "Pacientes",  icon: UserRound,    perm: "ver_pacientes" },
+    { id: "financial", name: "Financeiro", icon: Wallet,       perm: "ver_financeiro" },
 ];
 
-function item(id, name, url) {
-    return { id, icon: IMG, name, url };
+/* Trata "dashboard" como equivalente a "agenda" para destacar o item certo */
+function mesmoItem(itemId, activeId) {
+    if (itemId === activeId) return true;
+    if (itemId === "agenda" && activeId === "dashboard") return true;
+    return false;
 }
 
-function withSelect(items, activeId) {
-    return items.map(i => ({ ...i, icon: IMG, style: i.id === activeId ? "select" : "" }));
-}
-
-export function useOwnerSidebar(activeId) {
-    return withSelect(OWNER_ITEMS, activeId);
-}
-
-export function useSpecialistSidebar(activeId) {
+/* Hook unificado — retorna o menu filtrado por permissão, com URLs
+   apropriadas ao papel do usuário. */
+export function useSidebar(activeId) {
     const { user } = useAuth();
-    const verAgenda    = usePermissao("ver_agenda");
-    const verPacientes = usePermissao("ver_pacientes");
+    const papel = user?.perfil?.papel;
+    const ehDono = papel === "Dono";
+    const ehEspecialista = papel === "Especialista";
 
-    // Dono visitando páginas de especialista mantém sidebar completo
-    if (user?.perfil?.papel === "Dono") {
-        return withSelect(OWNER_ITEMS, activeId);
-    }
-
-    const items = [];
-    if (verAgenda)    items.push(item("agenda",   "Minha Agenda",            "/specialist/dashboard"));
-    if (verPacientes) items.push(item("patients", "Pacientes e Prontuários", "/specialist/patients"));
-
-    return withSelect(items, activeId);
-}
-
-export function useReceptionSidebar(activeId) {
-    const { user } = useAuth();
     const verAgenda     = usePermissao("ver_agenda");
     const verPacientes  = usePermissao("ver_pacientes");
     const verFinanceiro = usePermissao("ver_financeiro");
 
-    // Dono visitando páginas de recepção mantém sidebar completo
-    if (user?.perfil?.papel === "Dono") {
-        return withSelect(OWNER_ITEMS, activeId);
-    }
+    const permitido = {
+        ver_agenda: verAgenda,
+        ver_pacientes: verPacientes,
+        ver_financeiro: verFinanceiro,
+    };
 
-    const items = [];
-    if (verAgenda)     items.push(item("dashboard", "Painel Principal", "/reception/dashboard"));
-    if (verPacientes)  items.push(item("patients",  "Pacientes",        "/reception/patients"));
-    if (verFinanceiro) items.push(item("financial", "Financeiro",       "/reception/financial"));
+    // O Especialista usa as telas clínicas (/specialist/*); o Dono e a
+    // Recepção usam as telas de gestão (/reception/*), com agendamento e
+    // cadastro de pacientes. O Financeiro do Dono é o painel /owner/financial.
+    const urls = {
+        clinic:    "/owner/clinic",
+        team:      "/owner/team",
+        agenda:    ehEspecialista ? "/specialist/dashboard" : "/reception/dashboard",
+        patients:  ehEspecialista ? "/specialist/patients"  : "/reception/patients",
+        financial: ehDono ? "/owner/financial" : "/reception/financial",
+    };
 
-    return withSelect(items, activeId);
+    return MENU
+        .filter(item => {
+            if (item.donoOnly) return ehDono;
+            if (item.perm) return permitido[item.perm];
+            return true;
+        })
+        .map(item => ({
+            id: item.id,
+            icon: item.icon,
+            name: item.name,
+            url: urls[item.id],
+            style: mesmoItem(item.id, activeId) ? "select" : "",
+        }));
+}
+
+/* Aliases mantidos para compatibilidade — todas as páginas existentes
+   continuam funcionando sem alteração. */
+export function useOwnerSidebar(activeId) {
+    return useSidebar(activeId);
+}
+
+export function useSpecialistSidebar(activeId) {
+    return useSidebar(activeId);
+}
+
+export function useReceptionSidebar(activeId) {
+    return useSidebar(activeId);
 }

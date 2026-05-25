@@ -104,6 +104,20 @@ export async function apiCriarConsulta(token, consultaData) {
     return data;
 }
 
+export async function apiAtualizarConsulta(token, id, dados) {
+    const res = await fetch(`${API_URL}/api/consultas/${id}`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(dados),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Erro ao atualizar consulta");
+    return data;
+}
+
 /* --- CLÍNICAS --- */
 export async function apiGetClinics(token) {
     const res = await fetch(`${API_URL}/api/clinicas/`, {
@@ -248,6 +262,16 @@ export async function apiCriarLancamento(token, lancamentoData) {
     return data;
 }
 
+export async function apiGetRepasses(token, mes = null) {
+    const url = mes
+        ? `${API_URL}/api/financeiro/repasses?mes=${encodeURIComponent(mes)}`
+        : `${API_URL}/api/financeiro/repasses`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Erro ao buscar repasses");
+    return data;
+}
+
 export async function apiAtualizarLancamento(token, id, lancamentoData) {
     const res = await fetch(`${API_URL}/api/financeiro/${id}`, {
         method: "PUT",
@@ -292,10 +316,11 @@ export async function apiGetImagens(token, pacienteId) {
     return Array.isArray(data) ? data : [];
 }
 
-export async function apiUploadImagem(token, pacienteId, file) {
+export async function apiUploadImagem(token, pacienteId, file, tipo = "imagem") {
     const fd = new FormData();
     fd.append("file", file);
     fd.append("paciente_id", pacienteId);
+    fd.append("tipo", tipo);
     const res = await fetch(`${API_URL}/api/imagens/upload`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Erro no upload");

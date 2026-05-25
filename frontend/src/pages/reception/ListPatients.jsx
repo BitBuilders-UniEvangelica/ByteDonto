@@ -1,17 +1,19 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { apiGetPacientes } from "../../services/api";
-import { formatCPF, formatPhone } from "../../utils/formatters";
+import { apiGetPacientes, apiGetConsultas } from "../../services/api";
+import { formatCPF, formatPhone, formatDate } from "../../utils/formatters";
 import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
 import { useReceptionSidebar } from "../../hooks/useSidebar";
+import { Plus } from "lucide-react";
 import '../../styles/clinic.css';
 
 /* MAIN COMPONENT */
 function ListPatients() {
     const { token } = useAuth();
     const [pacientes, setPacientes] = useState([]);
+    const [consultas, setConsultas] = useState([]);
     const [busca, setBusca] = useState("");
     const [loading, setLoading] = useState(true);
 
@@ -19,18 +21,22 @@ function ListPatients() {
     const opc_bar = useReceptionSidebar("patients");
 
     useEffect(() => {
-        const fetchPacientes = async () => {
-            try {
-                const data = await apiGetPacientes(token);
-                setPacientes(data);
-            } catch (error) {
-                console.error("Erro ao carregar pacientes", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchPacientes();
+        Promise.all([
+            apiGetPacientes(token).catch(() => []),
+            apiGetConsultas(token).catch(() => []),
+        ]).then(([p, c]) => {
+            setPacientes(Array.isArray(p) ? p : []);
+            setConsultas(Array.isArray(c) ? c : []);
+        }).finally(() => setLoading(false));
     }, [token]);
+
+    // Última consulta por paciente (data_agendada mais recente)
+    const ultimaConsultaPorPaciente = (pacienteId) => {
+        const doPaciente = consultas
+            .filter(c => c.paciente_id === pacienteId && c.data_agendada)
+            .sort((a, b) => String(b.data_agendada).localeCompare(String(a.data_agendada)));
+        return doPaciente.length > 0 ? doPaciente[0].data_agendada : null;
+    };
 
     const pacientesFiltrados = pacientes.filter(p => {
         const query = busca.toLowerCase();
@@ -53,23 +59,20 @@ function ListPatients() {
                         <p className="text75">Listagem completa e busca avançada de todos os pacientes da clínica.</p>
                     </div>
                     <div>
-                        <Link to="/reception/patient/register" style={{background: 'var(--PrimaryColorsTheme)', color: 'white', padding: '12px 24px', borderRadius: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                            + Cadastrar Novo Paciente
+                        <Link to="/reception/patient/register" style={{background: 'var(--PrimaryColorsTheme)', color: 'white', padding: '12px 24px', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: 'var(--shadow-sm)'}}>
+                            <Plus size={18} strokeWidth={2.5} /> Cadastrar Novo Paciente
                         </Link>
                     </div>
                 </div>
 
                 <div className="camp-clinic camp-view">
-                    <div style={{display: 'flex', gap: '1rem'}}>
-                        <input 
-                            type="text" 
-                            placeholder="Buscar por Nome, Telefone ou CPF..." 
-                            style={{flex: 1}} 
-                            value={busca}
-                            onChange={(e) => setBusca(e.target.value)}
-                        />
-                        <button className="submit" style={{padding: '12px 32px'}}>Pesquisar</button>
-                    </div>
+                    <input
+                        type="text"
+                        placeholder="Buscar por Nome, Telefone ou CPF..."
+                        style={{width: '100%'}}
+                        value={busca}
+                        onChange={(e) => setBusca(e.target.value)}
+                    />
 
                     <div className="table" style={{marginTop: '2rem'}}>
                         <div className="table-header" style={{gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr'}}>
@@ -90,9 +93,16 @@ function ListPatients() {
                                     <div key={p.id} className="table-row" style={{gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr', borderBottom: idx === pacientesFiltrados.length - 1 ? 'none' : '1px solid var(--LineColor)'}}>
                                         <div><p style={{fontWeight: 700}}>{p.nome}</p><span style={{fontSize: '12px', color: 'var(--TextColor75)'}}>{formatCPF(p.cpf)}</span></div>
                                         <p style={{fontFamily: 'var(--font-secondary)'}}>{formatPhone(p.telefone_whatsapp)}</p>
-                                        <p>-</p>
-                                        <p style={{color: p.status === 'Ativo' ? '#22C55E' : 'var(--TextColor75)', fontWeight: 700}}>{p.status || "Ativo"}</p>
-                                        <div style={{textAlign: 'right'}}><Link to={`/reception/patient/view?id=${p.id}`} className="submit" style={{padding: '6px 16px', fontSize: '13px', background: 'var(--LineColor)', color: 'var(--TextColor)', boxShadow: 'none', display: 'inline-block'}}>Ver Ficha</Link></div>
+                                        <p>{ultimaConsultaPorPaciente(p.id) ? formatDate(ultimaConsultaPorPaciente(p.id)) : "—"}</p>
+                                        <p>
+                                            {(() => {
+                                                const ativo = (p.status || "Ativo") === "Ativo";
+                                                return (
+                                                    <span style={{background: ativo ? 'var(--SuccessBack)' : 'var(--LineColor)', color: ativo ? 'var(--SuccessText)' : 'var(--TextColor75)', padding: '3px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700}}>{p.status || "Ativo"}</span>
+                                                );
+                                            })()}
+                                        </p>
+                                        <div style={{textAlign: 'right'}}><Link to={`/reception/patient/view?id=${p.id}`} className="submit" style={{padding: '6px 16px', fontSize: '13px', background: 'var(--PrimaryColorsBack)', color: 'var(--PrimaryColorsTheme)', boxShadow: 'none', border: '1px solid var(--LineColor)', display: 'inline-block'}}>Ver Ficha</Link></div>
                                     </div>
                                 ))
                             )}

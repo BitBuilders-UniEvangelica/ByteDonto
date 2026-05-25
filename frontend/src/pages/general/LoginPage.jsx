@@ -1,6 +1,7 @@
 /* IMPORTS */
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { apiLogin, apiMe } from "../../services/api";
 import { supabase } from "../../services/supabaseClient";
@@ -27,13 +28,12 @@ function LoginPage() {
             } else if (role === "Especialista") {
                 navigate("/specialist/dashboard");
             } else {
-                // "Dono" — redireciona para onboarding se ainda não tem clínica
-                const semClinica = !userData.perfil.clinica_id;
-                navigate(semClinica ? "/owner/onboarding" : "/owner/clinic");
+                // "Dono" — vai direto pra lista de clínicas (já mostra empty state
+                // com call-to-action de cadastrar a primeira clínica).
+                navigate("/owner/clinic");
             }
         } else {
-            // Conta nova ou sem papel definido
-            navigate("/owner/onboarding");
+            navigate("/owner/clinic");
         }
     };
 
@@ -102,8 +102,6 @@ function LoginPage() {
                     <p>Acesse seu painel administrativo.</p>
                 </div>
 
-                <div className="auth-badge">PROPRIETÁRIO</div>
-
                 {/* GOOGLE BUTTON */}
                 <button
                     className="btn-google"
@@ -165,7 +163,7 @@ function LoginPage() {
                         Não possui cadastro?{" "}
                         <Link to="/cadastro">Criar conta</Link>
                     </p>
-                    <p style={{marginTop: "8px"}}><Link to="/">← Voltar p/ o início</Link></p>
+                    <p style={{marginTop: "8px"}}><Link to="/" style={{display: "inline-flex", alignItems: "center", gap: "4px"}}><ArrowLeft size={14} strokeWidth={2.5} /> Voltar para o início</Link></p>
                 </div>
             </div>
         </div>

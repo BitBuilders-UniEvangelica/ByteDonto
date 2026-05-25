@@ -7,25 +7,27 @@ import SideBar from "../../components/bar/SideBar";
 import CampNotList from "../../components/camp/NotList";
 import CampList from "../../components/camp/ListClinic";
 import { useOwnerSidebar } from "../../hooks/useSidebar";
+import { Users, CalendarDays, Wallet, Stethoscope } from "lucide-react";
+import ToothIcon from "../../components/icons/ToothIcon";
 import IMG from "../../assets/img/icon01.png";
 import '../../styles/clinic.css';
 import '../../styles/Input.css';
 
 const METRICAS_CONFIG = [
-    { key: "total_pacientes",    label: "Total de Pacientes",  emoji: "👥",    moeda: false },
-    { key: "consultas_hoje",     label: "Consultas Hoje",      emoji: "📅",    moeda: false },
-    { key: "total_especialistas",label: "Especialistas",       emoji: "🦷",    moeda: false },
-    { key: "receita_mes",        label: "Receita do Mês",      emoji: "💰",    moeda: true  },
-    { key: "total_membros",      label: "Membros da Equipe",   emoji: "👨‍⚕️", moeda: false },
+    { key: "total_pacientes",    label: "Total de Pacientes",  Icon: Users,       moeda: false },
+    { key: "consultas_hoje",     label: "Consultas Hoje",      Icon: CalendarDays,moeda: false },
+    { key: "total_especialistas",label: "Especialistas",       Icon: ToothIcon,   moeda: false },
+    { key: "receita_mes",        label: "Receita do Mês",      Icon: Wallet,      moeda: true  },
+    { key: "total_membros",      label: "Membros da Equipe",   Icon: Stethoscope, moeda: false },
 ];
 
 function MetricasSkeleton() {
     return (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
             {METRICAS_CONFIG.map((m) => (
-                <div key={m.key} style={{ background: "white", borderRadius: "16px", border: "1px solid var(--LineColor)", padding: "1.5rem", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-                    <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "var(--LineColor)", marginBottom: "0.75rem" }} />
-                    <div style={{ width: "60%", height: "36px", borderRadius: "8px", background: "var(--LineColor)", marginBottom: "0.5rem" }} />
+                <div key={m.key} style={{ background: "var(--ThemeColor)", borderRadius: "14px", border: "1px solid var(--LineColor)", padding: "22px", boxShadow: "var(--shadow-sm)" }}>
+                    <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: "var(--LineColor)", marginBottom: "1rem" }} />
+                    <div style={{ width: "60%", height: "32px", borderRadius: "8px", background: "var(--LineColor)", marginBottom: "0.5rem" }} />
                     <div style={{ width: "80%", height: "14px", borderRadius: "6px", background: "var(--LineColor)" }} />
                 </div>
             ))}
@@ -59,7 +61,7 @@ function ListClinic() {
     }, [token]);
 
     const clinicasFiltradas = clinicas.filter(c =>
-        c.nome?.toLowerCase().includes(busca.toLowerCase()) ||
+        (c.nome || c.nome_fantasia)?.toLowerCase().includes(busca.toLowerCase()) ||
         c.cnpj?.includes(busca)
     );
 
@@ -81,11 +83,14 @@ function ListClinic() {
                                 : m.moeda
                                     ? Number(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
                                     : valor;
+                            const Icon = m.Icon;
                             return (
-                                <div key={m.key} style={{ background: "white", borderRadius: "16px", border: "1px solid var(--LineColor)", padding: "1.5rem", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-                                    <span style={{ fontSize: "28px", display: "block", marginBottom: "0.75rem" }}>{m.emoji}</span>
-                                    <p style={{ margin: "0 0 0.25rem 0", fontSize: "28px", fontWeight: 800, color: "var(--PrimaryColorsTheme)", fontFamily: "var(--font-secondary)", lineHeight: 1 }}>{display}</p>
-                                    <p style={{ margin: 0, fontSize: "13px", color: "var(--TextColor75)", fontWeight: 600 }}>{m.emoji} {m.label}</p>
+                                <div key={m.key} style={{ background: "var(--ThemeColor)", borderRadius: "14px", border: "1px solid var(--LineColor)", padding: "22px", boxShadow: "var(--shadow-sm)" }}>
+                                    <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: "var(--PrimaryColorsBack)", color: "var(--PrimaryColorsTheme)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem" }}>
+                                        <Icon size={20} strokeWidth={2} />
+                                    </div>
+                                    <p style={{ margin: "0 0 0.25rem 0", fontSize: "28px", fontWeight: 800, color: "var(--TextColor)", fontFamily: "var(--font-secondary)", lineHeight: 1 }}>{display}</p>
+                                    <p style={{ margin: 0, fontSize: "13px", color: "var(--TextColor75)", fontWeight: 600 }}>{m.label}</p>
                                 </div>
                             );
                         })}
@@ -95,7 +100,7 @@ function ListClinic() {
 
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: 'center' }}>
                     <div>
-                        <h1 style={{ margin: 0, fontSize: '28px', color: 'var(--PrimaryColorsTheme)' }}>Minhas Clínicas</h1>
+                        <h1 style={{ margin: 0, fontSize: '26px', color: 'var(--TextColor)' }}>Minhas Clínicas</h1>
                         <p className="text75">Gerencie as clínicas cadastradas em sua conta</p>
                     </div>
                     <ButtonH1 text={"Registrar Nova Clínica"} url="/owner/clinic/register" />
@@ -128,9 +133,9 @@ function ListClinic() {
                                 clinic_id={item.id}
                                 clinic_logo={item.logo}
                                 clinic_img={IMG}
-                                clinic_name={item.nome}
+                                clinic_name={item.nome || item.nome_fantasia}
                                 clinic_cnpj={item.cnpj}
-                                clinic_phone={item.whatsapp}
+                                clinic_phone={item.telefone}
                             />
                         ))
                     )}

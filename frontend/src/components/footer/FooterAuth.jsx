@@ -1,3 +1,4 @@
+import ToothIcon from '../icons/ToothIcon'
 import '../../styles/Footer.css'
 
 function FooterAuth({ type_styles, text }) {
@@ -6,7 +7,12 @@ function FooterAuth({ type_styles, text }) {
     return (
         <>
             <footer className={`${type_styles} auth`}>
-                <h1 id="logo">BYTE DONTO</h1>
+                <h1 id="logo">
+                    <span className="brand-mark">
+                        <ToothIcon size={22} />
+                    </span>
+                    BYTE DONTO
+                </h1>
                 <div className='medio'>
                     <div className='frases'>
                         {lines.map((line, i) => (

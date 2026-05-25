@@ -13,7 +13,6 @@ import RegisterClinic from "../pages/owner/RegisterClinic";
 import EditClinic from "../pages/owner/EditClinic";
 import BindClinic from "../pages/owner/BindClinic";
 import OwnerFinancial from "../pages/owner/Financial";
-import Onboarding from "../pages/owner/Onboarding";
 
 import SpecialistDashboard from "../pages/specialist/Dashboard";
 import SpecialistListPatients from "../pages/specialist/ListPatients";
@@ -24,11 +23,58 @@ import RegisterPatient from "../pages/reception/RegisterPatient";
 import ListPatients from "../pages/reception/ListPatients";
 import ViewPatient from "../pages/reception/ViewPatient";
 
-/* PRIVATE ROUTE — redireciona para login se não autenticado */
-function PrivateRoute({ children }) {
-  const { token, loading } = useAuth();
+/* Tela exibida quando o usuário está autenticado mas não tem acesso à página.
+   Importante: NÃO redireciona para /login — isso criaria um ciclo de
+   redirecionamento (a LoginPage re-autenticaria pela sessão salva). */
+function SemAcesso() {
+  const { logout } = useAuth();
+  return (
+    <div style={{
+      minHeight: "100vh", display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", gap: "1rem",
+      padding: "2rem", textAlign: "center", background: "var(--BackColor)",
+    }}>
+      <h1 style={{ margin: 0, fontSize: "22px", color: "var(--TextColor)" }}>
+        Acesso não autorizado
+      </h1>
+      <p style={{ margin: 0, maxWidth: "440px", color: "var(--TextColor75)" }}>
+        Sua conta não tem permissão para acessar esta página. Entre com uma
+        conta que tenha o acesso necessário.
+      </p>
+      <button onClick={logout} style={{
+        padding: "11px 22px", background: "var(--PrimaryColorsTheme)",
+        color: "white", border: "none", borderRadius: "8px",
+        fontWeight: 700, fontSize: "14px", cursor: "pointer",
+      }}>
+        Sair e trocar de conta
+      </button>
+    </div>
+  );
+}
+
+/* PERMISSION ROUTE — exige autenticação + acesso por papel ou permissão.
+   - donoOnly: requer papel "Dono".
+   - perm: requer a permissão indicada (Dono sempre tem tudo). */
+function PermissionRoute({ children, perm, donoOnly }) {
+  const { token, user, loading } = useAuth();
   if (loading) return null;
-  return token ? children : <Navigate to="/login" replace />;
+  if (!token) return <Navigate to="/login" replace />;
+
+  const papel = user?.perfil?.papel;
+  const ehDono = papel === "Dono";
+
+  if (donoOnly && !ehDono) {
+    return <SemAcesso />;
+  }
+
+  if (perm && !ehDono) {
+    const permissoes = user?.perfil?.permissoes || {};
+    if (permissoes[perm] !== true) {
+      return <SemAcesso />;
+    }
+  }
+
+  return children;
 }
 
 /* MAIN COMPONENT */
@@ -44,27 +90,27 @@ export function AppRoutes() {
           <Route path="/cadastro" element={<CadastroPage />} />
 
           {/* ROTA DO PROPRIETÁRIO */}
-          <Route path="/owner/clinic" element={<PrivateRoute><ListClinic /></PrivateRoute>} />
-          <Route path="/owner/clinic/register" element={<PrivateRoute><RegisterClinic /></PrivateRoute>} />
-          <Route path="/owner/view-clinic/:id" element={<PrivateRoute><ViewClinic /></PrivateRoute>} />
-          <Route path="/owner/edit-clinic/:id" element={<PrivateRoute><EditClinic /></PrivateRoute>} />
-          <Route path="/owner/bind-clinic/:id" element={<PrivateRoute><BindClinic /></PrivateRoute>} />
-          <Route path="/owner/team" element={<PrivateRoute><BindClinic /></PrivateRoute>} />
-          <Route path="/owner/onboarding" element={<PrivateRoute><Onboarding /></PrivateRoute>} />
-          <Route path="/owner/financial" element={<PrivateRoute><OwnerFinancial role="owner" /></PrivateRoute>} />
-          <Route path="/reception/financial" element={<PrivateRoute><OwnerFinancial role="reception" /></PrivateRoute>} />
+          <Route path="/owner/clinic" element={<PermissionRoute donoOnly><ListClinic /></PermissionRoute>} />
+          <Route path="/owner/clinic/register" element={<PermissionRoute donoOnly><RegisterClinic /></PermissionRoute>} />
+          <Route path="/owner/view-clinic/:id" element={<PermissionRoute donoOnly><ViewClinic /></PermissionRoute>} />
+          <Route path="/owner/edit-clinic/:id" element={<PermissionRoute donoOnly><EditClinic /></PermissionRoute>} />
+          <Route path="/owner/bind-clinic/:id" element={<PermissionRoute donoOnly><BindClinic /></PermissionRoute>} />
+          <Route path="/owner/team" element={<PermissionRoute donoOnly><BindClinic /></PermissionRoute>} />
+          <Route path="/owner/onboarding" element={<Navigate to="/owner/clinic" replace />} />
+          <Route path="/owner/financial" element={<PermissionRoute donoOnly><OwnerFinancial role="owner" /></PermissionRoute>} />
+          <Route path="/reception/financial" element={<PermissionRoute perm="ver_financeiro"><OwnerFinancial role="reception" /></PermissionRoute>} />
 
           {/* ROTA DO ESPECIALISTA (DENTISTA) */}
-          <Route path="/specialist/dashboard" element={<PrivateRoute><SpecialistDashboard /></PrivateRoute>} />
-          <Route path="/specialist/patients" element={<PrivateRoute><SpecialistListPatients /></PrivateRoute>} />
-          <Route path="/specialist/records" element={<PrivateRoute><SpecialistListPatients /></PrivateRoute>} />
-          <Route path="/specialist/patient/view" element={<PrivateRoute><SpecialistViewRecord /></PrivateRoute>} />
+          <Route path="/specialist/dashboard" element={<PermissionRoute perm="ver_agenda"><SpecialistDashboard /></PermissionRoute>} />
+          <Route path="/specialist/patients" element={<PermissionRoute perm="ver_pacientes"><SpecialistListPatients /></PermissionRoute>} />
+          <Route path="/specialist/records" element={<PermissionRoute perm="ver_pacientes"><SpecialistListPatients /></PermissionRoute>} />
+          <Route path="/specialist/patient/view" element={<PermissionRoute perm="ver_pacientes"><SpecialistViewRecord /></PermissionRoute>} />
 
           {/* ROTA DA RECEPÇÃO */}
-          <Route path="/reception/dashboard" element={<PrivateRoute><ReceptionDashboard /></PrivateRoute>} />
-          <Route path="/reception/patient/register" element={<PrivateRoute><RegisterPatient /></PrivateRoute>} />
-          <Route path="/reception/patients" element={<PrivateRoute><ListPatients /></PrivateRoute>} />
-          <Route path="/reception/patient/view" element={<PrivateRoute><ViewPatient /></PrivateRoute>} />
+          <Route path="/reception/dashboard" element={<PermissionRoute perm="ver_agenda"><ReceptionDashboard /></PermissionRoute>} />
+          <Route path="/reception/patient/register" element={<PermissionRoute perm="ver_pacientes"><RegisterPatient /></PermissionRoute>} />
+          <Route path="/reception/patients" element={<PermissionRoute perm="ver_pacientes"><ListPatients /></PermissionRoute>} />
+          <Route path="/reception/patient/view" element={<PermissionRoute perm="ver_pacientes"><ViewPatient /></PermissionRoute>} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

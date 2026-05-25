@@ -1,18 +1,32 @@
-input {
+input,
+select,
+textarea {
     padding: 10px 14px;
-    border-radius: 12px;
-    border: 1.5px solid var(--LineColor);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--LineColor);
     font-family: var(--font-primary);
+    font-size: 14px;
     background-color: var(--ThemeColor);
     color: var(--TextColor);
-    transition: border-color 0.2s;
+    transition: border-color var(--transition-fast),
+                box-shadow var(--transition-fast);
+    outline: none;
 }
 
-select {
-    padding: 10px 14px;
-    border-radius: 6px;
-    border: 1.5px solid var(--LineColor);
-    font-family: var(--font-primary);
-    background-color: var(--ThemeColor);
-    color: var(--TextColor);
+input::placeholder,
+textarea::placeholder {
+    color: #94A3B8;
+}
+
+input:hover,
+select:hover,
+textarea:hover {
+    border-color: #CBD5E1;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--PrimaryColors);
+    box-shadow: 0 0 0 3px rgba(14, 116, 144, 0.12);
 }

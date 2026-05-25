@@ -2,11 +2,13 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { apiGetPacientes, apiGetEquipe, apiCriarConsulta, apiGetConsultas } from "../../services/api";
+import { apiGetPacientes, apiGetEquipe, apiCriarConsulta, apiGetConsultas, apiAtualizarConsulta } from "../../services/api";
 import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
 import Card from "../../components/card/CardInfo";
+import { formatCPF } from "../../utils/formatters";
 import { useReceptionSidebar } from "../../hooks/useSidebar";
+import { X, Check, Plus, Search, CalendarDays, UserCheck, Clock, UserX, Users } from "lucide-react";
 
 const FORM_INICIAL = {
     paciente_id: "",
@@ -16,6 +18,24 @@ const FORM_INICIAL = {
     hora: "",
     motivo: "",
 };
+
+/* Tokens de cor por status da consulta */
+const STATUS_TOKENS = {
+    "Agendado": { back: "var(--WarningBack)", text: "var(--WarningText)" },
+    "Aguardando": { back: "var(--PrimaryColorsBack)", text: "var(--PrimaryColorsTheme)" },
+    "Finalizado": { back: "var(--SuccessBack)", text: "var(--SuccessText)" },
+    "Cancelado": { back: "var(--DangerBack)", text: "var(--DangerText)" },
+    "Faltou": { back: "var(--BackColor)", text: "var(--TextColor75)" },
+};
+
+function StatusPill({ status }) {
+    const tk = STATUS_TOKENS[status] || { back: "var(--BackColor)", text: "var(--TextColor75)" };
+    return (
+        <span style={{ background: tk.back, color: tk.text, padding: '3px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap' }}>
+            {status || "—"}
+        </span>
+    );
+}
 
 /* MAIN COMPONENT */
 function ReceptionDashboard() {
@@ -39,6 +59,10 @@ function ReceptionDashboard() {
     // Busca rápida
     const [quickSearch, setQuickSearch] = useState("");
 
+    // Ações de status na agenda
+    const [statusErro, setStatusErro] = useState(null);
+    const [atualizandoId, setAtualizandoId] = useState(null);
+
     const opc_bar = useReceptionSidebar("dashboard");
 
     useEffect(() => {
@@ -52,6 +76,28 @@ function ReceptionDashboard() {
             setConsultas(c);
         });
     }, [token]);
+
+    async function recarregarConsultas() {
+        try {
+            const c = await apiGetConsultas(token);
+            setConsultas(c);
+        } catch {
+            /* mantém a lista atual se a recarga falhar */
+        }
+    }
+
+    async function alterarStatus(id, novoStatus) {
+        setStatusErro(null);
+        setAtualizandoId(id);
+        try {
+            await apiAtualizarConsulta(token, id, { status: novoStatus });
+            await recarregarConsultas();
+        } catch {
+            setStatusErro("Não foi possível atualizar o status da consulta. Tente novamente em instantes ou contate o suporte.");
+        } finally {
+            setAtualizandoId(null);
+        }
+    }
 
     // Derivados de autocomplete
     const filteredPatients = searchName.length > 1 && !selectedPatient
@@ -107,7 +153,10 @@ function ReceptionDashboard() {
     }
 
     const hoje = new Date().toISOString().slice(0, 10);
-    const consultasHoje = consultas.filter(c => c.data_agendada?.startsWith(hoje));
+    const consultasHoje = consultas
+        .filter(c => c.data_agendada?.startsWith(hoje))
+        .sort((a, b) => (a.data_agendada || "").localeCompare(b.data_agendada || ""));
+    const salaDeEspera = consultasHoje.filter(c => c.status === "Aguardando");
 
     return (
         <>
@@ -119,25 +168,27 @@ function ReceptionDashboard() {
                 {/* ---------- MODAL DE AGENDAMENTO ---------- */}
                 {showAgendamento && (
                     <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <div style={{ background: 'white', padding: '3rem', borderRadius: '32px', width: '100%', maxWidth: '750px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', animation: 'fadeIn 0.2s', border: '1px solid rgba(226,232,240,0.8)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem' }}>
+                        <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '100%', maxWidth: '750px', boxShadow: 'var(--shadow-sm)', animation: 'fadeIn 0.2s', border: '1px solid var(--LineColor)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
                                 <div>
-                                    <span style={{ background: 'var(--PrimaryColorsBack)', color: 'var(--PrimaryColorsTheme)', padding: '6px 12px', borderRadius: '12px', fontSize: '13px', fontWeight: 800, marginBottom: '12px', display: 'inline-block' }}>NOVO EVENTO</span>
-                                    <h2 style={{ color: 'var(--TextColor)', margin: 0, fontSize: '32px' }}>Agendar Consulta</h2>
-                                    <p style={{ color: 'var(--TextColor75)', margin: '8px 0 0 0' }}>Selecione paciente, profissional e horário.</p>
+                                    <span style={{ background: 'var(--PrimaryColorsBack)', color: 'var(--PrimaryColorsTheme)', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700, marginBottom: '12px', display: 'inline-block', letterSpacing: '0.04em' }}>NOVO EVENTO</span>
+                                    <h2 style={{ color: 'var(--TextColor)', margin: 0, fontSize: '26px' }}>Agendar Consulta</h2>
+                                    <p style={{ color: 'var(--TextColor75)', margin: '6px 0 0 0' }}>Selecione paciente, profissional e horário.</p>
                                 </div>
-                                <button onClick={() => setShowAgendamento(false)} style={{ background: 'var(--LineColor)', border: 'none', width: '40px', height: '40px', borderRadius: '50%', cursor: 'pointer', color: 'var(--TextColor)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>✕</button>
+                                <button aria-label="Fechar" onClick={() => setShowAgendamento(false)} style={{ background: 'var(--BackColor)', border: '1px solid var(--LineColor)', width: '40px', height: '40px', borderRadius: '10px', cursor: 'pointer', color: 'var(--TextColor)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={18} strokeWidth={2} /></button>
                             </div>
 
                             {agSucesso ? (
                                 <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-                                    <p style={{ fontSize: '3rem' }}>✅</p>
-                                    <p style={{ fontWeight: 700, color: '#059669', fontSize: '18px' }}>Consulta agendada com sucesso!</p>
+                                    <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--SuccessBack)', color: 'var(--SuccessText)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
+                                        <Check size={32} strokeWidth={2.5} />
+                                    </div>
+                                    <p style={{ fontWeight: 700, color: 'var(--SuccessText)', fontSize: '18px' }}>Consulta agendada com sucesso!</p>
                                 </div>
                             ) : (
                                 <form onSubmit={handleAgendar} className="forms-section" style={{ padding: 0 }}>
                                     {agErro && (
-                                        <div style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444', padding: '10px 14px', borderRadius: '8px', marginBottom: '1rem', fontSize: '14px' }}>
+                                        <div style={{ background: 'var(--DangerBack)', color: 'var(--DangerText)', padding: '10px 14px', borderRadius: '8px', marginBottom: '1rem', fontSize: '14px' }}>
                                             {agErro}
                                         </div>
                                     )}
@@ -146,7 +197,7 @@ function ReceptionDashboard() {
                                         <label>Buscar Paciente Cadastrado *</label>
                                         <input
                                             type="text"
-                                            placeholder="🔍 Digite Nome, CPF ou Telefone..."
+                                            placeholder="Digite Nome, CPF ou Telefone..."
                                             style={{ width: '100%' }}
                                             value={selectedPatient ? selectedPatient.nome : searchName}
                                             onChange={e => { setSearchName(e.target.value); setSelectedPatient(null); }}
@@ -157,13 +208,13 @@ function ReceptionDashboard() {
                                                     <li key={p.id} onClick={() => { setSelectedPatient(p); setSearchName(""); }}
                                                         style={{ padding: '12px', borderRadius: '8px', cursor: 'pointer', borderBottom: '1px solid var(--LineColor)' }}>
                                                         <p style={{ fontWeight: 700, margin: 0, color: 'var(--PrimaryColorsTheme)' }}>{p.nome}</p>
-                                                        <span style={{ fontSize: '12px', color: 'var(--TextColor75)' }}>CPF: {p.cpf}</span>
+                                                        <span style={{ fontSize: '12px', color: 'var(--TextColor75)' }}>CPF: {formatCPF(p.cpf)}</span>
                                                     </li>
                                                 ))}
                                             </ul>
                                         )}
-                                        <Link to="/reception/patient/register" style={{ color: 'var(--PrimaryColorsTheme)', fontSize: '13px', textDecoration: 'underline', marginTop: '12px', display: 'inline-block', fontWeight: 'bold' }}>
-                                            + Paciente não encontrado? (Cadastrar)
+                                        <Link to="/reception/patient/register" style={{ color: 'var(--PrimaryColorsTheme)', fontSize: '13px', marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}>
+                                            <Plus size={14} strokeWidth={2.5} /> Paciente não encontrado? (Cadastrar)
                                         </Link>
                                     </div>
 
@@ -209,11 +260,11 @@ function ReceptionDashboard() {
                                             value={agForm.motivo} onChange={e => setAgForm(p => ({ ...p, motivo: e.target.value }))} />
                                     </div>
 
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '1px solid var(--LineColor)', paddingTop: '2rem', marginTop: '2.5rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '1px solid var(--LineColor)', paddingTop: '1.5rem', marginTop: '2rem' }}>
                                         <button type="button" onClick={() => setShowAgendamento(false)} className="submit"
-                                            style={{ padding: '16px 24px', background: 'var(--BackColor)', color: 'var(--TextColor)', boxShadow: 'none' }}
+                                            style={{ padding: '14px 24px', background: 'var(--BackColor)', color: 'var(--TextColor)', border: '1px solid var(--LineColor)', boxShadow: 'none' }}
                                             disabled={agEnviando}>Cancelar</button>
-                                        <button type="submit" className="submit" style={{ padding: '16px 40px', background: 'var(--PrimaryColorsTheme)', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)' }}
+                                        <button type="submit" className="submit" style={{ padding: '14px 36px', background: 'var(--PrimaryColorsTheme)', boxShadow: 'none' }}
                                             disabled={agEnviando}>{agEnviando ? "Agendando..." : "Confirmar na Agenda"}</button>
                                     </div>
                                 </form>
@@ -225,11 +276,11 @@ function ReceptionDashboard() {
 
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "2rem" }}>
                     <div>
-                        <h1 style={{ margin: '0 0 0.5rem 0', color: 'var(--PrimaryColorsTheme)', fontSize: '28px' }}>Atendimento & Recepção</h1>
+                        <h1 style={{ margin: '0 0 0.5rem 0', color: 'var(--PrimaryColorsTheme)', fontSize: '28px' }}>Atendimento e Recepção</h1>
                         <p className="text75">Gerencie os agendamentos e controle os pacientes na sala de espera.</p>
                     </div>
-                    <button onClick={abrirModal} style={{ background: 'var(--PrimaryColorsTheme)', color: 'white', padding: '12px 24px', borderRadius: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 15px rgba(22, 163, 74, 0.3)', border: 'none', cursor: 'pointer' }}>
-                        <span style={{ fontSize: '20px' }}>+</span> Agendar Nova Consulta
+                    <button onClick={abrirModal} style={{ background: 'var(--PrimaryColorsTheme)', color: 'white', padding: '12px 24px', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: 'var(--shadow-sm)', border: 'none', cursor: 'pointer' }}>
+                        <Plus size={18} strokeWidth={2.5} /> Agendar Nova Consulta
                     </button>
                 </div>
 
@@ -240,13 +291,14 @@ function ReceptionDashboard() {
                             <label style={{ color: 'var(--PrimaryColorsTheme)' }}>Busca Rápida de Paciente</label>
                             <input type="text" placeholder="Digite o nome, CPF ou Telefone..." style={{ margin: 0, width: '100%', maxWidth: 'none' }}
                                 value={quickSearch} onChange={e => setQuickSearch(e.target.value)} />
+                            <Search size={16} strokeWidth={2} style={{ position: 'absolute', right: '14px', bottom: '14px', color: 'var(--TextColor75)', pointerEvents: 'none' }} />
                             {filteredQuick.length > 0 && (
                                 <ul style={{ position: 'absolute', top: '100%', left: 0, width: '100%', background: 'white', border: '1px solid var(--LineColor)', borderRadius: '12px', listStyle: 'none', padding: '0.5rem', margin: '4px 0 0 0', boxShadow: '0 10px 25px rgba(0,0,0,0.15)', zIndex: 10 }}>
                                     {filteredQuick.map(p => (
                                         <li key={p.id} onClick={() => setQuickSearch(p.nome)}
                                             style={{ padding: '12px', borderRadius: '8px', cursor: 'pointer', borderBottom: '1px solid var(--LineColor)' }}>
                                             <p style={{ fontWeight: 700, margin: 0, color: 'var(--PrimaryColorsTheme)' }}>{p.nome}</p>
-                                            <span style={{ fontSize: '12px', color: 'var(--TextColor75)' }}>CPF: {p.cpf}</span>
+                                            <span style={{ fontSize: '12px', color: 'var(--TextColor75)' }}>CPF: {formatCPF(p.cpf)}</span>
                                         </li>
                                     ))}
                                 </ul>
@@ -260,40 +312,110 @@ function ReceptionDashboard() {
                     {/* AGENDA GERAL */}
                     <div className="camp-clinic" style={{ padding: '2.5rem' }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                            <h2 style={{ margin: 0 }}>Agenda de Hoje</h2>
+                            <div style={{ display: "flex", alignItems: "center", gap: '0.6rem' }}>
+                                <CalendarDays size={20} strokeWidth={2} style={{ color: 'var(--PrimaryColorsTheme)' }} />
+                                <h2 style={{ margin: 0 }}>Agenda de Hoje</h2>
+                            </div>
+                            <span style={{ background: 'var(--PrimaryColorsBack)', color: 'var(--PrimaryColorsTheme)', padding: '2px 10px', borderRadius: '999px', fontWeight: 700, fontSize: '13px' }}>{consultasHoje.length}</span>
                         </div>
+
+                        {statusErro && (
+                            <div style={{ background: 'var(--DangerBack)', color: 'var(--DangerText)', padding: '10px 14px', borderRadius: '8px', marginBottom: '1rem', fontSize: '13px' }}>
+                                {statusErro}
+                            </div>
+                        )}
 
                         {consultasHoje.length === 0 ? (
                             <p className="text75" style={{ textAlign: 'center', padding: '2rem' }}>Nenhum agendamento para hoje.</p>
                         ) : (
                             <div className="table">
-                                <div className="table-header" style={{ gridTemplateColumns: '1fr 1.5fr 1.5fr 1fr' }}>
+                                <div className="table-header" style={{ gridTemplateColumns: '0.8fr 1.4fr 1.2fr 1fr 0.9fr 1.6fr' }}>
                                     <p className="text75">Horário</p>
                                     <p className="text75">Paciente</p>
+                                    <p className="text75">Especialista</p>
                                     <p className="text75">Tipo</p>
                                     <p className="text75">Status</p>
+                                    <p className="text75">Ações</p>
                                 </div>
                                 <div className="table-body">
-                                    {consultasHoje.map(c => (
-                                        <div key={c.id} className="table-row" style={{ gridTemplateColumns: '1fr 1.5fr 1.5fr 1fr' }}>
-                                            <p style={{ fontWeight: 600 }}>{c.data_agendada?.slice(11, 16)}</p>
-                                            <p style={{ fontWeight: 500 }}>{c.paciente?.nome || "—"}</p>
-                                            <p className="text75">{c.tipo_atendimento || "—"}</p>
-                                            <p style={{ color: c.status === "Agendado" ? '#EAB308' : '#22C55E', fontWeight: 700 }}>{c.status}</p>
-                                        </div>
-                                    ))}
+                                    {consultasHoje.map(c => {
+                                        const podeCheckin = c.status === "Agendado";
+                                        const podeFaltou = c.status === "Agendado";
+                                        const podeCancelar = c.status === "Agendado" || c.status === "Aguardando";
+                                        const ocupado = atualizandoId === c.id;
+                                        const temAcoes = podeCheckin || podeFaltou || podeCancelar;
+                                        return (
+                                            <div key={c.id} className="table-row" style={{ gridTemplateColumns: '0.8fr 1.4fr 1.2fr 1fr 0.9fr 1.6fr', alignItems: 'center' }}>
+                                                <p style={{ fontWeight: 600 }}>{c.data_agendada?.slice(11, 16) || "—"}</p>
+                                                <p style={{ fontWeight: 500 }}>{c.pacientes?.nome || "—"}</p>
+                                                <p className="text75">{c.dentista?.nome || "—"}</p>
+                                                <p className="text75">{c.tipo_atendimento || "—"}</p>
+                                                <p><StatusPill status={c.status} /></p>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                    {temAcoes ? (
+                                                        <>
+                                                            {podeCheckin && (
+                                                                <button onClick={() => alterarStatus(c.id, "Aguardando")} disabled={ocupado} title="Check-in"
+                                                                    style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--PrimaryColorsBack)', color: 'var(--PrimaryColorsTheme)', border: '1px solid var(--LineColor)', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', fontWeight: 700, cursor: ocupado ? 'default' : 'pointer', opacity: ocupado ? 0.6 : 1 }}>
+                                                                    <UserCheck size={14} strokeWidth={2.2} /> Check-in
+                                                                </button>
+                                                            )}
+                                                            {podeFaltou && (
+                                                                <button onClick={() => alterarStatus(c.id, "Faltou")} disabled={ocupado} title="Marcar falta"
+                                                                    style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--BackColor)', color: 'var(--TextColor75)', border: '1px solid var(--LineColor)', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', fontWeight: 700, cursor: ocupado ? 'default' : 'pointer', opacity: ocupado ? 0.6 : 1 }}>
+                                                                    <UserX size={14} strokeWidth={2.2} /> Faltou
+                                                                </button>
+                                                            )}
+                                                            {podeCancelar && (
+                                                                <button onClick={() => alterarStatus(c.id, "Cancelado")} disabled={ocupado} title="Cancelar consulta"
+                                                                    style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--DangerBack)', color: 'var(--DangerText)', border: '1px solid var(--LineColor)', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', fontWeight: 700, cursor: ocupado ? 'default' : 'pointer', opacity: ocupado ? 0.6 : 1 }}>
+                                                                    <X size={14} strokeWidth={2.2} /> Cancelar
+                                                                </button>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        <span className="text75" style={{ fontSize: '12px' }}>—</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    {/* SALA DE ESPERA PLACEHOLDER */}
-                    <div className="camp-clinic" style={{ padding: '2.5rem', background: 'linear-gradient(135deg, rgba(22, 163, 74, 0.03), rgba(255,255,255,1))', borderColor: 'rgba(22, 163, 74, 0.2)' }}>
+                    {/* SALA DE ESPERA */}
+                    <div className="camp-clinic" style={{ padding: '2.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ margin: '0', color: 'var(--PrimaryColorsTheme)' }}>Sala de Espera</h2>
-                            <span style={{ background: 'var(--PrimaryColorsTheme)', color: 'white', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold', fontSize: '13px' }}>0</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                <Users size={20} strokeWidth={2} style={{ color: 'var(--PrimaryColorsTheme)' }} />
+                                <h2 style={{ margin: '0', color: 'var(--PrimaryColorsTheme)' }}>Sala de Espera</h2>
+                            </div>
+                            <span style={{ background: 'var(--PrimaryColorsBack)', color: 'var(--PrimaryColorsTheme)', padding: '2px 10px', borderRadius: '999px', fontWeight: 700, fontSize: '13px' }}>{salaDeEspera.length}</span>
                         </div>
-                        <p className="text75" style={{ textAlign: 'center', marginTop: '2rem' }}>Nenhum paciente aguardando.</p>
+
+                        {salaDeEspera.length === 0 ? (
+                            <p className="text75" style={{ textAlign: 'center', padding: '2rem 0' }}>
+                                Nenhum paciente aguardando no momento.
+                            </p>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                {salaDeEspera.map(c => (
+                                    <div key={c.id} style={{ background: 'white', border: '1px solid var(--LineColor)', borderRadius: '12px', padding: '1rem 1.25rem', boxShadow: 'var(--shadow-sm)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                                            <p style={{ fontWeight: 700, margin: 0, color: 'var(--TextColor)' }}>{c.pacientes?.nome || "—"}</p>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--PrimaryColorsTheme)', fontWeight: 700, fontSize: '13px', whiteSpace: 'nowrap' }}>
+                                                <Clock size={14} strokeWidth={2.2} /> {c.data_agendada?.slice(11, 16) || "—"}
+                                            </span>
+                                        </div>
+                                        <p className="text75" style={{ margin: '4px 0 0 0', fontSize: '13px' }}>
+                                            {c.tipo_atendimento || "Atendimento"}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
 

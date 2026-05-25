@@ -12,11 +12,19 @@ footer {
 }
 
 footer #logo {
-    font-size: 24px;
-    font-weight: 900;
-    letter-spacing: -0.025em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
     color: #FFFFFF;
     margin: 0;
+}
+
+footer #logo .brand-mark {
+    display: flex;
+    align-items: center;
 }
 
 footer.not-auth label,
@@ -63,12 +71,32 @@ footer .medio div {
     width: 100%;
 }
 
+/* Auth footer — light surface; ensure readable text on light background */
 footer.auth {
-    background-color: var(--PrimaryColorsBack);
+    background-color: var(--ThemeColor);
+    color: var(--TextColor75);
+    border-top: 1px solid var(--LineColor);
 }
 
 footer.auth #logo {
+    color: var(--TextColor);
+}
+
+footer.auth #logo .brand-mark {
     color: var(--PrimaryColors);
+}
+
+footer.auth label,
+footer.auth p {
+    color: var(--TextColor75);
+}
+
+footer.auth #title {
+    color: var(--TextColor);
+}
+
+footer.auth .bottom {
+    border-top-color: var(--LineColor);
 }
 
 @media (max-width: 768px) {
