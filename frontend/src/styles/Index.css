@@ -162,14 +162,6 @@ ul.tabs-bar li.select {
     background: var(--PrimaryColorsBack);
 }
 
-/* STANDALONE FORMS SECTION (used outside <form> tags) */
-.forms-section {
-    background: white;
-    border-radius: 16px;
-    border: 1px solid var(--LineColor);
-    padding: 2rem;
-}
-
 /* ANIMATIONS */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(6px); }
