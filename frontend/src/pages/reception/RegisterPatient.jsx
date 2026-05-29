@@ -28,13 +28,20 @@ function RegisterPatient() {
     // Estados Core (Aba 1 e Aba 3)
     const [formData, setFormData] = useState({
         nome: '', cpf: '', rg: '', data_nascimento: '', genero: 'Feminino',
+        naturalidade: '', nome_mae: '', profissao: '',
         telefone_whatsapp: '', email: '', emerg_nome: '', emerg_tel: '',
-        alergias: '', condicoes: '', medicacoes: '', drogas: '', cirurgias: ''
+        alergias: '', condicoes: '', medicacoes: '', drogas: '', cirurgias: '',
+        peso_kg: '', altura_cm: '', ultima_visita_dentista: '', historia_odontologica: '',
+        em_tratamento_medico: false, tratamento_medico_qual: '',
+        ja_internado: false, internacao_motivo: '',
+        reacao_anestesia: false, reacao_anestesia_qual: ''
     });
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        if (name === "cpf") {
+        const { name, value, type, checked } = e.target;
+        if (type === "checkbox") {
+            setFormData({ ...formData, [name]: checked });
+        } else if (name === "cpf") {
             setFormData({ ...formData, cpf: maskCPF(value) });
         } else if (name === "telefone_whatsapp") {
             setFormData({ ...formData, telefone_whatsapp: maskPhone(value) });
@@ -69,6 +76,9 @@ function RegisterPatient() {
                     rg: p.rg || '',
                     data_nascimento: p.data_nascimento ? String(p.data_nascimento).slice(0, 10) : '',
                     genero: p.genero || 'Feminino',
+                    naturalidade: anam.naturalidade || '',
+                    nome_mae: anam.nome_mae || '',
+                    profissao: anam.profissao || '',
                     telefone_whatsapp: maskPhone(p.telefone_whatsapp || ''),
                     email: p.email || '',
                     emerg_nome: anam.emergencia_nome || '',
@@ -77,7 +87,17 @@ function RegisterPatient() {
                     condicoes: anam.condicoes || '',
                     medicacoes: anam.medicacoes || '',
                     drogas: anam.drogas || '',
-                    cirurgias: anam.cirurgias || ''
+                    cirurgias: anam.cirurgias || '',
+                    peso_kg: anam.peso_kg ?? '',
+                    altura_cm: anam.altura_cm ?? '',
+                    ultima_visita_dentista: anam.ultima_visita_dentista || '',
+                    historia_odontologica: anam.historia_odontologica || '',
+                    em_tratamento_medico: Boolean(anam.em_tratamento_medico),
+                    tratamento_medico_qual: anam.tratamento_medico_qual || '',
+                    ja_internado: Boolean(anam.ja_internado),
+                    internacao_motivo: anam.internacao_motivo || '',
+                    reacao_anestesia: Boolean(anam.reacao_anestesia),
+                    reacao_anestesia_qual: anam.reacao_anestesia_qual || ''
                 });
 
                 setCep(maskCEP(end.cep || ''));
@@ -166,11 +186,26 @@ function RegisterPatient() {
                 numero: numero
             },
             anamnese: {
+                // Identificação complementar
+                naturalidade: formData.naturalidade,
+                nome_mae: formData.nome_mae,
+                profissao: formData.profissao,
+                // Anamnese / saúde
                 alergias: formData.alergias,
                 condicoes: formData.condicoes,
                 medicacoes: formData.medicacoes,
                 drogas: formData.drogas,
                 cirurgias: formData.cirurgias,
+                peso_kg: formData.peso_kg === '' ? null : Number(formData.peso_kg),
+                altura_cm: formData.altura_cm === '' ? null : Number(formData.altura_cm),
+                ultima_visita_dentista: formData.ultima_visita_dentista,
+                historia_odontologica: formData.historia_odontologica,
+                em_tratamento_medico: formData.em_tratamento_medico,
+                tratamento_medico_qual: formData.em_tratamento_medico ? formData.tratamento_medico_qual : '',
+                ja_internado: formData.ja_internado,
+                internacao_motivo: formData.ja_internado ? formData.internacao_motivo : '',
+                reacao_anestesia: formData.reacao_anestesia,
+                reacao_anestesia_qual: formData.reacao_anestesia ? formData.reacao_anestesia_qual : '',
                 emergencia_nome: formData.emerg_nome,
                 emergencia_telefone: formData.emerg_tel.replace(/\D/g, '')
             }
@@ -286,6 +321,20 @@ function RegisterPatient() {
                                         </select>
                                     </div>
                                 </div>
+                                <div className="flex-inpus">
+                                    <div className="field">
+                                        <label>Naturalidade</label>
+                                        <input type="text" name="naturalidade" value={formData.naturalidade} onChange={handleChange} placeholder="Ex: Goiânia - GO" />
+                                    </div>
+                                    <div className="field">
+                                        <label>Profissão</label>
+                                        <input type="text" name="profissao" value={formData.profissao} onChange={handleChange} placeholder="Ex: Professora" />
+                                    </div>
+                                </div>
+                                <div className="field">
+                                    <label>Nome da Mãe</label>
+                                    <input type="text" name="nome_mae" value={formData.nome_mae} onChange={handleChange} placeholder="Ex: Ana Maria da Silva" />
+                                </div>
 
                                 <p className="sec-title" style={{marginTop: '2rem', color: 'var(--PrimaryColorsTheme)'}}>Contato & Emergência</p>
                                 
@@ -392,6 +441,70 @@ function RegisterPatient() {
                                     <label>Cirurgias prévias e problemas de cicatrização/sangramento</label>
                                     <textarea name="cirurgias" value={formData.cirurgias} onChange={handleChange} placeholder="Alguma cirurgia recente ou problemas de coagulação?" rows="3"></textarea>
                                 </div>
+
+                                <div className="flex-inpus">
+                                    <div className="field">
+                                        <label>Peso (kg)</label>
+                                        <input type="number" name="peso_kg" value={formData.peso_kg} onChange={handleChange} placeholder="Ex: 72" min="0" step="0.1" inputMode="decimal" />
+                                    </div>
+                                    <div className="field">
+                                        <label>Altura (cm)</label>
+                                        <input type="number" name="altura_cm" value={formData.altura_cm} onChange={handleChange} placeholder="Ex: 168" min="0" step="1" inputMode="numeric" />
+                                    </div>
+                                </div>
+
+                                <div className="field">
+                                    <label>Última visita ao dentista</label>
+                                    <select name="ultima_visita_dentista" value={formData.ultima_visita_dentista} onChange={handleChange}>
+                                        <option value="">Selecione...</option>
+                                        <option value="Menos de 6 meses">Menos de 6 meses</option>
+                                        <option value="6 meses a 1 ano">6 meses a 1 ano</option>
+                                        <option value="1 a 2 anos">1 a 2 anos</option>
+                                        <option value="Mais de 2 anos">Mais de 2 anos</option>
+                                        <option value="Nunca">Nunca foi ao dentista</option>
+                                    </select>
+                                </div>
+
+                                <div className="field">
+                                    <label>História odontológica (tratamentos anteriores)</label>
+                                    <textarea name="historia_odontologica" value={formData.historia_odontologica} onChange={handleChange} placeholder="Ex: aparelho ortodôntico, canais, extrações, próteses, experiências traumáticas..." rows="3"></textarea>
+                                </div>
+
+                                <label style={{display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 0', cursor: 'pointer'}}>
+                                    <input type="checkbox" name="em_tratamento_medico" checked={formData.em_tratamento_medico} onChange={handleChange} style={{width: '18px', height: '18px', cursor: 'pointer'}} />
+                                    <span style={{fontWeight: 600, fontSize: '15px'}}>Está em tratamento médico atualmente?</span>
+                                </label>
+                                {formData.em_tratamento_medico && (
+                                    <div className="field">
+                                        <label>Qual tratamento?</label>
+                                        <input type="text" name="tratamento_medico_qual" value={formData.tratamento_medico_qual} onChange={handleChange} placeholder="Descreva o tratamento médico em curso" />
+                                    </div>
+                                )}
+
+                                <label style={{display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 0', cursor: 'pointer'}}>
+                                    <input type="checkbox" name="ja_internado" checked={formData.ja_internado} onChange={handleChange} style={{width: '18px', height: '18px', cursor: 'pointer'}} />
+                                    <span style={{fontWeight: 600, fontSize: '15px'}}>Já foi internado(a)?</span>
+                                </label>
+                                {formData.ja_internado && (
+                                    <div className="field">
+                                        <label>Motivo da internação</label>
+                                        <input type="text" name="internacao_motivo" value={formData.internacao_motivo} onChange={handleChange} placeholder="Motivo e quando ocorreu" />
+                                    </div>
+                                )}
+
+                                <label style={{display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 0', cursor: 'pointer'}}>
+                                    <input type="checkbox" name="reacao_anestesia" checked={formData.reacao_anestesia} onChange={handleChange} style={{width: '18px', height: '18px', cursor: 'pointer'}} />
+                                    <span style={{fontWeight: 600, fontSize: '15px'}}>Já teve alguma reação à anestesia odontológica?</span>
+                                </label>
+                                {formData.reacao_anestesia && (
+                                    <div className="field">
+                                        <label>Qual reação?</label>
+                                        <input type="text" name="reacao_anestesia_qual" value={formData.reacao_anestesia_qual} onChange={handleChange} placeholder="Ex: taquicardia, desmaio, alergia, edema..." />
+                                        <p style={{fontSize: '12px', color: 'var(--TextColor75)', margin: '6px 0 0 0'}}>
+                                            Diferencie alergia verdadeira de reações como taquicardia/desmaio pela epinefrina.
+                                        </p>
+                                    </div>
+                                )}
 
                                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: '2rem' }}>
                                     <button type="button" className="submit" style={{background: 'var(--BackColor)', color: 'var(--TextColor)', border: '1px solid var(--LineColor)', boxShadow:'none'}} onClick={() => setActiveTab("endereco")}>Voltar</button>

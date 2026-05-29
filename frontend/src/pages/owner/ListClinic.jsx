@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { apiGetClinics, apiGetMetricas } from "../../services/api";
+import { apiGetClinics, apiGetMetricas, apiAtivarClinica } from "../../services/api";
 import Section from "../../components/section/SectionAuth";
 import ButtonH1 from "../../components/buttons/ButtonsRediTitle";
 import SideBar from "../../components/bar/SideBar";
@@ -36,29 +36,51 @@ function MetricasSkeleton() {
 }
 
 function ListClinic() {
-    const { token } = useAuth();
+    const { token, refreshUser } = useAuth();
     const [clinicas, setClinicas] = useState([]);
     const [busca, setBusca] = useState("");
     const [loading, setLoading] = useState(true);
     const [metricas, setMetricas] = useState(null);
     const [loadingMetricas, setLoadingMetricas] = useState(true);
+    const [ativandoId, setAtivandoId] = useState(null);
 
     const opc_bar = useOwnerSidebar("clinic");
 
+    function carregarClinicas() {
+        return apiGetClinics(token)
+            .then(data => setClinicas(Array.isArray(data) ? data : []))
+            .catch(err => console.error("Erro ao carregar clínicas", err));
+    }
+
+    function carregarMetricas() {
+        return apiGetMetricas(token)
+            .then(data => setMetricas(data))
+            .catch(err => console.error("Erro ao carregar métricas", err));
+    }
+
     useEffect(() => {
-        apiGetClinics(token)
-            .then(data => setClinicas(data))
-            .catch(err => console.error("Erro ao carregar clínicas", err))
-            .finally(() => setLoading(false));
+        carregarClinicas().finally(() => setLoading(false));
     }, [token]);
 
     useEffect(() => {
         if (!token) return;
-        apiGetMetricas(token)
-            .then(data => setMetricas(data))
-            .catch(err => console.error("Erro ao carregar métricas", err))
-            .finally(() => setLoadingMetricas(false));
+        carregarMetricas().finally(() => setLoadingMetricas(false));
     }, [token]);
+
+    async function handleAtivar(clinicaId) {
+        setAtivandoId(clinicaId);
+        try {
+            await apiAtivarClinica(token, clinicaId);
+            // Atualiza o perfil (clinica_id ativa) e recarrega listas/métricas,
+            // que passam a refletir a clínica recém-selecionada.
+            await refreshUser();
+            await Promise.all([carregarClinicas(), carregarMetricas()]);
+        } catch (err) {
+            console.error("Erro ao trocar de clínica", err);
+        } finally {
+            setAtivandoId(null);
+        }
+    }
 
     const clinicasFiltradas = clinicas.filter(c =>
         (c.nome || c.nome_fantasia)?.toLowerCase().includes(busca.toLowerCase()) ||
@@ -136,6 +158,9 @@ function ListClinic() {
                                 clinic_name={item.nome || item.nome_fantasia}
                                 clinic_cnpj={item.cnpj}
                                 clinic_phone={item.telefone}
+                                is_active={item.ativa}
+                                ativando={ativandoId === item.id}
+                                onAtivar={handleAtivar}
                             />
                         ))
                     )}

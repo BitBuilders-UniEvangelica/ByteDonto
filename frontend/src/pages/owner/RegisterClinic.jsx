@@ -49,8 +49,15 @@ function RegisterClinic() {
         const newClinic = {
             nome: name_clinic,
             nome_fantasia: name_clinic,
+            razao_social: razao_social || undefined,
+            resumo: resumo || undefined,
             cnpj: CNPJ.replace(/\D/g, ""),
             telefone: telefone.replace(/\D/g, ""),
+            redes_sociais: {
+                whatsapp: whatsapp.replace(/\D/g, "") || undefined,
+                instagram: instagram || undefined,
+                facebook: facebook || undefined,
+            },
             endereco: {
                 logradouro: endereco,
                 cidade: cidade,

@@ -3,6 +3,10 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify
 from app.database import supabase
 from app.validators import campo_obrigatorio, validar_valor, validar_enum
+from app.auth_utils import (
+    get_token, get_contexto, exigir_permissao, exigir_clinica,
+    pertence_a_clinica, tratar_erro,
+)
 
 financeiro_bp = Blueprint("financeiro", __name__)
 
@@ -12,16 +16,6 @@ FORMAS_PAGAMENTO_VALIDAS = {
 }
 
 
-def get_token(req):
-    return req.headers.get("Authorization", "").replace("Bearer ", "")
-
-
-def get_user_clinica(token):
-    user = supabase.auth.get_user(token).user
-    perfil = supabase.table("usuarios").select("clinica_id").eq("id", user.id).single().execute()
-    return user.id, perfil.data["clinica_id"]
-
-
 @financeiro_bp.route("/", methods=["GET"])
 def listar_lancamentos():
     token = get_token(request)
@@ -29,7 +23,11 @@ def listar_lancamentos():
         return jsonify({"error": "Não autorizado"}), 401
 
     try:
-        _, clinica_id = get_user_clinica(token)
+        ctx = get_contexto(token)
+        exigir_permissao(ctx, "ver_financeiro")
+        clinica_id = ctx["clinica_id"]
+        if not clinica_id:
+            return jsonify([]), 200
 
         query = (
             supabase.table("faturamento")
@@ -38,14 +36,15 @@ def listar_lancamentos():
             .order("created_at", desc=True)
         )
 
-        status = request.args.get("status")
+        # Aceita ?status= ou ?status_pagamento= (o frontend usa o segundo).
+        status = request.args.get("status") or request.args.get("status_pagamento")
         if status:
             query = query.eq("status_pagamento", status)
 
         result = query.execute()
         return jsonify(result.data), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return tratar_erro(e)
 
 
 @financeiro_bp.route("/", methods=["POST"])
@@ -55,8 +54,10 @@ def criar_lancamento():
         return jsonify({"error": "Não autorizado"}), 401
 
     try:
-        _, clinica_id = get_user_clinica(token)
-        data = request.get_json() or {}
+        ctx = get_contexto(token)
+        exigir_permissao(ctx, "ver_financeiro")
+        clinica_id = exigir_clinica(ctx)
+        data = request.get_json(silent=True) or {}
 
         try:
             campo_obrigatorio(data.get("paciente_id"), "paciente_id")
@@ -70,6 +71,14 @@ def criar_lancamento():
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
 
+        # IDOR: todas as FKs precisam ser da mesma clínica.
+        if not pertence_a_clinica("pacientes", data.get("paciente_id"), clinica_id):
+            return jsonify({"error": "Paciente não encontrado nesta clínica"}), 404
+        if data.get("atendimento_id") and not pertence_a_clinica("atendimentos", data.get("atendimento_id"), clinica_id):
+            return jsonify({"error": "Atendimento não encontrado nesta clínica"}), 404
+        if data.get("dentista_responsavel") and not pertence_a_clinica("usuarios", data.get("dentista_responsavel"), clinica_id):
+            return jsonify({"error": "Dentista não encontrado nesta clínica"}), 404
+
         novo_lancamento = {
             "clinica_id": clinica_id,
             "paciente_id": data.get("paciente_id"),
@@ -78,8 +87,8 @@ def criar_lancamento():
             "dentista_responsavel": data.get("dentista_responsavel"),
             "valor": valor,
             "descricao": (data.get("descricao") or "").strip() or None,
-            "forma_pagamento": data.get("forma_pagamento"),
-            "status_pagamento": data.get("status_pagamento"),
+            "forma_pagamento": forma_pagamento,
+            "status_pagamento": status_pagamento,
         }
 
         # Remove keys com valor None para usar defaults do banco
@@ -88,7 +97,7 @@ def criar_lancamento():
         result = supabase.table("faturamento").insert(novo_lancamento).execute()
         return jsonify(result.data[0]), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return tratar_erro(e)
 
 
 @financeiro_bp.route("/<id>", methods=["PUT"])
@@ -98,8 +107,10 @@ def atualizar_lancamento(id):
         return jsonify({"error": "Não autorizado"}), 401
 
     try:
-        _, clinica_id = get_user_clinica(token)
-        data = request.get_json()
+        ctx = get_contexto(token)
+        exigir_permissao(ctx, "ver_financeiro")
+        clinica_id = exigir_clinica(ctx)
+        data = request.get_json(silent=True) or {}
 
         CAMPOS_PERMITIDOS = {"status_pagamento", "forma_pagamento", "valor", "descricao"}
         payload = {k: v for k, v in data.items() if k in CAMPOS_PERMITIDOS}
@@ -123,11 +134,11 @@ def atualizar_lancamento(id):
             .select("id")
             .eq("id", id)
             .eq("clinica_id", clinica_id)
-            .single()
+            .maybe_single()
             .execute()
         )
 
-        if not check.data:
+        if not (check and check.data):
             return jsonify({"error": "Lançamento não encontrado"}), 404
 
         result = (
@@ -139,7 +150,7 @@ def atualizar_lancamento(id):
         )
         return jsonify(result.data[0]), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return tratar_erro(e)
 
 
 @financeiro_bp.route("/repasses", methods=["GET"])
@@ -155,7 +166,9 @@ def repasses_dentista():
         return jsonify({"error": "Não autorizado"}), 401
 
     try:
-        _, clinica_id = get_user_clinica(token)
+        ctx = get_contexto(token)
+        exigir_permissao(ctx, "ver_financeiro")
+        clinica_id = exigir_clinica(ctx)
         mes = request.args.get("mes") or datetime.utcnow().strftime("%Y-%m")
         try:
             datetime.strptime(mes, "%Y-%m")
@@ -215,7 +228,7 @@ def repasses_dentista():
 
         return jsonify({"mes": mes, "itens": relatorio}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return tratar_erro(e)
 
 
 def _proximo_mes(mes):

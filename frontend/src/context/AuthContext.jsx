@@ -30,6 +30,15 @@ export function AuthProvider({ children }) {
         setUser(userData);
     }
 
+    /* Re-busca o perfil do backend (ex.: após trocar a clínica ativa, para que
+       clinica_id e demais dados do usuário fiquem atualizados no app). */
+    async function refreshUser() {
+        if (!token) return null;
+        const data = await apiMe(token);
+        setUser(data);
+        return data;
+    }
+
     async function logout() {
         localStorage.removeItem("token");
         setToken(null);
@@ -43,7 +52,7 @@ export function AuthProvider({ children }) {
     }
 
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, loading }}>
+        <AuthContext.Provider value={{ user, token, login, logout, loading, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

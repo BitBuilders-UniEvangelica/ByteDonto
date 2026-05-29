@@ -9,6 +9,7 @@ from app.validators import (
     validar_data_nascimento,
     validar_email,
 )
+from app.auth_utils import get_token, get_user_clinica, tratar_erro
 
 pacientes_bp = Blueprint("pacientes", __name__)
 
@@ -21,23 +22,6 @@ CAMPOS_EDITAVEIS = {
 # Campos da anamnese que precisam estar declarados (mesmo que "Nega").
 # Em odonto, anestesiar sem alergia documentada é negligência — bloqueamos no cadastro.
 ANAMNESE_OBRIGATORIA = ["alergias", "medicacoes", "condicoes"]
-
-
-def get_token(req):
-    return req.headers.get("Authorization", "").replace("Bearer ", "")
-
-
-def get_user_clinica(token):
-    """Retorna (user_id, clinica_id) do usuário autenticado.
-
-    Se o perfil não existir na tabela usuarios, devolve clinica_id=None e cabe
-    à rota decidir como responder. Não recriamos clínica nem perfil silenciosamente.
-    """
-    user = supabase.auth.get_user(token).user
-    perfil = supabase.table("usuarios").select("clinica_id").eq("id", user.id).execute()
-    if not perfil.data:
-        return user.id, None
-    return user.id, perfil.data[0]["clinica_id"]
 
 
 def _validar_anamnese(anamnese, exigir_obrigatorios=False):
@@ -77,7 +61,7 @@ def listar_pacientes():
         result = supabase.table("pacientes").select("*").eq("clinica_id", clinica_id).order("created_at", desc=True).execute()
         return jsonify(result.data), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return tratar_erro(e)
 
 
 @pacientes_bp.route("/<paciente_id>", methods=["GET"])
@@ -90,10 +74,12 @@ def obter_paciente(paciente_id):
         _, clinica_id = get_user_clinica(token)
         if not clinica_id:
             return jsonify({"error": "Paciente não encontrado"}), 404
-        result = supabase.table("pacientes").select("*").eq("id", paciente_id).eq("clinica_id", clinica_id).single().execute()
+        result = supabase.table("pacientes").select("*").eq("id", paciente_id).eq("clinica_id", clinica_id).maybe_single().execute()
+        if not (result and result.data):
+            return jsonify({"error": "Paciente não encontrado"}), 404
         return jsonify(result.data), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return tratar_erro(e)
 
 
 @pacientes_bp.route("/", methods=["POST"])
@@ -106,7 +92,7 @@ def criar_paciente():
         user_id, clinica_id = get_user_clinica(token)
         if not clinica_id:
             return jsonify({"error": "Perfil sem clínica vinculada. Contate o proprietário."}), 403
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
 
         try:
             campo_obrigatorio(data.get("nome"), "nome")
@@ -149,7 +135,7 @@ def criar_paciente():
 
         return jsonify(criado), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return tratar_erro(e)
 
 
 @pacientes_bp.route("/<paciente_id>", methods=["PUT"])
@@ -162,7 +148,7 @@ def atualizar_paciente(paciente_id):
         user_id, clinica_id = get_user_clinica(token)
         if not clinica_id:
             return jsonify({"error": "Paciente não encontrado"}), 404
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
 
         # Mantém apenas os campos que o cliente pode editar
         payload = {k: v for k, v in data.items() if k in CAMPOS_EDITAVEIS}
@@ -193,10 +179,10 @@ def atualizar_paciente(paciente_id):
             .select("*")
             .eq("id", paciente_id)
             .eq("clinica_id", clinica_id)
-            .single()
+            .maybe_single()
             .execute()
         )
-        if not atual.data:
+        if not (atual and atual.data):
             return jsonify({"error": "Paciente não encontrado"}), 404
 
         payload["updated_by"] = user_id
@@ -224,7 +210,7 @@ def atualizar_paciente(paciente_id):
 
         return jsonify(atualizado), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return tratar_erro(e)
 
 
 @pacientes_bp.route("/<paciente_id>", methods=["DELETE"])
@@ -243,10 +229,10 @@ def deletar_paciente(paciente_id):
             .select("*")
             .eq("id", paciente_id)
             .eq("clinica_id", clinica_id)
-            .single()
+            .maybe_single()
             .execute()
         )
-        if not atual.data:
+        if not (atual and atual.data):
             return jsonify({"error": "Paciente não encontrado"}), 404
 
         supabase.table("pacientes").delete().eq("id", paciente_id).eq("clinica_id", clinica_id).execute()
@@ -263,4 +249,4 @@ def deletar_paciente(paciente_id):
 
         return jsonify({"message": "Paciente removido"}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return tratar_erro(e)

@@ -102,9 +102,9 @@ export function AppRoutes() {
 
           {/* ROTA DO ESPECIALISTA (DENTISTA) */}
           <Route path="/specialist/dashboard" element={<PermissionRoute perm="ver_agenda"><SpecialistDashboard /></PermissionRoute>} />
-          <Route path="/specialist/patients" element={<PermissionRoute perm="ver_pacientes"><SpecialistListPatients /></PermissionRoute>} />
-          <Route path="/specialist/records" element={<PermissionRoute perm="ver_pacientes"><SpecialistListPatients /></PermissionRoute>} />
-          <Route path="/specialist/patient/view" element={<PermissionRoute perm="ver_pacientes"><SpecialistViewRecord /></PermissionRoute>} />
+          <Route path="/specialist/patients" element={<PermissionRoute perm="ver_prontuario"><SpecialistListPatients /></PermissionRoute>} />
+          <Route path="/specialist/records" element={<PermissionRoute perm="ver_prontuario"><SpecialistListPatients /></PermissionRoute>} />
+          <Route path="/specialist/patient/view" element={<PermissionRoute perm="ver_prontuario"><SpecialistViewRecord /></PermissionRoute>} />
 
           {/* ROTA DA RECEPÇÃO */}
           <Route path="/reception/dashboard" element={<PermissionRoute perm="ver_agenda"><ReceptionDashboard /></PermissionRoute>} />

@@ -164,6 +164,16 @@ export async function apiUpdateClinic(token, clinicaId, clinicData) {
     return data;
 }
 
+export async function apiAtivarClinica(token, clinicaId) {
+    const res = await fetch(`${API_URL}/api/clinicas/${clinicaId}/ativar`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Erro ao trocar de clínica");
+    return data;
+}
+
 /* --- EQUIPE / USUÁRIOS --- */
 export async function apiGetEquipe(token) {
     const res = await fetch(`${API_URL}/api/usuarios/`, {
@@ -209,6 +219,20 @@ export async function apiAtualizarMembro(token, usuarioId, dadosAtualizados) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Erro ao atualizar membro");
+    return data;
+}
+
+export async function apiRedefinirSenha(token, usuarioId, senha) {
+    const res = await fetch(`${API_URL}/api/usuarios/${usuarioId}/senha`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ senha }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Erro ao redefinir senha");
     return data;
 }
 
@@ -333,8 +357,12 @@ export async function apiDeletarImagem(token, imagemId) {
 }
 
 /* --- DASHBOARD MÉTRICAS --- */
-export async function apiGetMetricas(token) {
-    const res = await fetch(`${API_URL}/api/dashboard/metricas`, {
+// clinicaId opcional: o Dono pode pedir métricas de outra clínica que ele possui.
+export async function apiGetMetricas(token, clinicaId = null) {
+    const url = clinicaId
+        ? `${API_URL}/api/dashboard/metricas?clinica_id=${encodeURIComponent(clinicaId)}`
+        : `${API_URL}/api/dashboard/metricas`;
+    const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();

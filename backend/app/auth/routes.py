@@ -109,7 +109,7 @@ def login():
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
     """
-    Logout — invalida o token no Supabase.
+    Logout — revoga a sessão do usuário no Supabase (invalida os refresh tokens).
     Header: Authorization: Bearer <token>
     """
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
@@ -118,10 +118,13 @@ def logout():
         return jsonify({"error": "Token não fornecido"}), 401
 
     try:
-        supabase.auth.sign_out()
-        return jsonify({"message": "Logout realizado com sucesso"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        # admin.sign_out revoga as sessões do usuário dono deste JWT. Sem isso,
+        # o sign_out() do cliente compartilhado não derrubava a sessão real.
+        supabase_admin.auth.admin.sign_out(token)
+    except Exception:
+        # Token já expirado/inválido — do ponto de vista do cliente, é logout ok.
+        pass
+    return jsonify({"message": "Logout realizado com sucesso"}), 200
 
 
 @auth_bp.route("/me", methods=["GET"])

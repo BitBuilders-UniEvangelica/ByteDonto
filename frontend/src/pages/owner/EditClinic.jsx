@@ -47,10 +47,11 @@ function EditClinic() {
                     setRazaoSocial(clinicData.razao_social || "");
                     setResumo(clinicData.resumo || "");
 
-                    setWhatsapp(maskPhone(clinicData.telefone || ""));
+                    const redes = clinicData.redes_sociais || {};
+                    setWhatsapp(maskPhone(redes.whatsapp || ""));
                     setTelefone(maskPhone(clinicData.telefone || ""));
-                    setInstagram(clinicData.instagram || "");
-                    setFacebook(clinicData.facebook || "");
+                    setInstagram(redes.instagram || "");
+                    setFacebook(redes.facebook || "");
 
                     setPais(clinicData.endereco?.pais || "");
                     setEstado(clinicData.endereco?.estado || "");
@@ -78,8 +79,15 @@ function EditClinic() {
 
         const updatedClinic = {
             nome: name_clinic,
+            razao_social: razao_social,
+            resumo: resumo,
             cnpj: CNPJ.replace(/\D/g, ""),
             telefone: telefone.replace(/\D/g, ""),
+            redes_sociais: {
+                whatsapp: whatsapp.replace(/\D/g, ""),
+                instagram: instagram,
+                facebook: facebook,
+            },
             endereco: {
                 logradouro: endereco,
                 cidade: cidade,

@@ -3,6 +3,7 @@ from werkzeug.utils import secure_filename
 from uuid import uuid4
 from supabase import create_client
 from app.database import supabase
+from app.auth_utils import get_token, get_user_clinica, tratar_erro
 from config import Config
 
 imagens_bp = Blueprint("imagens", __name__)
@@ -24,16 +25,6 @@ def extensao_permitida(filename):
     if "." not in filename:
         return False
     return filename.rsplit(".", 1)[1].lower() in EXTENSOES_PERMITIDAS
-
-
-def get_token(req):
-    return req.headers.get("Authorization", "").replace("Bearer ", "")
-
-
-def get_user_clinica(token):
-    user = supabase.auth.get_user(token).user
-    perfil = supabase.table("usuarios").select("clinica_id").eq("id", user.id).single().execute()
-    return user.id, perfil.data["clinica_id"]
 
 
 def gerar_signed_url(storage_path):
@@ -83,10 +74,10 @@ def upload_imagem():
             supabase.table("pacientes")
             .select("id, clinica_id")
             .eq("id", paciente_id)
-            .single()
+            .maybe_single()
             .execute()
         )
-        if not paciente.data:
+        if not (paciente and paciente.data):
             return jsonify({"error": "Paciente não encontrado"}), 404
         if paciente.data.get("clinica_id") != clinica_id:
             return jsonify({"error": "Acesso negado a este paciente"}), 403
@@ -126,7 +117,7 @@ def upload_imagem():
             "url": gerar_signed_url(storage_path),
         }), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return tratar_erro(e)
 
 
 @imagens_bp.route("/", methods=["GET"])
@@ -161,7 +152,7 @@ def listar_imagens():
             })
         return jsonify(imagens), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return tratar_erro(e)
 
 
 @imagens_bp.route("/<imagem_id>", methods=["DELETE"])
@@ -178,11 +169,11 @@ def deletar_imagem(imagem_id):
             .select("id, storage_path")
             .eq("id", imagem_id)
             .eq("clinica_id", clinica_id)
-            .single()
+            .maybe_single()
             .execute()
         )
 
-        if not check.data:
+        if not (check and check.data):
             return jsonify({"error": "Imagem nao encontrada"}), 404
 
         storage_path = check.data["storage_path"]
@@ -192,4 +183,4 @@ def deletar_imagem(imagem_id):
 
         return jsonify({"message": "Imagem deletada com sucesso"}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return tratar_erro(e)

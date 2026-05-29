@@ -18,7 +18,7 @@ import TermoConsentimento from "../../components/consentimento/TermoConsentiment
 import { UserRound, Upload, FileText, AlertTriangle, X, Pencil, Stethoscope } from "lucide-react";
 import "../../styles/clinic.css";
 import "../../styles/Forms.css";
-import { formatCPF, formatPhone, formatDate, calcIdade, formatCurrency } from "../../utils/formatters";
+import { formatCPF, formatPhone, formatDate, idadeLabel, formatCurrency } from "../../utils/formatters";
 
 export default function ViewPatient() {
     const { token } = useAuth();
@@ -227,7 +227,7 @@ export default function ViewPatient() {
                         </div>
                         <div style={{display: 'flex', gap: '2rem', marginTop: '0.75rem', fontFamily: 'var(--font-secondary)', flexWrap: 'wrap'}}>
                             <span style={{fontSize: '13px', fontWeight: 500}}><strong style={{opacity: 0.75, fontWeight: 700}}>CPF:</strong> {formatCPF(paciente.cpf)}</span>
-                            <span style={{fontSize: '13px', fontWeight: 500}}><strong style={{opacity: 0.75, fontWeight: 700}}>Nascimento:</strong> {formatDate(paciente.data_nascimento)} ({calcIdade(paciente.data_nascimento)} anos)</span>
+                            <span style={{fontSize: '13px', fontWeight: 500}}><strong style={{opacity: 0.75, fontWeight: 700}}>Nascimento:</strong> {formatDate(paciente.data_nascimento)}{idadeLabel(paciente.data_nascimento)}</span>
                             <span style={{fontSize: '13px', fontWeight: 500}}><strong style={{opacity: 0.75, fontWeight: 700}}>WhatsApp:</strong> {formatPhone(paciente.telefone_whatsapp)}</span>
                         </div>
                     </div>
@@ -340,6 +340,46 @@ export default function ViewPatient() {
                                 <p style={{margin: '0 0 24px 0'}}>{anamnese.emergencia_nome ? `${anamnese.emergencia_nome} (${formatPhone(anamnese.emergencia_telefone)})` : "-"}</p>
                             </div>
                         </div>
+
+                        <h3 style={{color: 'var(--PrimaryColorsTheme)', margin: '1rem 0 1.5rem 0'}}>Dados Pessoais & Histórico</h3>
+                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem'}}>
+                            <div>
+                                <p style={{fontWeight: 700, margin: '0 0 8px 0', color: 'var(--TextColor75)'}}>Naturalidade</p>
+                                <p style={{margin: '0 0 24px 0'}}>{anamnese.naturalidade || "-"}</p>
+
+                                <p style={{fontWeight: 700, margin: '0 0 8px 0', color: 'var(--TextColor75)'}}>Nome da Mãe</p>
+                                <p style={{margin: '0 0 24px 0'}}>{anamnese.nome_mae || "-"}</p>
+
+                                <p style={{fontWeight: 700, margin: '0 0 8px 0', color: 'var(--TextColor75)'}}>Profissão</p>
+                                <p style={{margin: '0 0 24px 0'}}>{anamnese.profissao || "-"}</p>
+
+                                <p style={{fontWeight: 700, margin: '0 0 8px 0', color: 'var(--TextColor75)'}}>Peso / Altura</p>
+                                <p style={{margin: '0 0 24px 0'}}>
+                                    {anamnese.peso_kg ? `${anamnese.peso_kg} kg` : "-"}
+                                    {anamnese.altura_cm ? ` · ${anamnese.altura_cm} cm` : ""}
+                                </p>
+                            </div>
+                            <div>
+                                <p style={{fontWeight: 700, margin: '0 0 8px 0', color: 'var(--TextColor75)'}}>Última Visita ao Dentista</p>
+                                <p style={{margin: '0 0 24px 0'}}>{anamnese.ultima_visita_dentista || "-"}</p>
+
+                                <p style={{fontWeight: 700, margin: '0 0 8px 0', color: 'var(--TextColor75)'}}>Em Tratamento Médico?</p>
+                                <p style={{margin: '0 0 24px 0'}}>{anamnese.em_tratamento_medico ? `Sim — ${anamnese.tratamento_medico_qual || "não especificado"}` : "Não"}</p>
+
+                                <p style={{fontWeight: 700, margin: '0 0 8px 0', color: 'var(--TextColor75)'}}>Já foi Internado?</p>
+                                <p style={{margin: '0 0 24px 0'}}>{anamnese.ja_internado ? `Sim — ${anamnese.internacao_motivo || "motivo não informado"}` : "Não"}</p>
+
+                                <p style={{fontWeight: 700, margin: '0 0 8px 0', color: anamnese.reacao_anestesia ? 'var(--DangerText)' : 'var(--TextColor75)'}}>Reação a Anestesia Odontológica?</p>
+                                <p style={{margin: '0 0 24px 0', color: anamnese.reacao_anestesia ? 'var(--DangerText)' : 'inherit', fontWeight: anamnese.reacao_anestesia ? 700 : 400}}>{anamnese.reacao_anestesia ? `Sim — ${anamnese.reacao_anestesia_qual || "reação não especificada"}` : "Nega"}</p>
+                            </div>
+                        </div>
+
+                        {anamnese.historia_odontologica && (
+                            <div style={{marginTop: '1rem'}}>
+                                <p style={{fontWeight: 700, margin: '0 0 8px 0', color: 'var(--TextColor75)'}}>História Odontológica</p>
+                                <p style={{margin: 0}}>{anamnese.historia_odontologica}</p>
+                            </div>
+                        )}
                     </div>
                 )}
 

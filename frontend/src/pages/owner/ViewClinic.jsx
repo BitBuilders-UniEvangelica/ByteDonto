@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { apiGetClinic, apiGetMetricas, apiGetConsultas } from "../../services/api";
+import { apiGetClinic, apiGetMetricas } from "../../services/api";
 import { formatCNPJ, formatPhone } from "../../utils/formatters";
 import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
@@ -19,7 +19,6 @@ function ViewClinic() {
 
     const [clinica, setClinica] = useState(null);
     const [metricas, setMetricas] = useState(null);
-    const [consultas, setConsultas] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const opc_bar = useOwnerSidebar("clinic");
@@ -31,20 +30,15 @@ function ViewClinic() {
             .finally(() => setLoading(false));
     }, [id, token]);
 
+    // Métricas da clínica VISUALIZADA (passa o id), não da clínica ativa.
     useEffect(() => {
-        Promise.all([
-            apiGetMetricas(token).catch(() => null),
-            apiGetConsultas(token).catch(() => []),
-        ]).then(([m, c]) => {
-            setMetricas(m);
-            setConsultas(Array.isArray(c) ? c : []);
-        });
-    }, [token]);
+        apiGetMetricas(token, id)
+            .then(m => setMetricas(m))
+            .catch(() => setMetricas(null));
+    }, [token, id]);
 
-    const totalConsultas = consultas.length;
-    const consultasFinalizadas = consultas.filter(
-        c => c.status === "Finalizada" || c.status === "Concluída" || c.status === "Concluida"
-    ).length;
+    const totalConsultas = metricas?.total_consultas ?? 0;
+    const consultasFinalizadas = metricas?.consultas_finalizadas ?? 0;
 
     if (loading) {
         return (
@@ -95,6 +89,7 @@ function ViewClinic() {
                     <div style={{ marginTop: '1rem' }}>
                         <h2>Membros da Equipe</h2>
                         <div className="cards">
+                            <Card title="Nº Total de Membros" date={String(metricas?.total_membros ?? 0)} />
                             <Card title="Nº de Especialistas Ativos" date={String(metricas?.total_especialistas ?? 0)} />
                             <Card title="Nº de Consultas Hoje" date={String(metricas?.consultas_hoje ?? 0)} />
                         </div>

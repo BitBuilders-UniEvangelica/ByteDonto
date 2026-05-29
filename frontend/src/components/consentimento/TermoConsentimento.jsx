@@ -184,7 +184,7 @@ export default function TermoConsentimento({ paciente, token, onArquivado }) {
 
             <label style={{ display: "flex", gap: "10px", alignItems: "flex-start", cursor: "pointer", fontSize: "13px" }}>
                 <input type="checkbox" checked={aceitou} onChange={e => setAceitou(e.target.checked)} style={{ marginTop: "2px" }} />
-                <span>Li e concordo com os termos acima. Confirmo que sou o(a) paciente ou responsável legal.</span>
+                <span style={{ fontSize: "13px", fontWeight: 400, lineHeight: 1.5 }}>Li e concordo com os termos acima. Confirmo que sou o(a) paciente ou responsável legal.</span>
             </label>
 
             <div>

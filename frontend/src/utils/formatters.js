@@ -32,7 +32,7 @@ export function formatCurrency(v) {
 }
 
 export function calcIdade(dataString) {
-    if (!dataString) return "";
+    if (!dataString) return null;
     const [year, month, day] = String(dataString).split("T")[0].split("-");
     const nascimento = new Date(Number(year), Number(month) - 1, Number(day));
     const hoje = new Date();
@@ -40,6 +40,12 @@ export function calcIdade(dataString) {
     const m = hoje.getMonth() - nascimento.getMonth();
     if (m < 0 || (m === 0 && hoje.getDate() < nascimento.getDate())) idade--;
     return idade;
+}
+
+// Rótulo " (34 anos)" para exibição; string vazia se não houver data válida.
+export function idadeLabel(dataString) {
+    const idade = calcIdade(dataString);
+    return idade != null ? ` (${idade} anos)` : "";
 }
 
 // Máscaras de input — usadas em onChange para formatar enquanto o usuário digita

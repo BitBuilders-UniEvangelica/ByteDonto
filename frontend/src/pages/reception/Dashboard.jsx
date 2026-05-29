@@ -140,7 +140,7 @@ function ReceptionDashboard() {
                 dentista_id: agForm.dentista_id || null,
                 tipo_atendimento: agForm.tipo,
                 data_agendada,
-                procedimentos_descritos: agForm.motivo,
+                queixa_principal: agForm.motivo,
             });
             setConsultas(prev => [nova, ...prev]);
             setAgSucesso(true);
@@ -255,8 +255,8 @@ function ReceptionDashboard() {
                                     </div>
 
                                     <div className="field" style={{ marginBottom: '0' }}>
-                                        <label>Motivo da Consulta</label>
-                                        <input type="text" placeholder="Ex: Avaliação de dor, manutenção do aparelho..." style={{ width: '100%' }}
+                                        <label>Queixa Principal</label>
+                                        <input type="text" placeholder="Ex: dor ao mastigar, sangramento na gengiva, manutenção do aparelho..." style={{ width: '100%' }}
                                             value={agForm.motivo} onChange={e => setAgForm(p => ({ ...p, motivo: e.target.value }))} />
                                     </div>
 

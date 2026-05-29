@@ -1,7 +1,7 @@
 /* IMPORTS */
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { apiLogin, apiMe } from "../../services/api";
 import { supabase } from "../../services/supabaseClient";
@@ -14,6 +14,7 @@ function LoginPage() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const { login } = useAuth();
     const navigate = useNavigate();
@@ -136,14 +137,30 @@ function LoginPage() {
 
                     <div className="field">
                         <label htmlFor="password">Senha</label>
-                        <input
-                            id="password"
-                            type="password"
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
+                        <div style={{ position: "relative" }}>
+                            <input
+                                id="password"
+                                type={showPassword ? "text" : "password"}
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                style={{ width: "100%", paddingRight: "44px" }}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword((v) => !v)}
+                                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                                title={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                                style={{
+                                    position: "absolute", top: "50%", right: "12px", transform: "translateY(-50%)",
+                                    background: "none", border: "none", cursor: "pointer", padding: 0,
+                                    display: "flex", alignItems: "center", color: "var(--TextColor75)",
+                                }}
+                            >
+                                {showPassword ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
+                            </button>
+                        </div>
                     </div>
 
                     {error && <p className="auth-error">{error}</p>}

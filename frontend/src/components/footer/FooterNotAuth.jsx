@@ -24,7 +24,7 @@ function FooterNotAuth() {
                 </div>
                 <div className='bottom'>
                     <label>BYTE DONTO SERVICOS EM GESTÃO E SAUDE LTDA | CNPJ: XX.XXX.XXX/XXXX-XX</label>
-                    <label>label© 2025 ByteDonto - Todos os direitos reservados</label>
+                    <label>© 2025 ByteDonto - Todos os direitos reservados</label>
                 </div>
             </footer>
         </>

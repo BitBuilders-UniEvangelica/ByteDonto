@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS clinicas (
     razao_social TEXT,
     cnpj TEXT UNIQUE,
     telefone TEXT,
+    resumo TEXT,
+    redes_sociais JSONB DEFAULT '{}'::jsonb,
     endereco JSONB DEFAULT '{}'::jsonb,
     dono_id UUID REFERENCES auth.users(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -28,6 +30,8 @@ CREATE TABLE IF NOT EXISTS clinicas (
 
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS telefone TEXT;
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS endereco JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS resumo TEXT;
+ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS redes_sociais JSONB DEFAULT '{}'::jsonb;
 
 -- ------------------------------------------------------------
 -- 2. USUÁRIOS (perfis: Dono, Especialista, Recepção)
@@ -40,11 +44,13 @@ CREATE TABLE IF NOT EXISTS usuarios (
     permissoes JSONB DEFAULT '{}'::jsonb,
     ativo BOOLEAN DEFAULT TRUE,
     percentual_repasse NUMERIC(5,2) DEFAULT 0,  -- % que o dentista recebe sobre os procedimentos que produziu
+    cro TEXT,  -- registro no Conselho Regional de Odontologia (obrigatório p/ Especialista), ex.: CRO-SP 12345
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS ativo BOOLEAN DEFAULT TRUE;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS percentual_repasse NUMERIC(5,2) DEFAULT 0;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS cro TEXT;
 
 -- ------------------------------------------------------------
 -- 3. PACIENTES
@@ -83,6 +89,7 @@ CREATE TABLE IF NOT EXISTS atendimentos (
     data_agendada TIMESTAMP WITH TIME ZONE NOT NULL,
     duracao_minutos INTEGER DEFAULT 30,
     cadeira TEXT,
+    queixa_principal TEXT,
     procedimentos_descritos TEXT,
     evolucao_clinica TEXT,
     tipo_atendimento TEXT,
@@ -94,6 +101,7 @@ CREATE TABLE IF NOT EXISTS atendimentos (
 
 ALTER TABLE atendimentos ADD COLUMN IF NOT EXISTS duracao_minutos INTEGER DEFAULT 30;
 ALTER TABLE atendimentos ADD COLUMN IF NOT EXISTS cadeira TEXT;
+ALTER TABLE atendimentos ADD COLUMN IF NOT EXISTS queixa_principal TEXT;
 ALTER TABLE atendimentos ADD COLUMN IF NOT EXISTS updated_by UUID REFERENCES usuarios(id);
 ALTER TABLE atendimentos ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 

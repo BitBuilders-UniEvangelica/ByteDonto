@@ -7,6 +7,7 @@ import {
     apiAtualizarLancamento,
     apiGetPacientes,
     apiGetRepasses,
+    apiGetEquipe,
 } from "../../services/api";
 import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
@@ -28,6 +29,7 @@ const STATUS_STYLE = {
 
 const FORM_INICIAL = {
     paciente_id: "",
+    dentista_responsavel: "",
     valor: "",
     descricao: "",
     forma_pagamento: "Dinheiro",
@@ -127,6 +129,7 @@ function Financial({ role }) {
     /* estados */
     const [lancamentos, setLancamentos] = useState([]);
     const [pacientes, setPacientes] = useState([]);
+    const [dentistas, setDentistas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filtroStatus, setFiltroStatus] = useState("Todos");
 
@@ -150,9 +153,13 @@ function Financial({ role }) {
         Promise.all([
             apiGetFinanceiro(token).catch(() => []),
             apiGetPacientes(token).catch(() => []),
-        ]).then(([f, p]) => {
+            apiGetEquipe(token).catch(() => []),
+        ]).then(([f, p, e]) => {
             setLancamentos(Array.isArray(f) ? f : []);
             setPacientes(Array.isArray(p) ? p : []);
+            // Só quem atende: Especialista e Dono (cirurgiões-dentistas).
+            const equipe = Array.isArray(e) ? e : [];
+            setDentistas(equipe.filter(m => m.papel === "Especialista" || m.papel === "Dono"));
         }).finally(() => setLoading(false));
     }, [token]);
 
@@ -193,6 +200,10 @@ function Financial({ role }) {
 
     async function handleCriar(e) {
         e.preventDefault();
+        if (!form.paciente_id) {
+            setErroForm("Selecione o paciente do lançamento.");
+            return;
+        }
         if (!form.valor || Number(form.valor) <= 0) {
             setErroForm("Informe um valor válido.");
             return;
@@ -201,7 +212,8 @@ function Financial({ role }) {
         setErroForm(null);
         try {
             const novo = await apiCriarLancamento(token, {
-                paciente_id: form.paciente_id || null,
+                paciente_id: form.paciente_id,
+                dentista_responsavel: form.dentista_responsavel || undefined,
                 valor: Number(form.valor),
                 descricao: form.descricao || undefined,
                 forma_pagamento: form.forma_pagamento,
@@ -258,11 +270,21 @@ function Financial({ role }) {
                                 )}
 
                                 <div className="field" style={{ marginBottom: "1rem" }}>
-                                    <label>Paciente</label>
-                                    <select style={{ width: "100%" }} value={form.paciente_id} onChange={e => setForm(p => ({ ...p, paciente_id: e.target.value }))}>
-                                        <option value="">Selecione (opcional)...</option>
+                                    <label>Paciente *</label>
+                                    <select style={{ width: "100%" }} required value={form.paciente_id} onChange={e => setForm(p => ({ ...p, paciente_id: e.target.value }))}>
+                                        <option value="">Selecione o paciente...</option>
                                         {pacientes.map(p => (
                                             <option key={p.id} value={p.id}>{p.nome}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="field" style={{ marginBottom: "1rem" }}>
+                                    <label>Dentista responsável</label>
+                                    <select style={{ width: "100%" }} value={form.dentista_responsavel} onChange={e => setForm(p => ({ ...p, dentista_responsavel: e.target.value }))}>
+                                        <option value="">Selecione (opcional)...</option>
+                                        {dentistas.map(d => (
+                                            <option key={d.id} value={d.id}>{d.nome}</option>
                                         ))}
                                     </select>
                                 </div>

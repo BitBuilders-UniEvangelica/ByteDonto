@@ -38,8 +38,10 @@ const HORAS = Array.from({ length: 14 }, (_, i) => i + 7); // 07 .. 20
 
 const STATUS_BADGE = {
     Agendado: { bg: "var(--PrimaryColorsBack)", color: "var(--PrimaryColorsTheme)" },
+    Aguardando: { bg: "var(--WarningBack)", color: "var(--WarningText)" },
     Finalizado: { bg: "var(--SuccessBack)", color: "var(--SuccessText)" },
     Cancelado: { bg: "var(--DangerBack)", color: "var(--DangerText)" },
+    Faltou: { bg: "var(--BackColor)", color: "var(--TextColor75)" },
 };
 
 /* ---- CALENDAR WEEK COMPONENT ---- */
@@ -274,6 +276,11 @@ function SpecialistDashboard() {
                                     <span className="ui-label" style={{ background: "var(--PrimaryColorsBack)", color: "var(--PrimaryColorsTheme)", padding: "6px 12px", borderRadius: "var(--radius-sm)", marginBottom: "12px", display: "inline-block" }}>ENCERRAR CONSULTA</span>
                                     <h2 className="section" style={{ color: "var(--TextColor)", margin: "8px 0 0 0", fontSize: "24px" }}>Resumo do Atendimento</h2>
                                     <p style={{ color: "var(--TextColor75)", margin: "8px 0 0 0" }}>Paciente: <strong style={{ color: "var(--PrimaryColorsTheme)" }}>{activePatient}</strong></p>
+                                    {consultaAtiva?.queixa_principal && (
+                                        <p style={{ color: "var(--TextColor75)", margin: "6px 0 0 0", fontSize: "14px" }}>
+                                            Queixa principal: <strong>{consultaAtiva.queixa_principal}</strong>
+                                        </p>
+                                    )}
                                 </div>
                                 <button aria-label="Fechar" onClick={() => setShowEncerrar(false)} style={{ background: "var(--BackColor)", border: "1px solid var(--LineColor)", width: "40px", height: "40px", borderRadius: "50%", cursor: "pointer", color: "var(--TextColor75)", display: "flex", alignItems: "center", justifyContent: "center" }}><X size={18} strokeWidth={2} /></button>
                             </div>
@@ -441,13 +448,15 @@ function SpecialistDashboard() {
                                                     <span style={{ background: badge.bg, color: badge.color, padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700 }}>
                                                         {consulta.status || "Agendado"}
                                                     </span>
-                                                    <button
-                                                        onClick={() => abrirEncerrar(consulta)}
-                                                        className="submit"
-                                                        style={{ padding: "6px 14px", fontSize: "13px", borderRadius: "var(--radius-sm)", background: "var(--PrimaryColorsTheme)", boxShadow: "none" }}
-                                                    >
-                                                        Encerrar
-                                                    </button>
+                                                    {["Agendado", "Aguardando"].includes(consulta.status || "Agendado") && (
+                                                        <button
+                                                            onClick={() => abrirEncerrar(consulta)}
+                                                            className="submit"
+                                                            style={{ padding: "6px 14px", fontSize: "13px", borderRadius: "var(--radius-sm)", background: "var(--PrimaryColorsTheme)", boxShadow: "none" }}
+                                                        >
+                                                            Encerrar
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         ) : (

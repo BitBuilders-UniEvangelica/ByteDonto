@@ -1,21 +1,21 @@
 from flask import Blueprint, request, jsonify
 from app.database import supabase
 from app.validators import campo_obrigatorio, validar_cnpj
+from app.auth_utils import get_token, tratar_erro
 
 clinicas_bp = Blueprint("clinicas", __name__)
 
 # Colunas reais da tabela 'clinicas' que o cliente pode gravar.
 # Obs.: o frontend envia "nome" — ele é mapeado para "nome_fantasia" abaixo.
+# 'resumo' e 'redes_sociais' dependem de migration_atualizacoes.sql; se ainda não
+# existirem, gravar_clinica degrada para as colunas básicas em vez de quebrar.
 COLUNAS_CLINICA = {
     "nome_fantasia", "razao_social", "cnpj", "telefone", "endereco",
+    "resumo", "redes_sociais",
 }
 
 # Colunas garantidas mesmo sem a migração migration_atualizacoes.sql
 COLUNAS_CLINICA_BASICAS = {"nome_fantasia", "razao_social", "cnpj"}
-
-
-def get_token(req):
-    return req.headers.get("Authorization", "").replace("Bearer ", "")
 
 
 def gravar_clinica(operacao, payload, clinica_id=None):
@@ -38,12 +38,30 @@ def gravar_clinica(operacao, payload, clinica_id=None):
             return _exec(basico)
         raise
 
+def get_user_id(token):
+    """Resolve o id do usuário autenticado a partir do token."""
+    return supabase.auth.get_user(token).user.id
+
+
 def get_user_clinica_id(token):
-    """Resolve o clinica_id do usuário autenticado a partir do token."""
-    user_response = supabase.auth.get_user(token)
-    user_id = user_response.user.id
-    perfil = supabase.table("usuarios").select("clinica_id").eq("id", user_id).single().execute()
-    return perfil.data.get("clinica_id") if perfil.data else None
+    """Resolve a clínica ATIVA do usuário autenticado (usuarios.clinica_id)."""
+    user_id = get_user_id(token)
+    perfil = supabase.table("usuarios").select("clinica_id").eq("id", user_id).maybe_single().execute()
+    return perfil.data.get("clinica_id") if (perfil and perfil.data) else None
+
+
+def pode_acessar_clinica(user_id, clinica_id):
+    """
+    Autoriza o usuário a ver/editar uma clínica se ele for o DONO dela
+    (clinicas.dono_id) ou se for a sua clínica ativa (usuarios.clinica_id).
+    Permite que o dono acesse qualquer uma das várias clínicas que possui,
+    não apenas a ativa.
+    """
+    clinica = supabase.table("clinicas").select("dono_id").eq("id", clinica_id).maybe_single().execute()
+    if clinica and clinica.data and clinica.data.get("dono_id") == user_id:
+        return True
+    perfil = supabase.table("usuarios").select("clinica_id").eq("id", user_id).maybe_single().execute()
+    return bool(perfil and perfil.data and perfil.data.get("clinica_id") == clinica_id)
 
 @clinicas_bp.route("/", methods=["POST"])
 def criar_clinica():
@@ -55,7 +73,7 @@ def criar_clinica():
         user_response = supabase.auth.get_user(token)
         user_id = user_response.user.id
         
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
 
         # O frontend envia "nome"; a coluna real da tabela é "nome_fantasia".
         if data.get("nome") and not data.get("nome_fantasia"):
@@ -74,39 +92,76 @@ def criar_clinica():
 
         result_clinica = gravar_clinica("insert", payload)
         nova_clinica_id = result_clinica.data[0]["id"]
-        
-        # 2. Update the user's profile to link the new clinic
+
+        # 2. A clínica recém-criada vira a clínica ATIVA do dono. As clínicas
+        #    anteriores continuam vinculadas via clinicas.dono_id (não se perdem).
         supabase.table("usuarios").update({"clinica_id": nova_clinica_id}).eq("id", user_id).execute()
 
         return jsonify(result_clinica.data[0]), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return tratar_erro(e)
 
 @clinicas_bp.route("/", methods=["GET"])
 def listar_clinicas():
-    """Retorna a clínica do usuário autenticado."""
+    """
+    Lista TODAS as clínicas do dono autenticado (clinicas.dono_id), não apenas
+    a clínica ativa. Cada item recebe `ativa: true/false` indicando qual é a
+    clínica ativa no momento (usuarios.clinica_id). Para um membro que não é
+    dono de nenhuma clínica, retorna apenas a sua clínica ativa.
+    """
     token = get_token(request)
     if not token:
         return jsonify({"error": "Não autorizado"}), 401
 
     try:
-        user_response = supabase.auth.get_user(token)
-        user_id = user_response.user.id
+        user_id = get_user_id(token)
 
-        perfil = supabase.table("usuarios").select("clinica_id").eq("id", user_id).single().execute()
-        clinica_id = perfil.data.get("clinica_id") if perfil.data else None
+        perfil = supabase.table("usuarios").select("clinica_id").eq("id", user_id).maybe_single().execute()
+        clinica_ativa_id = perfil.data.get("clinica_id") if (perfil and perfil.data) else None
 
-        if not clinica_id:
-            return jsonify([]), 200
-
-        result = supabase.table("clinicas").select("*").eq("id", clinica_id).execute()
+        # Clínicas que o usuário possui (é dono)
+        result = (
+            supabase.table("clinicas")
+            .select("*")
+            .eq("dono_id", user_id)
+            .order("created_at")
+            .execute()
+        )
         clinicas = result.data or []
-        # Expõe "nome" (alias de nome_fantasia) para o frontend usar de forma consistente
+
+        # Membro sem clínicas próprias: cai de volta para a clínica ativa
+        if not clinicas and clinica_ativa_id:
+            fallback = supabase.table("clinicas").select("*").eq("id", clinica_ativa_id).execute()
+            clinicas = fallback.data or []
+
         for c in clinicas:
             c["nome"] = c.get("nome_fantasia")
+            c["ativa"] = c.get("id") == clinica_ativa_id
         return jsonify(clinicas), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return tratar_erro(e)
+
+
+@clinicas_bp.route("/<clinica_id>/ativar", methods=["PUT"])
+def ativar_clinica(clinica_id):
+    """Define a clínica indicada como a clínica ativa do dono autenticado."""
+    token = get_token(request)
+    if not token:
+        return jsonify({"error": "Não autorizado"}), 401
+
+    try:
+        user_id = get_user_id(token)
+
+        clinica = supabase.table("clinicas").select("dono_id").eq("id", clinica_id).maybe_single().execute()
+        if not (clinica and clinica.data):
+            return jsonify({"error": "Clínica não encontrada"}), 404
+        if clinica.data.get("dono_id") != user_id:
+            return jsonify({"error": "Você não é o dono desta clínica"}), 403
+
+        supabase.table("usuarios").update({"clinica_id": clinica_id}).eq("id", user_id).execute()
+        return jsonify({"ok": True, "clinica_id": clinica_id}), 200
+    except Exception as e:
+        return tratar_erro(e)
 
 
 @clinicas_bp.route("/<clinica_id>", methods=["GET"])
@@ -116,17 +171,18 @@ def get_clinica(clinica_id):
         return jsonify({"error": "Não autorizado"}), 401
 
     try:
-        user_clinica_id = get_user_clinica_id(token)
-        if user_clinica_id != clinica_id:
+        user_id = get_user_id(token)
+        if not pode_acessar_clinica(user_id, clinica_id):
             return jsonify({"error": "Você não tem permissão para acessar esta clínica"}), 403
 
-        result = supabase.table("clinicas").select("*").eq("id", clinica_id).single().execute()
-        clinica = result.data or {}
-        if clinica:
-            clinica["nome"] = clinica.get("nome_fantasia")
+        result = supabase.table("clinicas").select("*").eq("id", clinica_id).maybe_single().execute()
+        clinica = (result.data if result else None) or {}
+        if not clinica:
+            return jsonify({"error": "Clínica não encontrada"}), 404
+        clinica["nome"] = clinica.get("nome_fantasia")
         return jsonify(clinica), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return tratar_erro(e)
 
 @clinicas_bp.route("/<clinica_id>", methods=["PUT"])
 def atualizar_clinica(clinica_id):
@@ -135,11 +191,11 @@ def atualizar_clinica(clinica_id):
         return jsonify({"error": "Não autorizado"}), 401
 
     try:
-        user_clinica_id = get_user_clinica_id(token)
-        if user_clinica_id != clinica_id:
+        user_id = get_user_id(token)
+        if not pode_acessar_clinica(user_id, clinica_id):
             return jsonify({"error": "Você não tem permissão para atualizar esta clínica"}), 403
 
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
 
         # O frontend envia "nome"; a coluna real da tabela é "nome_fantasia".
         if data.get("nome") and not data.get("nome_fantasia"):
@@ -162,4 +218,4 @@ def atualizar_clinica(clinica_id):
         result = gravar_clinica("update", payload, clinica_id)
         return jsonify(result.data), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return tratar_erro(e)

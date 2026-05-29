@@ -9,10 +9,11 @@ import Odontograma from "../../components/odontograma/Odontograma";
 import RegistroClinico from "../../components/registro/RegistroClinico";
 import PlanoDeTratamento from "../../components/plano/PlanoDeTratamento";
 import GaleriaImagens from "../../components/imagens/GaleriaImagens";
+import PainelClinico from "../../components/clinico/PainelClinico";
 import { UserRound, Printer, Plus, X, AlertTriangle, Check } from "lucide-react";
 import "../../styles/clinic.css";
 import "../../styles/Forms.css";
-import { formatDate, calcIdade } from "../../utils/formatters";
+import { formatDate, calcIdade, idadeLabel } from "../../utils/formatters";
 
 function Receituario({ paciente, dentista }) {
     const [medicamentos, setMedicamentos] = useState([{ nome:"", posologia:"", duracao:"" }]);
@@ -196,7 +197,7 @@ export default function SpecialistViewRecord() {
                                 <span style={{background: 'rgba(255,255,255,0.18)', padding: '4px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700}}>Em Tratamento</span>
                             </div>
                             <div style={{display: 'flex', gap: '2rem', marginTop: '0.75rem', fontFamily: 'var(--font-secondary)'}}>
-                                <span style={{fontSize: '13px', fontWeight: 500}}><strong style={{opacity: 0.7, fontWeight: 700}}>Nascimento:</strong> {formatDate(paciente.data_nascimento)} ({calcIdade(paciente.data_nascimento)} anos)</span>
+                                <span style={{fontSize: '13px', fontWeight: 500}}><strong style={{opacity: 0.7, fontWeight: 700}}>Nascimento:</strong> {formatDate(paciente.data_nascimento)}{idadeLabel(paciente.data_nascimento)}</span>
                             </div>
                         </div>
                     </div>
@@ -334,6 +335,60 @@ export default function SpecialistViewRecord() {
                                         onChange={e => setAnamneseForm(p => ({ ...p, cirurgias: e.target.value }))} />
                                 </div>
                             </div>
+
+                            {/* EXAME CLÍNICO — preenchido pelo cirurgião-dentista */}
+                            <h3 style={{color: 'var(--PrimaryColorsTheme)', margin: '1rem 0 0.5rem 0'}}>Exame Clínico</h3>
+                            <p className="text75" style={{marginBottom: '1.5rem', fontSize: '13px'}}>Sinais vitais e achados do exame intra e extraoral.</p>
+
+                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem', marginBottom: '1.5rem'}}>
+                                <div>
+                                    <p style={{fontWeight: 700, margin: '0 0 8px 0', color: 'var(--TextColor75)', fontSize: '13px'}}>Pressão Arterial (1º atend.)</p>
+                                    <input type="text" placeholder="120/80" style={{width: '100%'}}
+                                        value={anamneseForm.pressao_arterial_inicial || ""}
+                                        onChange={e => setAnamneseForm(p => ({ ...p, pressao_arterial_inicial: e.target.value }))} />
+                                </div>
+                                <div>
+                                    <p style={{fontWeight: 700, margin: '0 0 8px 0', color: 'var(--TextColor75)', fontSize: '13px'}}>Data da aferição</p>
+                                    <input type="date" style={{width: '100%'}}
+                                        value={anamneseForm.pressao_data || ""}
+                                        onChange={e => setAnamneseForm(p => ({ ...p, pressao_data: e.target.value }))} />
+                                </div>
+                                <div>
+                                    <p style={{fontWeight: 700, margin: '0 0 8px 0', color: 'var(--TextColor75)', fontSize: '13px'}}>Peso (kg)</p>
+                                    <input type="number" min="0" step="0.1" placeholder="72" style={{width: '100%'}}
+                                        value={anamneseForm.peso_kg ?? ""}
+                                        onChange={e => setAnamneseForm(p => ({ ...p, peso_kg: e.target.value === '' ? null : Number(e.target.value) }))} />
+                                </div>
+                                <div>
+                                    <p style={{fontWeight: 700, margin: '0 0 8px 0', color: 'var(--TextColor75)', fontSize: '13px'}}>Altura (cm)</p>
+                                    <input type="number" min="0" step="1" placeholder="168" style={{width: '100%'}}
+                                        value={anamneseForm.altura_cm ?? ""}
+                                        onChange={e => setAnamneseForm(p => ({ ...p, altura_cm: e.target.value === '' ? null : Number(e.target.value) }))} />
+                                </div>
+                            </div>
+
+                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '1rem'}}>
+                                <div>
+                                    <p style={{fontWeight: 700, margin: '0 0 8px 0', color: 'var(--TextColor75)'}}>Exame Extraoral</p>
+                                    <textarea style={{width: '100%'}} rows="3" placeholder="Face, ATM, linfonodos, musculatura, simetria..."
+                                        value={anamneseForm.exame_extraoral || ""}
+                                        onChange={e => setAnamneseForm(p => ({ ...p, exame_extraoral: e.target.value }))} />
+                                </div>
+                                <div>
+                                    <p style={{fontWeight: 700, margin: '0 0 8px 0', color: 'var(--TextColor75)'}}>Exame Intraoral</p>
+                                    <textarea style={{width: '100%'}} rows="3" placeholder="Mucosa, língua, gengiva, dentes, oclusão, higiene..."
+                                        value={anamneseForm.exame_intraoral || ""}
+                                        onChange={e => setAnamneseForm(p => ({ ...p, exame_intraoral: e.target.value }))} />
+                                </div>
+                            </div>
+
+                            {/* Apoio clínico: ASA sugerido + dose máxima de anestésico */}
+                            <PainelClinico
+                                anamnese={anamneseForm}
+                                idade={calcIdade(paciente.data_nascimento)}
+                                asaManual={anamneseForm.asa}
+                                onAsaChange={(v) => setAnamneseForm(p => ({ ...p, asa: v }))}
+                            />
 
                             <div style={{display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem'}}>
                                 <button type="submit" className="submit" disabled={salvandoAnamnese}>

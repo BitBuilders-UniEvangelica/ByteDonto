@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { apiGetEquipe, apiCriarMembro, apiRemoverMembro, apiAtualizarMembro, apiAtualizarPermissoes } from "../../services/api";
+import { apiGetEquipe, apiCriarMembro, apiRemoverMembro, apiAtualizarMembro, apiAtualizarPermissoes, apiRedefinirSenha } from "../../services/api";
 import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
 import { useOwnerSidebar } from "../../hooks/useSidebar";
@@ -30,7 +30,7 @@ const PAPEL_LABEL = {
     "Recepção": { label: "Recepção", bg: "var(--SuccessBack)", cor: "var(--SuccessText)" },
 };
 
-const FORM_INICIAL = { nome: "", email: "", senha: "", papel: "Especialista" };
+const FORM_INICIAL = { nome: "", email: "", senha: "", papel: "Especialista", cro: "" };
 
 function BindClinic() {
     const { token } = useAuth();
@@ -50,7 +50,7 @@ function BindClinic() {
     // Modal de edição
     const [showEdit, setShowEdit] = useState(false);
     const [membroEditando, setMembroEditando] = useState(null);
-    const [editForm, setEditForm] = useState({ nome: "", papel: "", percentual_repasse: 0 });
+    const [editForm, setEditForm] = useState({ nome: "", papel: "", percentual_repasse: 0, cro: "" });
     const [editEnviando, setEditEnviando] = useState(false);
     const [editErro, setEditErro] = useState(null);
 
@@ -61,6 +61,14 @@ function BindClinic() {
     const [permSalvando, setPermSalvando] = useState(false);
     const [permErro, setPermErro] = useState(null);
     const [permSucesso, setPermSucesso] = useState(false);
+
+    // Modal de redefinir senha
+    const [showSenha, setShowSenha] = useState(false);
+    const [membroSenha, setMembroSenha] = useState(null);
+    const [senhaForm, setSenhaForm] = useState({ senha: "", confirma: "" });
+    const [senhaEnviando, setSenhaEnviando] = useState(false);
+    const [senhaErro, setSenhaErro] = useState(null);
+    const [senhaSucesso, setSenhaSucesso] = useState(false);
 
     // Confirmação de remoção
     const [removendoId, setRemovendoId] = useState(null);
@@ -108,6 +116,11 @@ function BindClinic() {
             return;
         }
 
+        if (form.papel === "Especialista" && !form.cro.trim()) {
+            setFormErro("CRO é obrigatório para o Especialista (ex.: CRO-SP 12345).");
+            return;
+        }
+
         setEnviando(true);
         try {
             const novo = await apiCriarMembro(token, form);
@@ -131,6 +144,7 @@ function BindClinic() {
             nome: membro.nome,
             papel: membro.papel,
             percentual_repasse: Number(membro.percentual_repasse || 0),
+            cro: membro.cro || "",
         });
         setEditErro(null);
         setShowEdit(true);
@@ -138,16 +152,55 @@ function BindClinic() {
 
     async function handleEditar(e) {
         e.preventDefault();
+        if (editForm.papel === "Especialista" && !String(editForm.cro || "").trim()) {
+            setEditErro("CRO é obrigatório para o Especialista (ex.: CRO-SP 12345).");
+            return;
+        }
         setEditEnviando(true);
         setEditErro(null);
         try {
-            const atualizado = await apiAtualizarMembro(token, membroEditando.id, editForm);
+            // CRO só vale para Especialista; ao mudar para outro papel, zera o CRO.
+            const payload = { ...editForm };
+            if (payload.papel !== "Especialista") payload.cro = null;
+            const atualizado = await apiAtualizarMembro(token, membroEditando.id, payload);
             setEquipe(prev => prev.map(m => m.id === membroEditando.id ? { ...m, ...atualizado } : m));
             setShowEdit(false);
         } catch (e) {
             setEditErro(e.message);
         } finally {
             setEditEnviando(false);
+        }
+    }
+
+    // --- Redefinir senha ---
+    function abrirSenha(membro) {
+        setMembroSenha(membro);
+        setSenhaForm({ senha: "", confirma: "" });
+        setSenhaErro(null);
+        setSenhaSucesso(false);
+        setShowSenha(true);
+    }
+
+    async function handleRedefinirSenha(e) {
+        e.preventDefault();
+        setSenhaErro(null);
+        if (senhaForm.senha.length < 8) {
+            setSenhaErro("A senha deve ter no mínimo 8 caracteres.");
+            return;
+        }
+        if (senhaForm.senha !== senhaForm.confirma) {
+            setSenhaErro("As senhas não conferem.");
+            return;
+        }
+        setSenhaEnviando(true);
+        try {
+            await apiRedefinirSenha(token, membroSenha.id, senhaForm.senha);
+            setSenhaSucesso(true);
+            setSenhaForm({ senha: "", confirma: "" });
+        } catch (err) {
+            setSenhaErro(err.message);
+        } finally {
+            setSenhaEnviando(false);
         }
     }
 
@@ -268,6 +321,17 @@ function BindClinic() {
                                         ))}
                                     </select>
                                 </div>
+                                {form.papel === "Especialista" && (
+                                    <div className="field">
+                                        <label htmlFor="cro">CRO (Registro no Conselho) *</label>
+                                        <input id="cro" type="text" value={form.cro}
+                                            onChange={e => setForm(p => ({ ...p, cro: e.target.value }))}
+                                            placeholder="Ex.: CRO-SP 12345" />
+                                        <p style={{ fontSize: "12px", color: "var(--TextColor75)", margin: "6px 0 0 0" }}>
+                                            Obrigatório para cirurgiões-dentistas. Aparece no prontuário e nas prescrições.
+                                        </p>
+                                    </div>
+                                )}
                                 <div style={{ display: "flex", justifyContent: "flex-end", gap: "1rem", marginTop: "2rem" }}>
                                     <button type="button" className="submit"
                                         style={{ background: "var(--LineColor)", color: "var(--TextColor)", boxShadow: "none" }}
@@ -316,6 +380,14 @@ function BindClinic() {
                             </div>
                             {editForm.papel === "Especialista" && (
                                 <div className="field">
+                                    <label htmlFor="edit-cro">CRO (Registro no Conselho) *</label>
+                                    <input id="edit-cro" type="text" value={editForm.cro}
+                                        onChange={e => setEditForm(p => ({ ...p, cro: e.target.value }))}
+                                        placeholder="Ex.: CRO-SP 12345" />
+                                </div>
+                            )}
+                            {editForm.papel === "Especialista" && (
+                                <div className="field">
                                     <label htmlFor="edit-pct">Percentual de repasse (%)</label>
                                     <input
                                         id="edit-pct"
@@ -342,6 +414,63 @@ function BindClinic() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal — Redefinir senha */}
+            {showSenha && membroSenha && (
+                <div className="forms-hover owner" style={{ display: "flex" }}>
+                    <div className="forms-card" style={{ maxWidth: "440px", width: "100%" }}>
+                        <div style={{ marginBottom: "1.5rem" }}>
+                            <h2 style={{ margin: 0, color: "var(--PrimaryColorsTheme)" }}>Redefinir Senha</h2>
+                            <p className="text75" style={{ margin: "0.5rem 0 0 0", fontSize: "14px" }}>
+                                Defina uma nova senha de acesso para <strong>{membroSenha.nome}</strong>.
+                            </p>
+                        </div>
+
+                        {senhaSucesso ? (
+                            <div style={{ textAlign: "center", padding: "1.5rem 0" }}>
+                                <CheckCircle2 size={48} strokeWidth={2} color="var(--SuccessText)" />
+                                <p style={{ margin: "1rem 0 0 0", fontWeight: 600 }}>Senha redefinida com sucesso.</p>
+                                <p className="text75" style={{ margin: "0.5rem 0 0 0", fontSize: "13px" }}>
+                                    Informe a nova senha ao membro. Ela já vale no próximo login.
+                                </p>
+                                <button type="button" className="submit" style={{ marginTop: "1.5rem" }} onClick={() => setShowSenha(false)}>
+                                    Fechar
+                                </button>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleRedefinirSenha}>
+                                {senhaErro && (
+                                    <div style={{ background: "var(--DangerBack)", color: "var(--DangerText)", padding: "10px 14px", borderRadius: "8px", marginBottom: "1rem", fontSize: "14px", display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <AlertTriangle size={16} strokeWidth={2} /> {senhaErro}
+                                    </div>
+                                )}
+                                <div className="field">
+                                    <label htmlFor="nova-senha">Nova senha *</label>
+                                    <input id="nova-senha" type="password" required minLength={8} value={senhaForm.senha}
+                                        onChange={e => setSenhaForm(p => ({ ...p, senha: e.target.value }))}
+                                        placeholder="Mínimo 8 caracteres" />
+                                </div>
+                                <div className="field">
+                                    <label htmlFor="confirma-senha">Confirmar nova senha *</label>
+                                    <input id="confirma-senha" type="password" required value={senhaForm.confirma}
+                                        onChange={e => setSenhaForm(p => ({ ...p, confirma: e.target.value }))}
+                                        placeholder="Repita a nova senha" />
+                                </div>
+                                <div style={{ display: "flex", justifyContent: "flex-end", gap: "1rem", marginTop: "2rem" }}>
+                                    <button type="button" className="submit"
+                                        style={{ background: "var(--LineColor)", color: "var(--TextColor)", boxShadow: "none" }}
+                                        onClick={() => setShowSenha(false)} disabled={senhaEnviando}>
+                                        Cancelar
+                                    </button>
+                                    <button type="submit" className="submit" disabled={senhaEnviando}>
+                                        {senhaEnviando ? "Salvando..." : "Redefinir Senha"}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
                     </div>
                 </div>
             )}
@@ -467,7 +596,7 @@ function BindClinic() {
                                 </div>
                             ) : (
                                 <div className="table">
-                                    <div className="table-header" style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr 240px" }}>
+                                    <div className="table-header" style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr 320px" }}>
                                         <p className="text75">Nome</p>
                                         <p className="text75">Nível de Acesso</p>
                                         <p className="text75">Status</p>
@@ -481,8 +610,13 @@ function BindClinic() {
                                             const dataFormatada = formatDate(membro.created_at);
                                             const ativo = membro.ativo !== false;
                                             return (
-                                                <div className="table-row" key={membro.id} style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr 240px" }}>
-                                                    <p style={{ fontWeight: 600 }}>{membro.nome}</p>
+                                                <div className="table-row" key={membro.id} style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr 320px" }}>
+                                                    <div>
+                                                        <p style={{ fontWeight: 600 }}>{membro.nome}</p>
+                                                        {membro.papel === "Especialista" && membro.cro && (
+                                                            <span style={{ fontSize: "12px", color: "var(--TextColor75)" }}>{membro.cro}</span>
+                                                        )}
+                                                    </div>
                                                     <span style={{ background: config.bg, color: config.cor, padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: 700, alignSelf: "center", width: "fit-content" }}>
                                                         {config.label}
                                                     </span>
@@ -506,6 +640,11 @@ function BindClinic() {
                                                                 fontSize: "12px", fontWeight: 700, cursor: "pointer",
                                                             }}>
                                                             {statusId === membro.id ? "..." : (ativo ? "Desativar" : "Ativar")}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => abrirSenha(membro)}
+                                                            style={{ background: "var(--BackColor)", color: "var(--TextColor75)", border: "1px solid var(--LineColor)", padding: "6px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                                                            Senha
                                                         </button>
                                                         <button
                                                             onClick={() => abrirPermissoes(membro)}
