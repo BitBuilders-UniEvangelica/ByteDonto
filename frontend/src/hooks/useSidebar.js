@@ -1,6 +1,6 @@
 import { useAuth } from "../context/AuthContext";
 import { usePermissao } from "./usePermissao";
-import { Building2, Users, CalendarDays, UserRound, Wallet } from "lucide-react";
+import { Hospital, Users, CalendarDays, UserRound, Wallet } from "lucide-react";
 
 /* Definição única do menu, dirigida por permissões.
    Cada item declara como sua visibilidade é decidida:
@@ -11,7 +11,7 @@ import { Building2, Users, CalendarDays, UserRound, Wallet } from "lucide-react"
    telas clínicas (/specialist/*); o Dono e a Recepção usam as telas de
    gestão (/reception/*), que têm agendamento e cadastro de pacientes. */
 const MENU = [
-    { id: "clinic",    name: "Clínica",    icon: Building2,    donoOnly: true },
+    { id: "clinic",    name: "Clínica",    icon: Hospital,    donoOnly: true },
     { id: "team",      name: "Equipe",     icon: Users,        donoOnly: true },
     { id: "agenda",    name: "Agenda",     icon: CalendarDays, perm: "ver_agenda" },
     { id: "patients",  name: "Pacientes",  icon: UserRound,    perm: "ver_pacientes" },

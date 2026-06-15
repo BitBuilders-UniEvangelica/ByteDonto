@@ -36,7 +36,7 @@
 
 | Versão | Período | Fase | Data | Descrição |
 |---|---|---|---|---|
-| 3.3 | 7º | 03 | 24/05/2026 | Iteração de melhoria geral conduzida com auditoria de agente consultor especializado (Dr. Consultor). Conformidade LGPD (signed URLs com expiração para arquivos sensíveis) e Res. CFO 226/2020 (trilha de auditoria do prontuário). Correção do bug crítico de salvamento do odontograma. Novos módulos: integração automática plano→faturamento, repasse percentual por dentista, atalho odontograma→plano, termo de consentimento digital com assinatura por canvas. Remoção de telas duplicadas (Onboarding) e código morto. Documentação atualizada (RFs 010–016, RNFs 009–010, RNEs 007–009). |
+| 3.3 | 7º | 03 | 24/05/2026 | Iteração de melhoria geral conduzida com revisão técnica interna. Conformidade LGPD (signed URLs com expiração para arquivos sensíveis) e Res. CFO 226/2020 (trilha de auditoria do prontuário). Correção do bug crítico de salvamento do odontograma. Novos módulos: integração automática plano→faturamento, repasse percentual por dentista, atalho odontograma→plano, termo de consentimento digital com assinatura por canvas. Remoção de telas duplicadas (Onboarding) e código morto. Documentação atualizada (RFs 010–016, RNFs 009–010, RNEs 007–009). |
 
 > 💡 **Bug menor a corrigir de quebra:** a data da v3.0 está como "06/03/2025" — provavelmente deveria ser "06/03/2026", já que está cronologicamente após a v2.3 (25/11/2025).
 
@@ -129,7 +129,7 @@
 >
 > **Ciclo 02 (04/2026):** implementação dos módulos clínicos (prontuário, odontograma, plano de tratamento, receituário, anamnese obrigatória) e dos módulos administrativos (financeiro com gráficos, equipe com permissões granulares).
 >
-> **Ciclo 03 (05/2026):** auditoria geral por agente consultor especializado (Dr. Consultor), com correção de 20 itens envolvendo conformidade LGPD/CFO, bugs críticos (odontograma, enums de cobrança), remoção de código morto e implementação de novas features (integração plano→faturamento, repasse percentual, odontograma→plano, termo de consentimento digital). Atualização documental (v3.3) consolidando todas as mudanças.
+> **Ciclo 03 (05/2026):** revisão técnica geral, com correção de 20 itens envolvendo conformidade LGPD/CFO, bugs críticos (odontograma, enums de cobrança), remoção de código morto e implementação de novas features (integração plano→faturamento, repasse percentual, odontograma→plano, termo de consentimento digital). Atualização documental (v3.3) consolidando todas as mudanças.
 
 ---
 
@@ -373,7 +373,7 @@ A partir do quinto requisito, a numeração no PDF virou `RF-005`, `RF-006`, `RF
 
 **ADICIONAR um parágrafo** após o trecho sobre smoke tests, antes do parágrafo de "Como evolução, está prevista":
 
-> Adicionalmente, em 05/2026 foi conduzida uma auditoria estruturada por agente consultor especializado (Dr. Consultor) com 20 itens corrigidos cobrindo conformidade legal (LGPD, CFO 226), bugs críticos (odontograma que não salvava, enums de cobrança incompatíveis, fallback inseguro), remoção de telas duplicadas e implementação de features novas (integração plano→faturamento, repasse por dentista, atalho odontograma→plano, termo de consentimento digital).
+> Adicionalmente, em 05/2026 foi conduzida uma revisão técnica estruturada com 20 itens corrigidos cobrindo conformidade legal (LGPD, CFO 226), bugs críticos (odontograma que não salvava, enums de cobrança incompatíveis, fallback inseguro), remoção de telas duplicadas e implementação de features novas (integração plano→faturamento, repasse por dentista, atalho odontograma→plano, termo de consentimento digital).
 
 ---
 
@@ -562,4 +562,4 @@ Use isso como guia ao editar o Google Docs:
 
 ---
 
-*Documento gerado em 24/05/2026 a partir da auditoria conduzida pelo agente Dr. Consultor durante a iteração de melhoria geral do ByteDonto.*
+*Documento gerado em 24/05/2026 durante a iteração de melhoria geral do ByteDonto.*

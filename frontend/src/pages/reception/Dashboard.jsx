@@ -8,7 +8,7 @@ import SideBar from "../../components/bar/SideBar";
 import Card from "../../components/card/CardInfo";
 import { formatCPF } from "../../utils/formatters";
 import { useReceptionSidebar } from "../../hooks/useSidebar";
-import { X, Check, Plus, Search, CalendarDays, UserCheck, Clock, UserX, Users } from "lucide-react";
+import { X, Check, Plus, CalendarPlus, UserPlus, Search, CalendarDays, UserCheck, Clock, UserX, Users } from "lucide-react";
 
 const FORM_INICIAL = {
     paciente_id: "",
@@ -214,7 +214,7 @@ function ReceptionDashboard() {
                                             </ul>
                                         )}
                                         <Link to="/reception/patient/register" style={{ color: 'var(--PrimaryColorsTheme)', fontSize: '13px', marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}>
-                                            <Plus size={14} strokeWidth={2.5} /> Paciente não encontrado? (Cadastrar)
+                                            <UserPlus size={14} strokeWidth={2.5} /> Paciente não encontrado? (Cadastrar)
                                         </Link>
                                     </div>
 
@@ -280,7 +280,7 @@ function ReceptionDashboard() {
                         <p className="text75">Gerencie os agendamentos e controle os pacientes na sala de espera.</p>
                     </div>
                     <button onClick={abrirModal} style={{ background: 'var(--PrimaryColorsTheme)', color: 'white', padding: '12px 24px', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: 'var(--shadow-sm)', border: 'none', cursor: 'pointer' }}>
-                        <Plus size={18} strokeWidth={2.5} /> Agendar Nova Consulta
+                        <CalendarPlus size={18} strokeWidth={2.5} /> Agendar Nova Consulta
                     </button>
                 </div>
 

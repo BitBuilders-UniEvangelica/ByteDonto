@@ -14,7 +14,7 @@ import SideBar from "../../components/bar/SideBar";
 import { useOwnerSidebar } from "../../hooks/useSidebar";
 import { useReceptionSidebar } from "../../hooks/useSidebar";
 import { formatCurrency, formatDate } from "../../utils/formatters";
-import { Plus, X, AlertTriangle } from "lucide-react";
+import { FilePlus, X, AlertTriangle } from "lucide-react";
 import "../../styles/clinic.css";
 import "../../styles/Forms.css";
 
@@ -340,7 +340,7 @@ function Financial({ role }) {
                         <p className="text75">Controle de lançamentos, recebimentos e pendências.</p>
                     </div>
                     <button onClick={abrirModal} style={{ background: "var(--PrimaryColorsTheme)", color: "white", padding: "12px 24px", borderRadius: "12px", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.5rem", border: "none", cursor: "pointer", boxShadow: "var(--shadow-sm)" }}>
-                        <Plus size={18} strokeWidth={2} /> Novo Lançamento
+                        <FilePlus size={18} strokeWidth={2} /> Novo Lançamento
                     </button>
                 </div>
 

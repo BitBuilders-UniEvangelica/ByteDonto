@@ -6,7 +6,7 @@ import { formatCPF, formatPhone, formatDate } from "../../utils/formatters";
 import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
 import { useReceptionSidebar } from "../../hooks/useSidebar";
-import { Plus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import '../../styles/clinic.css';
 
 /* MAIN COMPONENT */
@@ -60,7 +60,7 @@ function ListPatients() {
                     </div>
                     <div>
                         <Link to="/reception/patient/register" style={{background: 'var(--PrimaryColorsTheme)', color: 'white', padding: '12px 24px', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: 'var(--shadow-sm)'}}>
-                            <Plus size={18} strokeWidth={2.5} /> Cadastrar Novo Paciente
+                            <UserPlus size={18} strokeWidth={2.5} /> Cadastrar Novo Paciente
                         </Link>
                     </div>
                 </div>

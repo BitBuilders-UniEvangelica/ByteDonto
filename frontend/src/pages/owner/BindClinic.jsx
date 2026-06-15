@@ -6,7 +6,7 @@ import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
 import { useOwnerSidebar } from "../../hooks/useSidebar";
 import { validarEmail, formatDate } from "../../utils/formatters";
-import { ArrowLeft, CheckCircle2, Plus, AlertTriangle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, UserPlus, AlertTriangle } from "lucide-react";
 import "../../styles/clinic.css";
 import "../../styles/Forms.css";
 import "../../styles/Table.css";
@@ -551,7 +551,7 @@ function BindClinic() {
                             <p className="text75">Gerencie os acessos dos profissionais. Você define o login e o nível de permissão de cada membro.</p>
                         </div>
                         <button className="submit" onClick={abrirForm} style={{ padding: "12px 24px", fontSize: "15px", display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                            <Plus size={18} strokeWidth={2} /> Adicionar Membro
+                            <UserPlus size={18} strokeWidth={2} /> Adicionar Membro
                         </button>
                     </div>
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { apiGetImagens, apiUploadImagem, apiDeletarImagem } from "../../services/api";
-import { Plus, Trash2, Image as ImageIcon } from "lucide-react";
+import { ImagePlus, Trash2, Image as ImageIcon } from "lucide-react";
 
 export default function GaleriaImagens({ pacienteId, token }) {
     const [imagens, setImagens] = useState([]);
@@ -43,7 +43,7 @@ export default function GaleriaImagens({ pacienteId, token }) {
                     <p style={{margin:0,fontSize:"13px",color:"var(--TextColor75)"}}>Radiografias, fotos clínicas e documentações do paciente.</p>
                 </div>
                 <label style={{display:"flex",alignItems:"center",gap:"8px",padding:"10px 20px",background:"var(--PrimaryColorsTheme)",color:"white",borderRadius:"var(--radius-md)",fontWeight:700,fontSize:"14px",cursor:"pointer"}}>
-                    <Plus size={18} strokeWidth={2.5} /> {uploading ? "Enviando..." : "Adicionar Imagem"}
+                    <ImagePlus size={18} strokeWidth={2.5} /> {uploading ? "Enviando..." : "Adicionar Imagem"}
                     <input type="file" accept="image/*,.pdf" onChange={handleUpload} style={{display:"none"}} disabled={uploading} />
                 </label>
             </div>
