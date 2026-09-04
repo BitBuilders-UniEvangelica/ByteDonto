@@ -1,11 +1,19 @@
 import os
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 from config import Config
+from app.extensions import limiter
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+
+    # Railway (e qualquer proxy reverso) entrega o IP real do cliente no
+    # X-Forwarded-For. Sem isso, request.remote_addr seria sempre o IP do
+    # proxy e o rate limiting por IP não funcionaria (todo mundo cairia no
+    # mesmo balde).
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     allowed_origins = [
         origem.strip()
@@ -15,6 +23,22 @@ def create_app():
         if origem.strip()
     ]
     CORS(app, resources={r"/api/*": {"origins": allowed_origins}})
+
+    # Rate limiting global — mitiga força bruta e abuso da API. Limite padrão
+    # generoso (não afeta uso normal); rotas sensíveis (login, registro) têm
+    # limites mais estritos definidos localmente. Em produção sem REDIS_URL,
+    # usa armazenamento em memória do próprio processo (suficiente para o
+    # único worker do gunicorn configurado no Procfile/railway.json).
+    app.config["RATELIMIT_STORAGE_URI"] = os.getenv("RATELIMIT_STORAGE_URI", "memory://")
+    app.config["RATELIMIT_HEADERS_ENABLED"] = True
+    app.config["RATELIMIT_DEFAULT"] = "300 per minute;3000 per hour"
+    limiter.init_app(app)
+
+    @app.errorhandler(429)
+    def limite_excedido(e):
+        return jsonify({
+            "error": "Muitas requisições. Aguarde um instante e tente novamente."
+        }), 429
 
     # Registrar blueprints
     from app.auth.routes import auth_bp
@@ -38,6 +62,7 @@ def create_app():
     app.register_blueprint(imagens_bp, url_prefix="/api/imagens")
 
     @app.route("/api/health")
+    @limiter.exempt
     def health():
         return {"status": "ok", "message": "ByteDonto API rodando"}
 

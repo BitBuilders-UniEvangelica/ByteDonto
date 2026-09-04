@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from supabase import create_client
 from config import Config
 from app.database import supabase
+from app.extensions import limiter
 
 supabase_auth = create_client(Config.SUPABASE_URL, Config.SUPABASE_ANON_KEY)
 supabase_admin = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
@@ -10,6 +11,7 @@ auth_bp = Blueprint("auth", __name__)
 
 
 @auth_bp.route("/registro", methods=["POST"])
+@limiter.limit("10 per hour")
 def registro():
     """
     Cria conta de proprietário.
@@ -54,6 +56,7 @@ def registro():
 
 
 @auth_bp.route("/login", methods=["POST"])
+@limiter.limit("5 per minute;20 per hour")
 def login():
     """
     Login via Supabase Auth.
