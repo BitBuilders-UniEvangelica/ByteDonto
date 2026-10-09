@@ -1,7 +1,7 @@
 /* IMPORTS */
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { apiRegistro } from "../../services/api";
 import { validarEmail } from "../../utils/formatters";
 import '../../styles/Auth.css';
@@ -18,6 +18,8 @@ function CadastroPage() {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
 
     function handleChange(e) {
         setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -100,12 +102,25 @@ function CadastroPage() {
                         <input
                             id="password"
                             name="password"
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             placeholder="Mínimo de 8 caracteres"
                             value={form.password}
                             onChange={handleChange}
                             required
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword((v) => !v)}
+                            aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                            title={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                            style={{
+                                position: "absolute", top: "56%", right: "50px", transform: "translateY(-50%)",
+                                background: "none", border: "none", cursor: "pointer", padding: 0,
+                                display: "flex", alignItems: "center", color: "var(--TextColor75)",
+                            }}
+                        >
+                            {showPassword ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
+                        </button>
                     </div>
 
                     <div className="field">
@@ -113,12 +128,25 @@ function CadastroPage() {
                         <input
                             id="confirmPassword"
                             name="confirmPassword"
-                            type="password"
+                            type={showPasswordConfirm ? "text" : "password"}
                             placeholder="Repita a senha"
                             value={form.confirmPassword}
                             onChange={handleChange}
                             required
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowPasswordConfirm((v) => !v)}
+                            aria-label={showPasswordConfirm ? "Ocultar senha" : "Mostrar senha"}
+                            title={showPasswordConfirm ? "Ocultar senha" : "Mostrar senha"}
+                            style={{
+                                position: "absolute", top: "70%", right: "50px", transform: "translateY(-50%)",
+                                background: "none", border: "none", cursor: "pointer", padding: 0,
+                                display: "flex", alignItems: "center", color: "var(--TextColor75)",
+                            }}
+                        >
+                            {showPasswordConfirm ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
+                        </button>
                     </div>
 
                     {error && <p className="auth-error">{error}</p>}
