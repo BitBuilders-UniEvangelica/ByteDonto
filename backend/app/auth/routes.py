@@ -55,58 +55,116 @@ def registro():
         return jsonify({"error": error_msg}), 500
 
 
+
 @auth_bp.route("/login", methods=["POST"])
 @limiter.limit("5 per minute;20 per hour")
 def login():
-    """
-    Login via Supabase Auth.
-    Body JSON: { "email": "...", "password": "..." }
-    """
-    data = request.get_json()
-    email = data.get("email")
-    password = data.get("password")
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip()
+    password = data.get("password") or ""
 
     if not email or not password:
-        return jsonify({"error": "Email e senha são obrigatórios"}), 400
+        return jsonify({
+            "error": "Email e senha são obrigatórios"
+        }), 400
 
+    # 1. Autentica o usuário
     try:
         response = supabase_auth.auth.sign_in_with_password({
             "email": email,
-            "password": password
+            "password": password,
         })
 
         user = response.user
         session = response.session
 
-        # Verifica se o acesso do usuário foi desativado pelo proprietário.
-        # Se a coluna 'ativo' ainda não existir (migração não aplicada), o valor
-        # será None e o usuário é tratado como ativo.
-        try:
-            perfil_response = (
-                supabase.table("usuarios")
-                .select("ativo")
-                .eq("id", user.id)
+    except Exception:
+        return jsonify({"error": "Credenciais inválidas"}), 401
+
+    try:
+        # 2. Busca o perfil no banco
+        perfil_response = (
+            supabase_admin.table("usuarios")
+            .select("id, nome, papel, clinica_id, ativo")
+            .eq("id", user.id)
+            .maybe_single()
+            .execute()
+        )
+
+        perfil = perfil_response.data
+
+        if not perfil:
+            return jsonify({
+                "error": "Perfil do usuário não encontrado na tabela usuarios."
+            }), 404
+
+        if perfil.get("ativo") is False:
+            return jsonify({
+                "error": "Seu acesso foi desativado."
+            }), 403
+
+        clinica_id = perfil.get("clinica_id")
+
+        # 3. Só cria ou recupera uma clínica automaticamente
+        # para usuários que sejam proprietários.
+        if not clinica_id and perfil.get("papel") == "Dono":
+
+            # Evita duplicação caso a clínica já exista,
+            # mas o vínculo com o usuário esteja ausente.
+            clinicas_existentes = (
+                supabase_admin.table("clinicas")
+                .select("id")
+                .eq("dono_id", user.id)
+                .limit(1)
                 .execute()
             )
-            perfil = perfil_response.data[0] if perfil_response.data else None
-        except Exception:
-            perfil = None
 
-        if perfil is not None and perfil.get("ativo") is False:
-            return jsonify({
-                "error": "Seu acesso foi desativado. Contate o proprietário da clínica."
-            }), 403
+            if clinicas_existentes.data:
+                clinica_id = clinicas_existentes.data[0]["id"]
+
+            else:
+                nome_clinica = (
+                    f"Clínica de {perfil.get('nome') or user.email}"
+                )
+
+                nova_clinica = (
+                    supabase_admin.table("clinicas")
+                    .insert({
+                        "dono_id": user.id,
+                        "nome_fantasia": nome_clinica,
+                    })
+                    .execute()
+                )
+
+                if not nova_clinica.data:
+                    raise RuntimeError(
+                        "Não foi possível criar a clínica."
+                    )
+
+                clinica_id = nova_clinica.data[0]["id"]
+
+            # 4. Vincula a clínica ao perfil do proprietário
+            supabase_admin.table("usuarios").update({
+                "clinica_id": clinica_id
+            }).eq("id", user.id).execute()
 
         return jsonify({
             "access_token": session.access_token,
             "user": {
                 "id": user.id,
                 "email": user.email,
+                "clinica_id": clinica_id,
+                "papel": perfil.get("papel"),
             }
         }), 200
 
     except Exception as e:
-        return jsonify({"error": "Credenciais inválidas", "detail": str(e)}), 401
+        # Não classifica falhas no banco como credenciais inválidas.
+        print(f"Erro ao preparar perfil/clínica no login: {e}")
+
+        return jsonify({
+            "error": "Não foi possível carregar o perfil ou preparar a clínica."
+        }), 500
 
 
 @auth_bp.route("/logout", methods=["POST"])
