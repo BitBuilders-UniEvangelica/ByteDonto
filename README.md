@@ -75,6 +75,25 @@ python run.py
 
 ---
 
+### ⚙️ Passo 2.2: Rodando o Backend Local
+
+Abra uma segunda aba no terminal e siga estes passos:
+
+```bash
+# Entre na pasta do backend
+cd backend_dev/
+
+# Crie um ambiente virtual para isolar as dependências do Python
+venv/bin/python init_db.py && venv/bin/python seed_demo.py
+
+# Inicie o servidor do backend
+venv/bin/python run.py
+```
+
+*(A API do backend será executada em `http://127.0.0.1:8001`)*
+
+---
+
 ## 🔑 Acessos de teste
 
 Contas de demonstração já cadastradas para testar o sistema (cada papel cai em uma área diferente, conforme as permissões):

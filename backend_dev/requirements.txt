@@ -1,0 +1,12 @@
+flask
+flask-cors
+flask-limiter
+psycopg[binary]
+psycopg-pool
+python-dotenv
+pyjwt
+openai
+langchain
+langchain-openai
+requests
+gunicorn

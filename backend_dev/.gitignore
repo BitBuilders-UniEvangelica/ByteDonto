@@ -1,0 +1,17 @@
+# Environment
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Arquivos enviados no ambiente de dev (imagens/laudos de pacientes de teste)
+storage/
+
+# IDE
+.vscode/
+.idea/
