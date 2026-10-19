@@ -94,3 +94,39 @@ diff -r backend/app backend_dev/app -x __pycache__
 
 Se criar uma coluna/tabela nova em produção, adicione também em
 `database_local.sql` e rode `init_db.py` (ele é idempotente).
+
+## Testes automatizados
+
+Os testes cobrem os fluxos críticos pela própria API (cliente de teste do Flask):
+
+| Arquivo | O que verifica |
+|---|---|
+| `tests/test_auth.py` | RF-008: registro, login, `/me`, logout e permissões por perfil |
+| `tests/test_pacientes.py` | RF-001/RF-003: CPF, anamnese obrigatória e isolamento entre clínicas |
+| `tests/test_agenda.py` | RF-002/RF-009: agendamento, check-in, cancelamento e conflito de horário |
+| `tests/test_plano_faturamento.py` | RF-010/RNE-008: item concluído gera cobrança, sem duplicar, e reverter cancela |
+| `tests/test_repasse.py` | RF-011/RNE-009: repasse só sobre lançamentos pagos |
+
+Eles usam um banco **separado**, `bytedonto_test`, que é apagado e recriado a
+cada execução a partir do `database_local.sql`. O `bytedonto_dev` não é tocado.
+
+```bash
+cd backend_dev
+venv/bin/pip install -r requirements-dev.txt
+venv/bin/pytest
+```
+
+Por padrão a conexão é `postgresql://localhost:5432/bytedonto_test` (usuário do
+sistema, sem senha). Se o seu PostgreSQL pede usuário e senha:
+
+```bash
+TEST_DATABASE_URL=postgresql://postgres:SENHA@localhost:5432/bytedonto_test venv/bin/pytest
+```
+
+O nome do banco precisa terminar em `_test`; caso contrário os testes se recusam
+a rodar.
+
+O teste de conflito de horário está marcado como `xfail` (falha esperada): o
+RF-002 prevê a validação de sobreposição, mas a rota de agendamento ainda não
+faz essa checagem. Quando ela for implementada, o teste passa a acusar
+`XPASS` e a marcação deve ser removida.
