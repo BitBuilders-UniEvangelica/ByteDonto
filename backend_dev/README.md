@@ -106,6 +106,7 @@ Os testes cobrem os fluxos críticos pela própria API (cliente de teste do Flas
 | `tests/test_agenda.py` | RF-002/RF-009: agendamento, check-in, cancelamento e conflito de horário |
 | `tests/test_plano_faturamento.py` | RF-010/RNE-008: item concluído gera cobrança, sem duplicar, e reverter cancela |
 | `tests/test_repasse.py` | RF-011/RNE-009: repasse só sobre lançamentos pagos |
+| `tests/test_esterilizacao.py` | RF-020/RNE-011/RNE-018: ciclos, indicadores e bloqueio de pacotes |
 
 Eles usam um banco **separado**, `bytedonto_test`, que é apagado e recriado a
 cada execução a partir do `database_local.sql`. O `bytedonto_dev` não é tocado.
