@@ -2,7 +2,7 @@
 
 .landing-wrapper {
     background-color: var(--BackColor);
-    min-height: 100vh;
+    min-height: calc(100vh / var(--app-zoom));
     display: flex;
     flex-direction: column;
 }

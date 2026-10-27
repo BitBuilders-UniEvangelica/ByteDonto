@@ -4,10 +4,11 @@ import '../../styles/Buttons.css'
 
 /* MAIN COMPONENT
    `icon` é um componente de ícone do lucide-react (ver useSidebar.js). */
-function ButtonsCamps({ icon: Icon, name, style, url }) {
+function ButtonsCamps({ icon: Icon, name, style, url, onNavigate }) {
     const navigate = useNavigate();
 
     function registration() {
+        onNavigate?.();
         navigate(`${url}`);
     }
 
