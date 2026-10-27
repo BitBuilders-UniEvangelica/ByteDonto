@@ -37,6 +37,12 @@ function StatusPill({ status }) {
     );
 }
 
+/* Em telas de celular (mesmo limite que esconde a barra lateral), a Agenda e
+   a Sala de Espera ficam espremidas lado a lado; então passam a ser exibidas
+   uma por vez, escolhidas pelo seletor "Agenda | Espera". Em telas maiores
+   (computador) os dois quadros continuam lado a lado. */
+const MEDIA_CELULAR = "(max-width: 768px)";
+
 /* MAIN COMPONENT */
 function ReceptionDashboard() {
     const { token } = useAuth();
@@ -64,6 +70,20 @@ function ReceptionDashboard() {
     const [atualizandoId, setAtualizandoId] = useState(null);
 
     const opc_bar = useReceptionSidebar("dashboard");
+
+    // Seletor Agenda | Espera (só aparece quando falta espaço)
+    const [modoAbas, setModoAbas] = useState(() => window.matchMedia(MEDIA_CELULAR).matches);
+    const [abaAtiva, setAbaAtiva] = useState("agenda");
+
+    useEffect(() => {
+        const media = window.matchMedia(MEDIA_CELULAR);
+        const aoMudar = (e) => setModoAbas(e.matches);
+        media.addEventListener("change", aoMudar);
+        return () => media.removeEventListener("change", aoMudar);
+    }, []);
+
+    const mostrarAgenda = !modoAbas || abaAtiva === "agenda";
+    const mostrarEspera = !modoAbas || abaAtiva === "espera";
 
     useEffect(() => {
         Promise.all([
@@ -308,8 +328,32 @@ function ReceptionDashboard() {
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
+                {/* SELETOR AGENDA | ESPERA */}
+                {modoAbas && (
+                    <div role="tablist" aria-label="Alternar entre agenda e sala de espera"
+                        style={{ display: 'inline-flex', alignSelf: 'flex-start', gap: '4px', padding: '4px', marginBottom: '1rem', background: 'var(--ThemeColor)', border: '1px solid var(--LineColor)', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
+                        {[
+                            { id: "agenda", label: "Agenda", Icon: CalendarDays, total: consultasHoje.length },
+                            { id: "espera", label: "Espera", Icon: Users, total: salaDeEspera.length },
+                        ].map(aba => {
+                            const ativa = abaAtiva === aba.id;
+                            const AbaIcon = aba.Icon;
+                            return (
+                                <button key={aba.id} type="button" role="tab" aria-selected={ativa}
+                                    onClick={() => setAbaAtiva(aba.id)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', border: 'none', borderRadius: '9px', fontFamily: 'inherit', fontSize: '14px', fontWeight: 700, cursor: 'pointer', background: ativa ? 'var(--PrimaryColorsTheme)' : 'transparent', color: ativa ? 'white' : 'var(--TextColor75)', transition: 'background-color var(--transition-fast), color var(--transition-fast)' }}>
+                                    <AbaIcon size={16} strokeWidth={2} />
+                                    {aba.label}
+                                    <span style={{ background: ativa ? 'rgba(255,255,255,0.2)' : 'var(--PrimaryColorsBack)', color: ativa ? 'white' : 'var(--PrimaryColorsTheme)', padding: '0 8px', borderRadius: '999px', fontSize: '12px' }}>{aba.total}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: modoAbas ? '1fr' : '2fr 1fr', gap: '2rem' }}>
                     {/* AGENDA GERAL */}
+                    {mostrarAgenda && (
                     <div className="camp-clinic" style={{ padding: '2.5rem' }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: '0.6rem' }}>
@@ -384,8 +428,10 @@ function ReceptionDashboard() {
                             </div>
                         )}
                     </div>
+                    )}
 
                     {/* SALA DE ESPERA */}
+                    {mostrarEspera && (
                     <div className="camp-clinic" style={{ padding: '2.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -417,6 +463,7 @@ function ReceptionDashboard() {
                             </div>
                         )}
                     </div>
+                    )}
                 </div>
 
             </main>
