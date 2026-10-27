@@ -445,7 +445,7 @@ function PainelEdicao({ numero, dadoAtual, onSalvar, onFechar, onAdicionarAoPlan
             onClick={(e) => { if (e.target === e.currentTarget) onFechar(); }}
             style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }}
         >
-            <div style={{ background: "var(--ThemeColor)", borderRadius: "var(--radius-lg)", width: "560px", maxWidth: "96vw", maxHeight: "92vh", overflowY: "auto", boxShadow: "var(--shadow-md)", border: "1px solid var(--LineColor)" }}>
+            <div style={{ background: "var(--ThemeColor)", borderRadius: "var(--radius-lg)", width: "560px", maxWidth: "calc(96vw / var(--app-zoom))", maxHeight: "calc(92vh / var(--app-zoom))", overflowY: "auto", boxShadow: "var(--shadow-md)", border: "1px solid var(--LineColor)" }}>
                 {/* cabeçalho */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 1.25rem", borderBottom: "1px solid var(--LineColor)" }}>
                     <div>

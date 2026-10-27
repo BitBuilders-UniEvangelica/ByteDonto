@@ -167,7 +167,7 @@ function ReceptionDashboard() {
 
                 {/* ---------- MODAL DE AGENDAMENTO ---------- */}
                 {showAgendamento && (
-                    <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <div style={{ position: 'fixed', top: 0, left: 0, width: 'calc(100vw / var(--app-zoom))', height: 'calc(100vh / var(--app-zoom))', background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                         <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '100%', maxWidth: '750px', boxShadow: 'var(--shadow-sm)', animation: 'fadeIn 0.2s', border: '1px solid var(--LineColor)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
                                 <div>

@@ -2,7 +2,7 @@
 
 .sidebar {
     width: 260px;
-    height: calc(100vh - 80px); /* Discount topbar */
+    height: calc(100vh / var(--app-zoom) - 80px); /* Discount topbar */
     top: 80px;
     background: var(--ThemeColor);
     border-right: 1px solid var(--LineColor);
@@ -20,8 +20,21 @@
 .mainBar {
     width: calc(100% - 260px);
     margin-left: 260px;
-    min-height: calc(100vh - 80px);
+    min-height: calc(100vh / var(--app-zoom) - 80px);
     box-sizing: border-box;
+}
+
+/* Posição/tamanho do botão que abre a barra (usado também no padding do main) */
+:root {
+    --sidebar-toggle-top: 96px;
+    --sidebar-toggle-size: 44px;
+}
+
+/* Controles da gaveta: só aparecem em telas estreitas */
+.sidebar-toggle,
+.sidebar-close,
+.sidebar-overlay {
+    display: none;
 }
 
 @media (max-width: 768px) {
@@ -31,5 +44,77 @@
     .mainBar {
         width: 100%;
         margin-left: 0;
+    }
+
+    /* Empurra o conteúdo para baixo do botão que abre a barra.
+       "body" aumenta a especificidade para vencer regras como main.register.
+       Conta: fim do botão (topo + altura) + respiro - altura da topbar. */
+    body main.mainBar {
+        padding-top: calc(var(--sidebar-toggle-top) + var(--sidebar-toggle-size) + 16px - 80px);
+    }
+
+    /* Gaveta aberta */
+    .sidebar.open {
+        transform: translateX(0);
+        z-index: calc(var(--z-sidebar) + 2);
+        box-shadow: var(--shadow-md);
+        overflow-y: auto;
+    }
+
+    /* Botão flutuante para abrir a barra */
+    .sidebar-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        top: var(--sidebar-toggle-top);
+        left: 0;
+        width: 40px;
+        height: var(--sidebar-toggle-size);
+        padding: 0;
+        background: var(--ThemeColor);
+        color: var(--TextColor75);
+        border: 1px solid var(--LineColor);
+        border-left: none;
+        border-radius: 0 12px 12px 0;
+        box-shadow: var(--shadow-md);
+        cursor: pointer;
+        z-index: var(--z-sidebar);
+        transition: background-color var(--transition-fast), color var(--transition-fast);
+    }
+    .sidebar-toggle:hover {
+        background: var(--PrimaryColorsBack);
+        color: var(--PrimaryColorsTheme);
+    }
+
+    /* Botão "X" dentro da barra */
+    .sidebar-close {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        align-self: flex-end;
+        width: 36px;
+        height: 36px;
+        margin-bottom: 0.5rem;
+        padding: 0;
+        background: transparent;
+        color: var(--TextColor75);
+        border: 1px solid var(--LineColor);
+        border-radius: 10px;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    .sidebar-close:hover {
+        background: var(--BackColor);
+        color: var(--TextColor);
+    }
+
+    /* Fundo escurecido: clicar fora da barra fecha */
+    .sidebar-overlay {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.4);
+        z-index: calc(var(--z-sidebar) + 1);
     }
 }

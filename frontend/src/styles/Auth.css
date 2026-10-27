@@ -12,8 +12,8 @@
 
 /* GLOBAL AUTH WRAPPER */
 .auth-wrapper {
-    min-height: 100vh;
-    width: 100vw;
+    min-height: calc(100vh / var(--app-zoom));
+    width: calc(100vw / var(--app-zoom));
     display: flex;
     align-items: center;
     justify-content: center;

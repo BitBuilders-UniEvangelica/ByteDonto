@@ -68,6 +68,19 @@
     --transition-base: 0.3s ease;
 }
 
+/* ESCALA GLOBAL DA INTERFACE
+   O app é renderizado em 75% (equivalente ao zoom 75% do navegador) em
+   qualquer largura de tela, deixando textos e componentes num tamanho adequado.
+   ATENÇÃO: o zoom também reduz unidades vh/vw. Para ocupar a tela inteira,
+   divida pelo zoom: calc(100vh / var(--app-zoom)). */
+:root {
+    --app-zoom: 0.75;
+}
+
+html {
+    zoom: var(--app-zoom);
+}
+
 /* Os papéis (.owner, .reception, .specialist) permanecem como ganchos
    de layout, porém o app inteiro usa UMA única paleta — sem cores por papel. */
 

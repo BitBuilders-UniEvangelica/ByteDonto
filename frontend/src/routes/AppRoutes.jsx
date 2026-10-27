@@ -30,7 +30,7 @@ function SemAcesso() {
   const { logout } = useAuth();
   return (
     <div style={{
-      minHeight: "100vh", display: "flex", flexDirection: "column",
+      minHeight: "calc(100vh / var(--app-zoom))", display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center", gap: "1rem",
       padding: "2rem", textAlign: "center", background: "var(--BackColor)",
     }}>
