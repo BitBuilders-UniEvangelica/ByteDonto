@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { apiGetEquipe, apiCriarMembro, apiRemoverMembro, apiAtualizarMembro, apiAtualizarPermissoes, apiRedefinirSenha } from "../../services/api";
@@ -6,7 +6,7 @@ import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
 import { useOwnerSidebar } from "../../hooks/useSidebar";
 import { validarEmail, formatDate } from "../../utils/formatters";
-import { ArrowLeft, CheckCircle2, UserPlus, AlertTriangle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, UserPlus, AlertTriangle, EllipsisVertical, Power, KeyRound, ShieldCheck, Pencil, Trash2 } from "lucide-react";
 import "../../styles/clinic.css";
 import "../../styles/Forms.css";
 import "../../styles/Table.css";
@@ -31,6 +31,104 @@ const PAPEL_LABEL = {
 };
 
 const FORM_INICIAL = { nome: "", email: "", senha: "", papel: "Especialista", cro: "" };
+
+/* Menu de ações de um membro (botão de 3 pontos).
+   O menu usa position: fixed porque a tabela corta o que passa da borda
+   (overflow: hidden). As coordenadas do botão vêm em pixels de tela, então
+   são divididas pelo zoom global do app (--app-zoom) antes de posicionar. */
+function MenuAcoes({ itens, rotulo }) {
+    const [pos, setPos] = useState(null);
+    const botaoRef = useRef(null);
+    const menuRef = useRef(null);
+    const aberto = pos !== null;
+
+    function alternar() {
+        if (aberto) { setPos(null); return; }
+        const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+        const r = botaoRef.current.getBoundingClientRect();
+        const alturaMenu = itens.length * 40 + 12;
+        const abreParaCima = (window.innerHeight - r.bottom) / zoom < alturaMenu + 8;
+        setPos({
+            right: (window.innerWidth - r.right) / zoom,
+            ...(abreParaCima ? { bottom: (window.innerHeight - r.top) / zoom + 4 } : { top: r.bottom / zoom + 4 }),
+        });
+    }
+
+    // Fecha ao clicar fora, apertar Esc, rolar ou redimensionar a tela.
+    useEffect(() => {
+        if (!aberto) return;
+        const fechar = () => setPos(null);
+        const aoClicar = (e) => {
+            if (menuRef.current?.contains(e.target) || botaoRef.current?.contains(e.target)) return;
+            fechar();
+        };
+        const aoTeclar = (e) => { if (e.key === "Escape") fechar(); };
+        document.addEventListener("mousedown", aoClicar);
+        document.addEventListener("keydown", aoTeclar);
+        window.addEventListener("scroll", fechar, true);
+        window.addEventListener("resize", fechar);
+        return () => {
+            document.removeEventListener("mousedown", aoClicar);
+            document.removeEventListener("keydown", aoTeclar);
+            window.removeEventListener("scroll", fechar, true);
+            window.removeEventListener("resize", fechar);
+        };
+    }, [aberto]);
+
+    return (
+        <>
+            <button
+                ref={botaoRef}
+                type="button"
+                onClick={alternar}
+                aria-label={rotulo}
+                title={rotulo}
+                aria-haspopup="menu"
+                aria-expanded={aberto}
+                style={{
+                    width: "34px", height: "34px", padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    background: aberto ? "var(--PrimaryColorsBack)" : "transparent",
+                    color: aberto ? "var(--PrimaryColorsTheme)" : "var(--TextColor75)",
+                    border: "1px solid var(--LineColor)", borderRadius: "8px", cursor: "pointer",
+                }}>
+                <EllipsisVertical size={18} strokeWidth={2} />
+            </button>
+            {aberto && (
+                <div
+                    ref={menuRef}
+                    role="menu"
+                    style={{
+                        position: "fixed", ...pos, zIndex: "var(--z-dropdown)", minWidth: "190px", padding: "6px",
+                        background: "var(--ThemeColor)", border: "1px solid var(--LineColor)", borderRadius: "10px",
+                        boxShadow: "var(--shadow-md)", display: "flex", flexDirection: "column",
+                    }}>
+                    {itens.map(({ label, cor, onClick, disabled, ...item }) => {
+                        const Icon = item.Icon;
+                        return (
+                        <button
+                            key={label}
+                            type="button"
+                            role="menuitem"
+                            disabled={disabled}
+                            onClick={() => { setPos(null); onClick(); }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "var(--BackColor)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                            style={{
+                                display: "flex", alignItems: "center", gap: "10px", width: "100%", height: "40px", padding: "0 12px",
+                                background: "transparent", border: "none", borderRadius: "8px", textAlign: "left",
+                                color: cor || "var(--TextColor)", fontSize: "13px", fontWeight: 600, fontFamily: "inherit",
+                                cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1,
+                            }}>
+                            <Icon size={16} strokeWidth={2} />
+                            {label}
+                        </button>
+                        );
+                    })}
+                </div>
+            )}
+        </>
+    );
+}
 
 function BindClinic() {
     const { token } = useAuth();
@@ -596,7 +694,7 @@ function BindClinic() {
                                 </div>
                             ) : (
                                 <div className="table">
-                                    <div className="table-header" style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr 320px" }}>
+                                    <div className="table-header" style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr 80px" }}>
                                         <p className="text75">Nome</p>
                                         <p className="text75">Nível de Acesso</p>
                                         <p className="text75">Status</p>
@@ -610,7 +708,7 @@ function BindClinic() {
                                             const dataFormatada = formatDate(membro.created_at);
                                             const ativo = membro.ativo !== false;
                                             return (
-                                                <div className="table-row" key={membro.id} style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr 320px" }}>
+                                                <div className="table-row" key={membro.id} style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr 80px" }}>
                                                     <div>
                                                         <p style={{ fontWeight: 600 }}>{membro.nome}</p>
                                                         {membro.papel === "Especialista" && membro.cro && (
@@ -629,39 +727,29 @@ function BindClinic() {
                                                         {ativo ? "Ativo" : "Inativo"}
                                                     </span>
                                                     <p className="text75" style={{ fontSize: "13px", alignSelf: "center" }}>{dataFormatada}</p>
-                                                    <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", alignSelf: "center" }}>
-                                                        <button
-                                                            onClick={() => handleAlternarStatus(membro)}
-                                                            disabled={statusId === membro.id}
-                                                            style={{
-                                                                background: ativo ? "var(--WarningBack)" : "var(--SuccessBack)",
-                                                                color: ativo ? "var(--WarningText)" : "var(--SuccessText)",
-                                                                border: "none", padding: "6px 10px", borderRadius: "8px",
-                                                                fontSize: "12px", fontWeight: 700, cursor: "pointer",
-                                                            }}>
-                                                            {statusId === membro.id ? "..." : (ativo ? "Desativar" : "Ativar")}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => abrirSenha(membro)}
-                                                            style={{ background: "var(--BackColor)", color: "var(--TextColor75)", border: "1px solid var(--LineColor)", padding: "6px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-                                                            Senha
-                                                        </button>
-                                                        <button
-                                                            onClick={() => abrirPermissoes(membro)}
-                                                            style={{ background: "var(--PrimaryColorsBack)", color: "var(--PrimaryColorsTheme)", border: "none", padding: "6px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-                                                            Permissões
-                                                        </button>
-                                                        <button
-                                                            onClick={() => abrirEdit(membro)}
-                                                            style={{ background: "var(--PrimaryColorsBack)", color: "var(--PrimaryColors)", border: "none", padding: "6px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-                                                            Editar
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleRemover(membro.id)}
-                                                            disabled={removendoId === membro.id}
-                                                            style={{ background: "var(--DangerBack)", color: "var(--DangerText)", border: "none", padding: "6px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-                                                            {removendoId === membro.id ? "..." : "Remover"}
-                                                        </button>
+                                                    <div style={{ display: "flex", justifyContent: "flex-end", alignSelf: "center" }}>
+                                                        <MenuAcoes
+                                                            rotulo={`Ações de ${membro.nome}`}
+                                                            itens={[
+                                                                {
+                                                                    label: statusId === membro.id ? "Aguarde..." : (ativo ? "Desativar" : "Ativar"),
+                                                                    Icon: Power,
+                                                                    cor: ativo ? "var(--WarningText)" : "var(--SuccessText)",
+                                                                    onClick: () => handleAlternarStatus(membro),
+                                                                    disabled: statusId === membro.id,
+                                                                },
+                                                                { label: "Redefinir senha", Icon: KeyRound, onClick: () => abrirSenha(membro) },
+                                                                { label: "Permissões", Icon: ShieldCheck, onClick: () => abrirPermissoes(membro) },
+                                                                { label: "Editar", Icon: Pencil, onClick: () => abrirEdit(membro) },
+                                                                {
+                                                                    label: removendoId === membro.id ? "Removendo..." : "Remover",
+                                                                    Icon: Trash2,
+                                                                    cor: "var(--DangerText)",
+                                                                    onClick: () => handleRemover(membro.id),
+                                                                    disabled: removendoId === membro.id,
+                                                                },
+                                                            ]}
+                                                        />
                                                     </div>
                                                 </div>
                                             );
