@@ -50,6 +50,7 @@ def create_app():
     from app.dashboard.routes import dashboard_bp
     from app.planos.routes import planos_bp
     from app.imagens.routes import imagens_bp
+    from app.esterilizacao.routes import esterilizacao_bp
     from app.storage_local import storage_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
@@ -61,6 +62,7 @@ def create_app():
     app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
     app.register_blueprint(planos_bp, url_prefix="/api/planos")
     app.register_blueprint(imagens_bp, url_prefix="/api/imagens")
+    app.register_blueprint(esterilizacao_bp, url_prefix="/api/esterilizacao")
     # Só no backend_dev: entrega os arquivos do storage local (links assinados)
     app.register_blueprint(storage_bp, url_prefix="/api/storage")
 

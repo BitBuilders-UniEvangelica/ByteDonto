@@ -17,12 +17,14 @@ PERMISSOES_PADRAO = {
         "ver_prontuario": True, "editar_prontuario": True,
         "ver_agenda": True, "agendar_consultas": False,
         "cancelar_consultas": False, "ver_financeiro": False,
+        "esterilizacao": True,
     },
     "Recepção": {
         "ver_pacientes": True, "editar_pacientes": True,
         "ver_prontuario": False, "editar_prontuario": False,
         "ver_agenda": True, "agendar_consultas": True,
         "cancelar_consultas": True, "ver_financeiro": True,
+        "esterilizacao": False,
     },
 }
 

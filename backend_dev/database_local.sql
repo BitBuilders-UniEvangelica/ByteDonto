@@ -191,3 +191,67 @@ CREATE INDEX IF NOT EXISTS auditoria_prontuario_paciente_idx
     ON auditoria_prontuario(paciente_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS auditoria_prontuario_clinica_idx
     ON auditoria_prontuario(clinica_id, created_at DESC);
+
+-- ------------------------------------------------------------
+-- 9. ESTERILIZAÇÃO (RF-020 · RNE-011 · RNE-018 · RDC Anvisa 1.002/2025)
+-- Sem exclusão física: equipamentos são inativados e ciclos/pacotes
+-- ficam preservados como registro sanitário (RNE-018).
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS equipamentos_esterilizacao (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    clinica_id UUID NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+    identificacao TEXT NOT NULL,
+    tipo TEXT NOT NULL DEFAULT 'Autoclave',
+    fabricante TEXT,
+    modelo TEXT,
+    numero_serie TEXT,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (clinica_id, identificacao)
+);
+
+CREATE TABLE IF NOT EXISTS ciclos_esterilizacao (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    clinica_id UUID NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+    equipamento_id UUID NOT NULL REFERENCES equipamentos_esterilizacao(id),
+    numero_ciclo INTEGER NOT NULL,
+    iniciado_em TIMESTAMP WITH TIME ZONE NOT NULL,
+    temperatura_c DECIMAL(5,1) NOT NULL,
+    pressao_kgf_cm2 DECIMAL(4,2) NOT NULL,
+    tempo_exposicao_min INTEGER NOT NULL,
+    indicador_quimico TEXT NOT NULL DEFAULT 'Pendente'
+        CHECK (indicador_quimico IN ('Aprovado', 'Reprovado', 'Pendente')),
+    indicador_biologico TEXT NOT NULL DEFAULT 'Pendente'
+        CHECK (indicador_biologico IN ('Aprovado', 'Reprovado', 'Pendente', 'Não realizado')),
+    resultado TEXT NOT NULL DEFAULT 'Pendente'
+        CHECK (resultado IN ('Aprovado', 'Reprovado', 'Pendente')),
+    responsavel_id UUID REFERENCES usuarios(id),
+    observacoes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (equipamento_id, numero_ciclo)
+);
+
+CREATE TABLE IF NOT EXISTS pacotes_esterilizados (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    clinica_id UUID NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+    ciclo_id UUID NOT NULL REFERENCES ciclos_esterilizacao(id),
+    codigo TEXT NOT NULL,
+    conteudo TEXT NOT NULL,
+    metodo TEXT NOT NULL DEFAULT 'Vapor saturado sob pressão',
+    data_esterilizacao DATE NOT NULL,
+    data_limite_uso DATE NOT NULL,
+    responsavel_preparo_id UUID REFERENCES usuarios(id),
+    estado TEXT NOT NULL DEFAULT 'Aguardando liberação'
+        CHECK (estado IN ('Aguardando liberação', 'Disponível', 'Bloqueado', 'Utilizado')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (clinica_id, codigo),
+    CHECK (data_limite_uso >= data_esterilizacao)
+);
+
+CREATE INDEX IF NOT EXISTS ciclos_esterilizacao_clinica_idx
+    ON ciclos_esterilizacao(clinica_id, iniciado_em DESC);
+CREATE INDEX IF NOT EXISTS pacotes_esterilizados_ciclo_idx
+    ON pacotes_esterilizados(ciclo_id);
+CREATE INDEX IF NOT EXISTS pacotes_esterilizados_estado_idx
+    ON pacotes_esterilizados(clinica_id, estado, data_limite_uso);
