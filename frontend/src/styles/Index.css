@@ -1,5 +1,5 @@
 /* IMPORTING FONTS */
-@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:ital,wght@0,200..800;1,200..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:ital,wght@0,200..800;1,200..800&family=Atkinson+Hyperlegible+Next:ital,wght@0,200..800;1,200..800&display=swap');
 
 /* GLOBAL VARIABLES */
 :root {
@@ -32,7 +32,8 @@
     --DangerText: #B91C1C;
     --DangerBack: #FEE2E2;
 
-    --font-primary: 'Atkinson Hyperlegible Mono', monospace;
+    /* Figma: Next na interface, Mono nos dados */
+    --font-primary: 'Atkinson Hyperlegible Next', sans-serif;
     --font-secondary: 'Atkinson Hyperlegible Mono', monospace;
 
     /* SHADOWS — apenas sombras suaves, sem cor */

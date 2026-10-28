@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { apiGetPlanos, apiCriarPlano, apiAtualizarPlanoItem } from "../../services/api";
 import { Plus, X } from "lucide-react";
+import { useFeedback } from "../../hooks/useFeedback";
+import { BlocoCarregando } from "../feedback/Feedback";
 
 const STATUS_PLANO = { "Orcamento": "#B45309", "Aprovado": "#0E7490", "Em Andamento": "#8B5CF6", "Concluido": "#15803D", "Cancelado": "#B91C1C" };
 const STATUS_ITEM  = { "Pendente": "#B45309", "Concluido": "#15803D", "Cancelado": "#B91C1C" };
@@ -18,6 +20,7 @@ export default function PlanoDeTratamento({ pacienteId, token, itemInicial, onCo
     const [itens, setItens] = useState([{ ...ITEM_VAZIO }]);
     const [salvando, setSalvando] = useState(false);
     const [erro, setErro] = useState(null);
+    const { toast } = useFeedback();
     const formRef = useRef(null);
 
     useEffect(() => {
@@ -70,6 +73,7 @@ export default function PlanoDeTratamento({ pacienteId, token, itemInicial, onCo
             setPlanos(p => [novo, ...p]);
             setMostrarForm(false);
             setTitulo("Plano de Tratamento"); setObservacoes(""); setItens([{ ...ITEM_VAZIO }]);
+            toast({ tipo: "sucesso", titulo: "Plano de tratamento criado", mensagem: titulo });
         } catch(e) { setErro(e.message); }
         finally { setSalvando(false); }
     }
@@ -79,10 +83,13 @@ export default function PlanoDeTratamento({ pacienteId, token, itemInicial, onCo
         try {
             await apiAtualizarPlanoItem(token, planoId, itemId, { status: novoStatus });
             setPlanos(ps => ps.map(p => p.id !== planoId ? p : { ...p, itens: p.itens.map(it => it.id === itemId ? {...it, status: novoStatus} : it) }));
-        } catch(e) { console.warn(e); }
+        } catch(e) {
+            console.warn(e);
+            toast({ tipo: "erro", titulo: "Não foi possível atualizar o item", mensagem: "Tente novamente em instantes." });
+        }
     }
 
-    if (loading) return <p style={{color:"var(--TextColor75)",fontSize:"14px"}}>Carregando planos...</p>;
+    if (loading) return <BlocoCarregando texto="Carregando planos..." />;
 
     return (
         <div style={{display:"flex",flexDirection:"column",gap:"1.5rem"}}>

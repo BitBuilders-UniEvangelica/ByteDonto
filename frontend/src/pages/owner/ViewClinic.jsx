@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { apiGetClinic, apiGetMetricas } from "../../services/api";
 import { formatCNPJ, formatPhone } from "../../utils/formatters";
@@ -10,25 +10,34 @@ import IMG from "../../assets/img/icon01.png";
 import { useOwnerSidebar } from "../../hooks/useSidebar";
 import ButtonP from "../../components/buttons/ButtonsRediText";
 import { ArrowLeft } from "lucide-react";
+import { BlocoCarregando, EstadoErro } from "../../components/feedback/Feedback";
 import '../../styles/clinic.css';
 
 function ViewClinic() {
     const { id } = useParams();
     const { token } = useAuth();
-    const navigate = useNavigate();
 
     const [clinica, setClinica] = useState(null);
     const [metricas, setMetricas] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [erroCarregar, setErroCarregar] = useState(false);
 
     const opc_bar = useOwnerSidebar("clinic");
 
-    useEffect(() => {
+    function buscarClinica() {
         apiGetClinic(token, id)
             .then(data => setClinica(data))
-            .catch(() => navigate("/owner/clinic"))
+            .catch(() => setErroCarregar(true))
             .finally(() => setLoading(false));
-    }, [id, token]);
+    }
+
+    function carregar() {
+        setLoading(true);
+        setErroCarregar(false);
+        buscarClinica();
+    }
+
+    useEffect(buscarClinica, [id, token]);
 
     // Métricas da clínica VISUALIZADA (passa o id), não da clínica ativa.
     useEffect(() => {
@@ -45,12 +54,28 @@ function ViewClinic() {
             <>
                 <Section type_styles="owner" />
                 <SideBar opc={opc_bar} styles="owner" />
-                <main className="mainBar owner"><p className="text75">Carregando clínica...</p></main>
+                <main className="mainBar owner"><BlocoCarregando texto="Carregando clínica..." /></main>
             </>
         );
     }
 
-    if (!clinica) return null;
+    if (erroCarregar || !clinica) {
+        return (
+            <>
+                <Section type_styles="owner" />
+                <SideBar opc={opc_bar} styles="owner" />
+                <main className="mainBar owner">
+                    <EstadoErro
+                        mensagem="Não conseguimos carregar os dados desta clínica. Verifique sua internet e tente novamente."
+                        onAcao={carregar}
+                    />
+                    <p style={{ textAlign: "center" }}>
+                        <Link className="text75" to="/owner/clinic">Voltar para Minhas Clínicas</Link>
+                    </p>
+                </main>
+            </>
+        );
+    }
 
     return (
         <>

@@ -7,6 +7,7 @@ import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
 import { useReceptionSidebar } from "../../hooks/useSidebar";
 import { UserPlus } from "lucide-react";
+import { Banner, BlocoCarregando } from "../../components/feedback/Feedback";
 import '../../styles/clinic.css';
 
 /* MAIN COMPONENT */
@@ -16,19 +17,29 @@ function ListPatients() {
     const [consultas, setConsultas] = useState([]);
     const [busca, setBusca] = useState("");
     const [loading, setLoading] = useState(true);
+    const [erroCarregar, setErroCarregar] = useState(false);
 
     // Menu da recepção
     const opc_bar = useReceptionSidebar("patients");
 
-    useEffect(() => {
+    function buscarDados() {
+        const falhou = () => { setErroCarregar(true); return []; };
         Promise.all([
-            apiGetPacientes(token).catch(() => []),
-            apiGetConsultas(token).catch(() => []),
+            apiGetPacientes(token).catch(falhou),
+            apiGetConsultas(token).catch(falhou),
         ]).then(([p, c]) => {
             setPacientes(Array.isArray(p) ? p : []);
             setConsultas(Array.isArray(c) ? c : []);
         }).finally(() => setLoading(false));
-    }, [token]);
+    }
+
+    function tentarNovamente() {
+        setLoading(true);
+        setErroCarregar(false);
+        buscarDados();
+    }
+
+    useEffect(buscarDados, [token]);
 
     // Última consulta por paciente (data_agendada mais recente)
     const ultimaConsultaPorPaciente = (pacienteId) => {
@@ -53,6 +64,12 @@ function ListPatients() {
             <SideBar opc={opc_bar} styles="reception" />
             
             <main className="mainBar reception">
+                {erroCarregar && (
+                    <Banner
+                        texto="Não foi possível carregar os pacientes. Verifique sua conexão com a internet."
+                        onTentarNovamente={tentarNovamente}
+                    />
+                )}
                 <div className="page-header" style={{marginBottom: "2rem"}}>
                     <div>
                         <h1 style={{margin: '0 0 0.5rem 0', color: 'var(--PrimaryColorsTheme)', fontSize: '28px'}}>Pacientes e Prontuários</h1>
@@ -85,9 +102,15 @@ function ListPatients() {
                         
                         <div className="table-body">
                             {loading ? (
-                                <div style={{padding: '2rem', textAlign: 'center', color: 'var(--TextColor75)'}}>Carregando base de dados...</div>
+                                <BlocoCarregando texto="Carregando pacientes..." />
                             ) : pacientesFiltrados.length === 0 ? (
-                                <div style={{padding: '2rem', textAlign: 'center', color: 'var(--TextColor75)'}}>Nenhum paciente encontrado. Crie seu primeiro paciente!</div>
+                                <div style={{padding: '2rem', textAlign: 'center', color: 'var(--TextColor75)'}}>
+                                    {erroCarregar
+                                        ? "Lista indisponível no momento. Use “Tentar novamente” no aviso acima."
+                                        : busca.trim()
+                                        ? `Nenhum paciente encontrado para "${busca.trim()}". Confira o nome ou cadastre um novo paciente.`
+                                        : "Nenhum paciente encontrado. Crie seu primeiro paciente!"}
+                                </div>
                             ) : (
                                 pacientesFiltrados.map((p, idx) => (
                                     <div key={p.id} className="table-row grid-patients" style={{borderBottom: idx === pacientesFiltrados.length - 1 ? 'none' : '1px solid var(--LineColor)'}}>

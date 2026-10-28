@@ -2,10 +2,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import ScrollToTop from "./ScrollToTop";
+import { FeedbackProvider } from "../components/feedback/Feedback";
 
 import LandingPage from "../pages/general/LandingPage";
 import LoginPage from "../pages/general/LoginPage";
 import CadastroPage from "../pages/general/CadastroPage";
+import NotFoundPage from "../pages/general/NotFoundPage";
 
 import ListClinic from "../pages/owner/ListClinic";
 import ViewClinic from "../pages/owner/ViewClinic";
@@ -83,6 +85,7 @@ export function AppRoutes() {
     <BrowserRouter>
       <ScrollToTop />
       <AuthProvider>
+        <FeedbackProvider>
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<LandingPage />} />
@@ -111,7 +114,11 @@ export function AppRoutes() {
           <Route path="/reception/patient/register" element={<PermissionRoute perm="ver_pacientes"><RegisterPatient /></PermissionRoute>} />
           <Route path="/reception/patients" element={<PermissionRoute perm="ver_pacientes"><ListPatients /></PermissionRoute>} />
           <Route path="/reception/patient/view" element={<PermissionRoute perm="ver_pacientes"><ViewPatient /></PermissionRoute>} />
+
+          {/* Qualquer rota inexistente */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
+        </FeedbackProvider>
       </AuthProvider>
     </BrowserRouter>
   );

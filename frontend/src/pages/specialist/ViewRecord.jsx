@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { apiGetPaciente, apiAtualizarPaciente } from "../../services/api";
 import Section from "../../components/section/SectionAuth";
@@ -11,6 +11,8 @@ import PlanoDeTratamento from "../../components/plano/PlanoDeTratamento";
 import GaleriaImagens from "../../components/imagens/GaleriaImagens";
 import PainelClinico from "../../components/clinico/PainelClinico";
 import { UserRound, Printer, Plus, X, AlertTriangle, Check } from "lucide-react";
+import { useFeedback } from "../../hooks/useFeedback";
+import { BlocoCarregando, EstadoErro } from "../../components/feedback/Feedback";
 import "../../styles/clinic.css";
 import "../../styles/Forms.css";
 import { formatDate, calcIdade, idadeLabel } from "../../utils/formatters";
@@ -103,6 +105,8 @@ export default function SpecialistViewRecord() {
     const [itemSugeridoPlano, setItemSugeridoPlano] = useState(null);
 
     const opc_bar = useSpecialistSidebar("patients");
+    const { toast } = useFeedback();
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (!pacienteId) {
@@ -135,8 +139,9 @@ export default function SpecialistViewRecord() {
             setPaciente(prev => ({ ...prev, anamnese: anamneseForm }));
             setAnamneseSucesso(true);
             setTimeout(() => setAnamneseSucesso(false), 2000);
+            toast({ tipo: "sucesso", titulo: "Ficha médica salva" });
         } catch (err) {
-            alert(`Erro ao salvar: ${err.message}`);
+            toast({ tipo: "erro", titulo: "Não foi possível salvar a ficha médica", mensagem: err.message });
         } finally {
             setSalvandoAnamnese(false);
         }
@@ -150,8 +155,9 @@ export default function SpecialistViewRecord() {
             setPaciente(prev => ({ ...prev, odontograma }));
             setOdontogramaSucesso(true);
             setTimeout(() => setOdontogramaSucesso(false), 2000);
+            toast({ tipo: "sucesso", titulo: "Odontograma salvo" });
         } catch (err) {
-            alert(`Erro ao salvar odontograma: ${err.message}`);
+            toast({ tipo: "erro", titulo: "Não foi possível salvar o odontograma", mensagem: err.message });
         } finally {
             setSalvandoOdontograma(false);
         }
@@ -162,7 +168,7 @@ export default function SpecialistViewRecord() {
             <>
                 <Section type_styles="specialist" />
                 <SideBar opc={opc_bar} styles="specialist" />
-                <main className="mainBar specialist"><p>Carregando prontuário...</p></main>
+                <main className="mainBar specialist"><BlocoCarregando texto="Carregando prontuário..." /></main>
             </>
         );
     }
@@ -172,7 +178,15 @@ export default function SpecialistViewRecord() {
             <>
                 <Section type_styles="specialist" />
                 <SideBar opc={opc_bar} styles="specialist" />
-                <main className="mainBar specialist"><p>Prontuário não encontrado. Retorne à listagem.</p></main>
+                <main className="mainBar specialist">
+                    <EstadoErro
+                        tipo="nao-encontrado"
+                        titulo="Prontuário não encontrado"
+                        mensagem="Este paciente pode ter sido removido ou o link está incorreto."
+                        textoBotao="Voltar para Pacientes"
+                        onAcao={() => navigate("/specialist/patients")}
+                    />
+                </main>
             </>
         );
     }

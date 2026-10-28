@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import {
     apiGetPaciente,
@@ -16,6 +16,8 @@ import { useReceptionSidebar } from "../../hooks/useSidebar";
 import { usePermissao } from "../../hooks/usePermissao";
 import TermoConsentimento from "../../components/consentimento/TermoConsentimento";
 import { UserRound, Upload, FileText, AlertTriangle, X, Pencil, Stethoscope } from "lucide-react";
+import { useFeedback } from "../../hooks/useFeedback";
+import { BlocoCarregando, EstadoErro } from "../../components/feedback/Feedback";
 import "../../styles/clinic.css";
 import "../../styles/Forms.css";
 import { formatCPF, formatPhone, formatDate, idadeLabel, formatCurrency } from "../../utils/formatters";
@@ -50,6 +52,8 @@ export default function ViewPatient() {
 
     // Menu da recepção
     const opc_bar = useReceptionSidebar("patients");
+    const { toast, confirmar } = useFeedback();
+    const navigate = useNavigate();
 
     // Acesso ao prontuário clínico (odontograma, plano de tratamento).
     // Disponível para o Dono e para quem tiver a permissão "ver_prontuario".
@@ -138,6 +142,7 @@ export default function ViewPatient() {
         try {
             await apiUploadImagem(token, pacienteId, file);
             await carregarImagens();
+            toast({ tipo: "sucesso", titulo: "Arquivo enviado", mensagem: file.name });
         } catch (error) {
             console.error("Erro no upload", error);
             setImagensErro("Não foi possível enviar o arquivo. Verifique se o armazenamento está configurado.");
@@ -147,13 +152,19 @@ export default function ViewPatient() {
     };
 
     const handleDeletarImagem = async (imagemId) => {
+        const ok = await confirmar({
+            titulo: "Remover arquivo?",
+            mensagem: "O arquivo será removido da ficha do paciente. Esta ação não pode ser desfeita.",
+        });
+        if (!ok) return;
         setImagensErro("");
         try {
             await apiDeletarImagem(token, imagemId);
             await carregarImagens();
+            toast({ tipo: "sucesso", titulo: "Arquivo removido" });
         } catch (error) {
             console.error("Erro ao deletar imagem", error);
-            setImagensErro("Não foi possível remover o arquivo.");
+            toast({ tipo: "erro", titulo: "Não foi possível remover o arquivo", mensagem: "Tente novamente em instantes." });
         }
     };
 
@@ -178,6 +189,7 @@ export default function ViewPatient() {
             setFormaPagamento("Pix");
             setStatusPagamento("Pago");
             await carregarFinanceiro();
+            toast({ tipo: "sucesso", titulo: "Cobrança registrada", mensagem: `R$ ${valor.toFixed(2).replace(".", ",")} · ${statusPagamento}` });
         } catch (error) {
             console.error("Erro ao salvar cobrança", error);
             setCobrancaErro(error.message || "Não foi possível salvar a cobrança.");
@@ -191,7 +203,7 @@ export default function ViewPatient() {
             <>
                 <Section type_styles="reception" />
                 <SideBar opc={opc_bar} styles="reception" />
-                <main className="mainBar reception"><p>Carregando perfil do paciente...</p></main>
+                <main className="mainBar reception"><BlocoCarregando texto="Carregando ficha do paciente..." /></main>
             </>
         );
     }
@@ -201,7 +213,15 @@ export default function ViewPatient() {
             <>
                 <Section type_styles="reception" />
                 <SideBar opc={opc_bar} styles="reception" />
-                <main className="mainBar reception"><p>Paciente não encontrado. Retorne à listagem.</p></main>
+                <main className="mainBar reception">
+                    <EstadoErro
+                        tipo="nao-encontrado"
+                        titulo="Paciente não encontrado"
+                        mensagem="Este paciente pode ter sido removido ou o link está incorreto."
+                        textoBotao="Voltar para Pacientes"
+                        onAcao={() => navigate("/reception/patients")}
+                    />
+                </main>
             </>
         );
     }
@@ -408,7 +428,7 @@ export default function ViewPatient() {
                         )}
 
                         {imagensLoading ? (
-                            <p style={{color: 'var(--TextColor75)'}}>Carregando arquivos...</p>
+                            <BlocoCarregando texto="Carregando arquivos..." />
                         ) : imagens.length === 0 ? (
                             <p style={{color: 'var(--TextColor75)'}}>Nenhum arquivo ou imagem enviado para este paciente.</p>
                         ) : (
@@ -513,7 +533,7 @@ export default function ViewPatient() {
                             <div>
                                 <h3 style={{color: 'var(--TextColor)', margin: '0 0 1.5rem 0'}}>Extrato do Paciente</h3>
                                 {financeiroLoading ? (
-                                    <p style={{color: 'var(--TextColor75)'}}>Carregando extrato...</p>
+                                    <BlocoCarregando texto="Carregando extrato..." />
                                 ) : lancamentos.length === 0 ? (
                                     <p style={{color: 'var(--TextColor75)'}}>Nenhum lançamento financeiro para este paciente.</p>
                                 ) : (

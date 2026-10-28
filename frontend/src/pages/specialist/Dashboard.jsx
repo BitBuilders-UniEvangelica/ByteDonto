@@ -6,6 +6,8 @@ import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
 import { useSpecialistSidebar } from "../../hooks/useSidebar";
 import { CalendarDays, Users, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useFeedback } from "../../hooks/useFeedback";
+import { Banner, BlocoCarregando } from "../../components/feedback/Feedback";
 import "../../styles/clinic.css";
 import "../../styles/Forms.css";
 
@@ -171,6 +173,8 @@ function SpecialistDashboard() {
     const [dataSelecionada, setDataSelecionada] = useState(new Date());
     const [consultas, setConsultas] = useState([]);
     const [loadingConsultas, setLoadingConsultas] = useState(false);
+    const [erroCarregar, setErroCarregar] = useState(false);
+    const { toast } = useFeedback();
     const [metricas, setMetricas] = useState(null);
     const [semanaBase, setSemanaBase] = useState(() => {
         const d = new Date();
@@ -192,9 +196,13 @@ function SpecialistDashboard() {
     const carregarConsultas = () => {
         if (!token) return;
         setLoadingConsultas(true);
+        setErroCarregar(false);
         apiGetConsultas(token)
             .then(data => setConsultas(Array.isArray(data) ? data : []))
-            .catch(err => console.error("Erro ao carregar consultas", err))
+            .catch(err => {
+                console.error("Erro ao carregar consultas", err);
+                setErroCarregar(true);
+            })
             .finally(() => setLoadingConsultas(false));
     };
 
@@ -227,6 +235,7 @@ function SpecialistDashboard() {
             setShowEncerrar(false);
             setConsultaAtiva(null);
             carregarConsultas();
+            toast({ tipo: "sucesso", titulo: "Atendimento encerrado", mensagem: `A evolução de ${activePatient} foi salva no prontuário.` });
         } catch (err) {
             console.error("Erro ao encerrar consulta", err);
             setErroEncerrar(err.message || "Não foi possível salvar o atendimento.");
@@ -336,6 +345,13 @@ function SpecialistDashboard() {
                     </div>
                 </div>
 
+                {erroCarregar && (
+                    <Banner
+                        texto="Não foi possível carregar a agenda. Verifique sua conexão com a internet."
+                        onTentarNovamente={carregarConsultas}
+                    />
+                )}
+
                 {/* ---- MÉTRICAS RÁPIDAS ---- */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1rem", marginBottom: "0.5rem" }}>
                     <div style={{ background: "var(--ThemeColor)", borderRadius: "var(--radius-lg)", border: "1px solid var(--LineColor)", padding: "1.5rem", boxShadow: "var(--shadow-sm)", display: "flex", alignItems: "center", gap: "1rem" }}>
@@ -408,7 +424,7 @@ function SpecialistDashboard() {
                     </div>
 
                     {loadingConsultas ? (
-                        <div style={{ padding: "3rem", textAlign: "center", color: "var(--TextColor75)" }}>Carregando agenda...</div>
+                        <BlocoCarregando texto="Carregando agenda..." />
                     ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                             {HORAS.map(hora => {

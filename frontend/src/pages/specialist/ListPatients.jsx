@@ -6,6 +6,7 @@ import { formatCPF, formatPhone, formatDate } from "../../utils/formatters";
 import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
 import { useSpecialistSidebar } from "../../hooks/useSidebar";
+import { Banner, BlocoCarregando } from "../../components/feedback/Feedback";
 
 export default function SpecialistListPatients() {
     const { token } = useAuth();
@@ -13,18 +14,28 @@ export default function SpecialistListPatients() {
     const [consultas, setConsultas] = useState([]);
     const [busca, setBusca] = useState("");
     const [loading, setLoading] = useState(true);
+    const [erroCarregar, setErroCarregar] = useState(false);
 
     const opc_bar = useSpecialistSidebar("patients");
 
-    useEffect(() => {
+    function buscarDados() {
+        const falhou = () => { setErroCarregar(true); return []; };
         Promise.all([
-            apiGetPacientes(token).catch(() => []),
-            apiGetConsultas(token).catch(() => []),
+            apiGetPacientes(token).catch(falhou),
+            apiGetConsultas(token).catch(falhou),
         ]).then(([p, c]) => {
             setPacientes(Array.isArray(p) ? p : []);
             setConsultas(Array.isArray(c) ? c : []);
         }).finally(() => setLoading(false));
-    }, [token]);
+    }
+
+    function tentarNovamente() {
+        setLoading(true);
+        setErroCarregar(false);
+        buscarDados();
+    }
+
+    useEffect(buscarDados, [token]);
 
     // Última consulta por paciente (data_agendada mais recente)
     const ultimaConsultaPorPaciente = (pacienteId) => {
@@ -49,6 +60,12 @@ export default function SpecialistListPatients() {
             <SideBar opc={opc_bar} styles="specialist" />
             
             <main className="mainBar specialist">
+                {erroCarregar && (
+                    <Banner
+                        texto="Não foi possível carregar os pacientes. Verifique sua conexão com a internet."
+                        onTentarNovamente={tentarNovamente}
+                    />
+                )}
                 <div style={{display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "2rem"}}>
                     <div>
                         <h1 style={{margin: '0 0 0.5rem 0', color: 'var(--PrimaryColorsTheme)', fontSize: '28px'}}>Meus Pacientes</h1>
@@ -75,9 +92,15 @@ export default function SpecialistListPatients() {
                         </div>
                         <div className="table-body">
                             {loading ? (
-                                <div style={{padding: '2rem', textAlign: 'center', color: 'var(--TextColor75)'}}>Carregando base de dados...</div>
+                                <BlocoCarregando texto="Carregando pacientes..." />
                             ) : pacientesFiltrados.length === 0 ? (
-                                <div style={{padding: '2rem', textAlign: 'center', color: 'var(--TextColor75)'}}>Nenhum paciente designado ainda.</div>
+                                <div style={{padding: '2rem', textAlign: 'center', color: 'var(--TextColor75)'}}>
+                                    {erroCarregar
+                                        ? "Lista indisponível no momento. Use “Tentar novamente” no aviso acima."
+                                        : busca.trim()
+                                        ? `Nenhum paciente encontrado para "${busca.trim()}". Confira o nome ou cadastre um novo paciente.`
+                                        : "Nenhum paciente designado ainda."}
+                                </div>
                             ) : (
                                 pacientesFiltrados.map((p, idx) => (
                                     <div key={p.id} className="table-row" style={{gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr', borderBottom: idx === pacientesFiltrados.length - 1 ? 'none' : '1px solid var(--LineColor)'}}>

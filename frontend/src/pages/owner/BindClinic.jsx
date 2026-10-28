@@ -7,6 +7,8 @@ import SideBar from "../../components/bar/SideBar";
 import { useOwnerSidebar } from "../../hooks/useSidebar";
 import { validarEmail, formatDate } from "../../utils/formatters";
 import { ArrowLeft, CheckCircle2, UserPlus, AlertTriangle, EllipsisVertical, Power, KeyRound, ShieldCheck, Pencil, Trash2 } from "lucide-react";
+import { useFeedback } from "../../hooks/useFeedback";
+import { BlocoCarregando, Banner, EstadoErro } from "../../components/feedback/Feedback";
 import "../../styles/clinic.css";
 import "../../styles/Forms.css";
 import "../../styles/Table.css";
@@ -154,6 +156,7 @@ function BindClinic() {
     const [equipe, setEquipe] = useState([]);
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState(null);
+    const { toast, confirmar } = useFeedback();
 
     // Modal de criação
     const [showForm, setShowForm] = useState(false);
@@ -241,6 +244,7 @@ function BindClinic() {
             const novo = await apiCriarMembro(token, form);
             setFormSucesso(`${novo.nome} adicionado com sucesso!`);
             setEquipe(prev => [...prev, { id: novo.id, nome: novo.nome, papel: novo.papel, created_at: new Date().toISOString() }]);
+            toast({ tipo: "sucesso", titulo: "Membro adicionado", mensagem: `${novo.nome} já pode entrar no sistema.` });
             setTimeout(() => {
                 setShowForm(false);
                 setFormSucesso(null);
@@ -280,6 +284,7 @@ function BindClinic() {
             const atualizado = await apiAtualizarMembro(token, membroEditando.id, payload);
             setEquipe(prev => prev.map(m => m.id === membroEditando.id ? { ...m, ...atualizado } : m));
             setShowEdit(false);
+            toast({ tipo: "sucesso", titulo: "Alterações salvas", mensagem: `Dados de ${editForm.nome} atualizados.` });
         } catch (e) {
             setEditErro(e.message);
         } finally {
@@ -338,6 +343,7 @@ function BindClinic() {
                 m.id === membroPermissoes.id ? { ...m, permissoes: resultado.permissoes } : m
             ));
             setPermSucesso(true);
+            toast({ tipo: "sucesso", titulo: "Permissões salvas", mensagem: `Acessos de ${membroPermissoes.nome} atualizados.` });
             setTimeout(() => setShowPerm(false), 1200);
         } catch (e) {
             setPermErro(e.message);
@@ -355,13 +361,10 @@ function BindClinic() {
             setEquipe(prev => prev.map(m =>
                 m.id === membro.id ? { ...m, ativo: atualizado.ativo ?? !atual } : m
             ));
+            toast({ tipo: "sucesso", titulo: atual ? "Membro desativado" : "Membro ativado", mensagem: atual ? `${membro.nome} não consegue mais entrar no sistema.` : `${membro.nome} voltou a ter acesso.` });
         } catch (e) {
-            // A coluna "ativo" pode não existir se a migração do banco não foi aplicada
-            alert(
-                "Não foi possível alterar o status do membro. " +
-                "Verifique se a atualização do banco de dados foi aplicada.\n\n" +
-                e.message
-            );
+            console.error("Erro ao alterar status do membro", e);
+            toast({ tipo: "erro", titulo: "Não foi possível alterar o status", mensagem: "Tente novamente em instantes. Se persistir, contate o suporte." });
         } finally {
             setStatusId(null);
         }
@@ -369,12 +372,19 @@ function BindClinic() {
 
     // --- Remover membro ---
     async function handleRemover(id) {
+        const membro = equipe.find(m => m.id === id);
+        const ok = await confirmar({
+            titulo: "Remover membro?",
+            mensagem: `${membro?.nome || "Este membro"} perderá o acesso ao sistema imediatamente. Esta ação não pode ser desfeita.`,
+        });
+        if (!ok) return;
         setRemovendoId(id);
         try {
             await apiRemoverMembro(token, id);
             setEquipe(prev => prev.filter(m => m.id !== id));
+            toast({ tipo: "sucesso", titulo: "Membro removido", mensagem: `${membro?.nome || "O membro"} não tem mais acesso.` });
         } catch (e) {
-            alert(e.message);
+            toast({ tipo: "erro", titulo: "Não foi possível remover o membro", mensagem: e.message });
         } finally {
             setRemovendoId(null);
         }
@@ -671,14 +681,15 @@ function BindClinic() {
                     </div>
 
                     {carregando ? (
-                        <div style={{ textAlign: "center", padding: "3rem" }}>
-                            <p className="text75">Carregando equipe...</p>
-                        </div>
+                        <BlocoCarregando texto="Carregando equipe..." />
                     ) : erro ? (
-                        <div style={{ textAlign: "center", padding: "3rem" }}>
-                            <p style={{ color: "var(--DangerText)" }}>{erro}</p>
-                            <button className="submit" onClick={carregarEquipe} style={{ marginTop: "1rem" }}>Tentar novamente</button>
-                        </div>
+                        <>
+                            <Banner texto="Não foi possível carregar a equipe. Verifique sua conexão com a internet." onTentarNovamente={carregarEquipe} />
+                            <EstadoErro
+                                mensagem="Não conseguimos carregar os membros da equipe. Verifique sua internet e tente novamente."
+                                onAcao={carregarEquipe}
+                            />
+                        </>
                     ) : (
                         <>
                             {/* Card do Proprietário */}
