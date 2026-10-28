@@ -294,10 +294,10 @@ function ReceptionDashboard() {
                 )}
                 {/* ------------------------------------------------ */}
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "2rem" }}>
+                <div className="page-header" style={{ marginBottom: "2rem" }}>
                     <div>
                         <h1 style={{ margin: '0 0 0.5rem 0', color: 'var(--PrimaryColorsTheme)', fontSize: '28px' }}>Atendimento e Recepção</h1>
-                        <p className="text75">Gerencie os agendamentos e controle os pacientes na sala de espera.</p>
+                        <p className="text75 page-header-desc">Gerencie os agendamentos e controle os pacientes na sala de espera.</p>
                     </div>
                     <button onClick={abrirModal} style={{ background: 'var(--PrimaryColorsTheme)', color: 'white', padding: '12px 24px', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: 'var(--shadow-sm)', border: 'none', cursor: 'pointer' }}>
                         <CalendarPlus size={18} strokeWidth={2.5} /> Agendar Nova Consulta
@@ -306,7 +306,7 @@ function ReceptionDashboard() {
 
                 {/* BUSCA RÁPIDA */}
                 <div className="camp-clinic camp-register" style={{ marginBottom: "2rem", padding: "1.5rem 2.5rem" }}>
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+                    <div className="quick-search-row">
                         <div className="field" style={{ flex: 1, margin: 0, position: 'relative' }}>
                             <label style={{ color: 'var(--PrimaryColorsTheme)' }}>Busca Rápida de Paciente</label>
                             <input type="text" placeholder="Digite o nome, CPF ou Telefone..." style={{ margin: 0, width: '100%', maxWidth: 'none' }}

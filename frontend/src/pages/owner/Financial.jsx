@@ -334,10 +334,10 @@ function Financial({ role }) {
                 {/* ---- FIM MODAL ---- */}
 
                 {/* ---- HEADER ---- */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "0.5rem" }}>
+                <div className="page-header" style={{ marginBottom: "0.5rem" }}>
                     <div>
                         <h1 style={{ margin: "0 0 0.5rem 0", color: "var(--TextColor)", fontSize: "26px" }}>Financeiro</h1>
-                        <p className="text75">Controle de lançamentos, recebimentos e pendências.</p>
+                        <p className="text75 page-header-desc">Controle de lançamentos, recebimentos e pendências.</p>
                     </div>
                     <button onClick={abrirModal} style={{ background: "var(--PrimaryColorsTheme)", color: "white", padding: "12px 24px", borderRadius: "12px", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.5rem", border: "none", cursor: "pointer", boxShadow: "var(--shadow-sm)" }}>
                         <FilePlus size={18} strokeWidth={2} /> Novo Lançamento

@@ -42,7 +42,7 @@ cd frontend/
 npm install
 
 # Inicie o servidor de desenvolvimento
-npm run dev
+npm run dev -- --host
 ```
 
 *(O frontend normalmente será executado em `http://localhost:5173` ou na porta que o Vite indicar no terminal)*

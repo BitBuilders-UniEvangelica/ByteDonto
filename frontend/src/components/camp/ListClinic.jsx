@@ -14,7 +14,7 @@ function ListClinic({ clinic_id, clinic_logo, clinic_img, clinic_name, clinic_cn
                 </div>
                 <div>
                     <p>{clinic_name}</p>
-                    <p>{formatCNPJ(clinic_cnpj)} | {formatPhone(clinic_phone)}</p>
+                    <p className="hide-mobile">{formatCNPJ(clinic_cnpj)} | {formatPhone(clinic_phone)}</p>
                 </div>
             </Link>
 
