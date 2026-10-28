@@ -170,10 +170,10 @@ function ListClinic() {
                 </div>
                 {/* ---- FIM MÉTRICAS ---- */}
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: 'center' }}>
+                <div className="page-header" style={{ alignItems: 'center' }}>
                     <div>
                         <h1 style={{ margin: 0, fontSize: '26px', color: 'var(--TextColor)' }}>Minhas Clínicas</h1>
-                        <p className="text75">Gerencie as clínicas cadastradas em sua conta</p>
+                        <p className="text75 page-header-desc">Gerencie as clínicas cadastradas em sua conta</p>
                     </div>
                     <ButtonH1 text={"Registrar Nova Clínica"} url="/owner/clinic/register" />
                 </div>
@@ -183,7 +183,8 @@ function ListClinic() {
                         placeholder="Buscar clínica por nome ou CNPJ..."
                         value={busca}
                         onChange={e => setBusca(e.target.value)}
-                        style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--LineColor)', width: '100%', maxWidth: '400px' }}
+                        className="search-input search-input-short"
+                        style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--LineColor)' }}
                     />
                 </div>
                 <div className="camp-clinic camp-list" style={{ marginTop: '1rem' }}>

@@ -53,10 +53,10 @@ function ListPatients() {
             <SideBar opc={opc_bar} styles="reception" />
             
             <main className="mainBar reception">
-                <div style={{display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "2rem"}}>
+                <div className="page-header" style={{marginBottom: "2rem"}}>
                     <div>
                         <h1 style={{margin: '0 0 0.5rem 0', color: 'var(--PrimaryColorsTheme)', fontSize: '28px'}}>Pacientes e Prontuários</h1>
-                        <p className="text75">Listagem completa e busca avançada de todos os pacientes da clínica.</p>
+                        <p className="text75 page-header-desc">Listagem completa e busca avançada de todos os pacientes da clínica.</p>
                     </div>
                     <div>
                         <Link to="/reception/patient/register" style={{background: 'var(--PrimaryColorsTheme)', color: 'white', padding: '12px 24px', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: 'var(--shadow-sm)'}}>
@@ -65,21 +65,21 @@ function ListPatients() {
                     </div>
                 </div>
 
-                <div className="camp-clinic camp-view">
+                <div className="camp-clinic camp-view camp-compact">
                     <input
                         type="text"
                         placeholder="Buscar por Nome, Telefone ou CPF..."
-                        style={{width: '100%'}}
+                        className="search-input"
                         value={busca}
                         onChange={(e) => setBusca(e.target.value)}
                     />
 
                     <div className="table" style={{marginTop: '2rem'}}>
-                        <div className="table-header" style={{gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr'}}>
+                        <div className="table-header grid-patients">
                             <p className="text75">Paciente</p>
-                            <p className="text75">Celular</p>
-                            <p className="text75">Última Consulta</p>
-                            <p className="text75">Status</p>
+                            <p className="text75 hide-mobile">Celular</p>
+                            <p className="text75 hide-mobile">Última Consulta</p>
+                            <p className="text75 hide-mobile">Status</p>
                             <p className="text75" style={{textAlign: 'right'}}>Ação</p>
                         </div>
                         
@@ -90,11 +90,11 @@ function ListPatients() {
                                 <div style={{padding: '2rem', textAlign: 'center', color: 'var(--TextColor75)'}}>Nenhum paciente encontrado. Crie seu primeiro paciente!</div>
                             ) : (
                                 pacientesFiltrados.map((p, idx) => (
-                                    <div key={p.id} className="table-row" style={{gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr', borderBottom: idx === pacientesFiltrados.length - 1 ? 'none' : '1px solid var(--LineColor)'}}>
+                                    <div key={p.id} className="table-row grid-patients" style={{borderBottom: idx === pacientesFiltrados.length - 1 ? 'none' : '1px solid var(--LineColor)'}}>
                                         <div><p style={{fontWeight: 700}}>{p.nome}</p><span style={{fontSize: '12px', color: 'var(--TextColor75)'}}>{formatCPF(p.cpf)}</span></div>
-                                        <p style={{fontFamily: 'var(--font-secondary)'}}>{formatPhone(p.telefone_whatsapp)}</p>
-                                        <p>{ultimaConsultaPorPaciente(p.id) ? formatDate(ultimaConsultaPorPaciente(p.id)) : "—"}</p>
-                                        <p>
+                                        <p className="hide-mobile" style={{fontFamily: 'var(--font-secondary)'}}>{formatPhone(p.telefone_whatsapp)}</p>
+                                        <p className="hide-mobile">{ultimaConsultaPorPaciente(p.id) ? formatDate(ultimaConsultaPorPaciente(p.id)) : "—"}</p>
+                                        <p className="hide-mobile">
                                             {(() => {
                                                 const ativo = (p.status || "Ativo") === "Ativo";
                                                 return (

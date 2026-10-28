@@ -35,15 +35,20 @@ const FORM_INICIAL = { nome: "", email: "", senha: "", papel: "Especialista", cr
 /* Menu de ações de um membro (botão de 3 pontos).
    O menu usa position: fixed porque a tabela corta o que passa da borda
    (overflow: hidden). As coordenadas do botão vêm em pixels de tela, então
-   são divididas pelo zoom global do app (--app-zoom) antes de posicionar. */
+   são divididas pelo zoom global do app (--app-zoom) antes de posicionar.
+   No celular o menu abre como gaveta presa ao rodapé da tela: não depende
+   dessas coordenadas, que o Safari do iPhone calcula diferente com zoom. */
 function MenuAcoes({ itens, rotulo }) {
     const [pos, setPos] = useState(null);
     const botaoRef = useRef(null);
     const menuRef = useRef(null);
+    const fundoRef = useRef(null);
     const aberto = pos !== null;
+    const gaveta = pos?.gaveta === true;
 
     function alternar() {
         if (aberto) { setPos(null); return; }
+        if (window.matchMedia("(max-width: 768px)").matches) { setPos({ gaveta: true }); return; }
         const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
         const r = botaoRef.current.getBoundingClientRect();
         const alturaMenu = itens.length * 40 + 12;
@@ -59,7 +64,9 @@ function MenuAcoes({ itens, rotulo }) {
         if (!aberto) return;
         const fechar = () => setPos(null);
         const aoClicar = (e) => {
-            if (menuRef.current?.contains(e.target) || botaoRef.current?.contains(e.target)) return;
+            // O fundo escuro da gaveta fecha pelo próprio onClick (evita que o
+            // toque "atravesse" e acione o que estiver embaixo).
+            if (menuRef.current?.contains(e.target) || botaoRef.current?.contains(e.target) || e.target === fundoRef.current) return;
             fechar();
         };
         const aoTeclar = (e) => { if (e.key === "Escape") fechar(); };
@@ -93,15 +100,25 @@ function MenuAcoes({ itens, rotulo }) {
                 }}>
                 <EllipsisVertical size={18} strokeWidth={2} />
             </button>
+            {aberto && gaveta && (
+                <div ref={fundoRef} className="acoes-backdrop" onClick={() => setPos(null)} />
+            )}
             {aberto && (
                 <div
                     ref={menuRef}
                     role="menu"
-                    style={{
+                    style={gaveta ? {
+                        position: "fixed", left: 0, right: 0, bottom: 0, zIndex: "calc(var(--z-dropdown) + 1)", padding: "12px 12px 24px",
+                        background: "var(--ThemeColor)", borderTop: "1px solid var(--LineColor)", borderRadius: "16px 16px 0 0",
+                        boxShadow: "var(--shadow-md)", display: "flex", flexDirection: "column", gap: "4px",
+                    } : {
                         position: "fixed", ...pos, zIndex: "var(--z-dropdown)", minWidth: "190px", padding: "6px",
                         background: "var(--ThemeColor)", border: "1px solid var(--LineColor)", borderRadius: "10px",
                         boxShadow: "var(--shadow-md)", display: "flex", flexDirection: "column",
                     }}>
+                    {gaveta && (
+                        <p style={{ margin: "4px 12px 8px", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75)" }}>{rotulo}</p>
+                    )}
                     {itens.map(({ label, cor, onClick, disabled, ...item }) => {
                         const Icon = item.Icon;
                         return (
@@ -114,9 +131,9 @@ function MenuAcoes({ itens, rotulo }) {
                             onMouseEnter={e => { e.currentTarget.style.background = "var(--BackColor)"; }}
                             onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
                             style={{
-                                display: "flex", alignItems: "center", gap: "10px", width: "100%", height: "40px", padding: "0 12px",
+                                display: "flex", alignItems: "center", gap: "10px", width: "100%", height: gaveta ? "48px" : "40px", padding: "0 12px",
                                 background: "transparent", border: "none", borderRadius: "8px", textAlign: "left",
-                                color: cor || "var(--TextColor)", fontSize: "13px", fontWeight: 600, fontFamily: "inherit",
+                                color: cor || "var(--TextColor)", fontSize: gaveta ? "15px" : "13px", fontWeight: 600, fontFamily: "inherit",
                                 cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1,
                             }}>
                             <Icon size={16} strokeWidth={2} />
@@ -643,10 +660,10 @@ function BindClinic() {
                 </p>
 
                 <div className="camp-clinic camp-register">
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2em" }}>
+                    <div className="page-header" style={{ alignItems: "center", marginBottom: "2em" }}>
                         <div>
                             <h1 style={{ margin: "0 0 0.5rem 0" }}>Equipe da Clínica</h1>
-                            <p className="text75">Gerencie os acessos dos profissionais. Você define o login e o nível de permissão de cada membro.</p>
+                            <p className="text75 page-header-desc">Gerencie os acessos dos profissionais. Você define o login e o nível de permissão de cada membro.</p>
                         </div>
                         <button className="submit" onClick={abrirForm} style={{ padding: "12px 24px", fontSize: "15px", display: "inline-flex", alignItems: "center", gap: "6px" }}>
                             <UserPlus size={18} strokeWidth={2} /> Adicionar Membro
@@ -668,14 +685,14 @@ function BindClinic() {
                             {dono && (
                                 <div style={{ marginBottom: "2rem" }}>
                                     <p className="text75" style={{ marginBottom: "0.75rem", fontWeight: 700, fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Proprietário</p>
-                                    <div className="table-row" style={{ gridTemplateColumns: "2fr 1fr 1fr", background: "var(--PrimaryColorsBack)", borderRadius: "10px", padding: "14px 16px" }}>
+                                    <div className="table-row grid-owner" style={{ background: "var(--PrimaryColorsBack)", borderRadius: "10px", padding: "14px 16px" }}>
                                         <div>
                                             <p style={{ fontWeight: 700 }}>{dono.nome}</p>
                                         </div>
                                         <span style={{ background: "var(--ThemeColor)", color: "var(--PrimaryColorsTheme)", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: 700, alignSelf: "center", width: "fit-content" }}>
                                             Proprietário
                                         </span>
-                                        <p style={{ fontSize: "12px", color: "var(--TextColor75)", alignSelf: "center" }}>Acesso total</p>
+                                        <p className="hide-mobile" style={{ fontSize: "12px", color: "var(--TextColor75)", alignSelf: "center" }}>Acesso total</p>
                                     </div>
                                 </div>
                             )}
@@ -694,11 +711,11 @@ function BindClinic() {
                                 </div>
                             ) : (
                                 <div className="table">
-                                    <div className="table-header" style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr 80px" }}>
+                                    <div className="table-header grid-team">
                                         <p className="text75">Nome</p>
                                         <p className="text75">Nível de Acesso</p>
-                                        <p className="text75">Status</p>
-                                        <p className="text75">Adicionado em</p>
+                                        <p className="text75 hide-mobile">Status</p>
+                                        <p className="text75 hide-mobile">Adicionado em</p>
                                         <p className="text75" style={{ textAlign: "right" }}>Ações</p>
                                     </div>
 
@@ -708,7 +725,7 @@ function BindClinic() {
                                             const dataFormatada = formatDate(membro.created_at);
                                             const ativo = membro.ativo !== false;
                                             return (
-                                                <div className="table-row" key={membro.id} style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr 80px" }}>
+                                                <div className="table-row grid-team" key={membro.id}>
                                                     <div>
                                                         <p style={{ fontWeight: 600 }}>{membro.nome}</p>
                                                         {membro.papel === "Especialista" && membro.cro && (
@@ -718,7 +735,7 @@ function BindClinic() {
                                                     <span style={{ background: config.bg, color: config.cor, padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: 700, alignSelf: "center", width: "fit-content" }}>
                                                         {config.label}
                                                     </span>
-                                                    <span style={{
+                                                    <span className="hide-mobile" style={{
                                                         background: ativo ? "var(--SuccessBack)" : "var(--DangerBack)",
                                                         color: ativo ? "var(--SuccessText)" : "var(--DangerText)",
                                                         padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: 700,
@@ -726,7 +743,7 @@ function BindClinic() {
                                                     }}>
                                                         {ativo ? "Ativo" : "Inativo"}
                                                     </span>
-                                                    <p className="text75" style={{ fontSize: "13px", alignSelf: "center" }}>{dataFormatada}</p>
+                                                    <p className="text75 hide-mobile" style={{ fontSize: "13px", alignSelf: "center" }}>{dataFormatada}</p>
                                                     <div style={{ display: "flex", justifyContent: "flex-end", alignSelf: "center" }}>
                                                         <MenuAcoes
                                                             rotulo={`Ações de ${membro.nome}`}

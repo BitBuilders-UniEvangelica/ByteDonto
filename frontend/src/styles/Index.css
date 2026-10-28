@@ -180,3 +180,102 @@ ul.tabs-bar li.select {
     from { opacity: 0; transform: translateY(6px); }
     to   { opacity: 1; transform: translateY(0); }
 }
+/* CABEÇALHO DE PÁGINA (título + descrição + botão de ação)
+   No desktop: texto à esquerda e botão à direita.
+   No celular: some a descrição, título centralizado e botão embaixo, à esquerda. */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    .page-header > :first-child {
+        width: 100%;
+        text-align: center;
+    }
+    .page-header h1 {
+        margin: 0 !important;
+    }
+    .page-header .page-header-desc {
+        display: none;
+    }
+}
+
+/* CAMPO DE BUSCA NO TOPO DAS LISTAGENS
+   border-box impede que o padding some à largura e o input passe do card. */
+.search-input {
+    box-sizing: border-box;
+    width: 100%;
+}
+.search-input.search-input-short {
+    max-width: 400px;
+}
+
+/* BUSCA RÁPIDA (recepção): input e botão lado a lado no desktop */
+.quick-search-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+/* GRADES DAS TABELAS (colunas definidas aqui para poder mudar no celular) */
+.table-header.grid-team,
+.table-row.grid-team { grid-template-columns: 2fr 1fr 1fr 1fr 80px; }
+.table-row.grid-owner { grid-template-columns: 2fr 1fr 1fr; }
+.table-header.grid-patients,
+.table-row.grid-patients { grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr; }
+
+/* GAVETA DO MENU DE AÇÕES (celular) */
+.acoes-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    z-index: var(--z-dropdown);
+}
+
+@media (max-width: 768px) {
+    /* Esconde colunas/informações secundárias no celular */
+    .hide-mobile {
+        display: none !important;
+    }
+
+    .search-input.search-input-short {
+        max-width: none;
+    }
+
+    .quick-search-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    /* Tabelas enxutas: cabem na tela, sem rolagem lateral */
+    .table-header.grid-team,
+    .table-row.grid-team {
+        grid-template-columns: 1fr auto 40px;
+        column-gap: 0.75rem;
+        min-width: 0;
+    }
+    .table-row.grid-owner {
+        grid-template-columns: 1fr auto;
+        column-gap: 0.75rem;
+        min-width: 0;
+    }
+    .table-header.grid-patients,
+    .table-row.grid-patients {
+        grid-template-columns: 1fr auto;
+        column-gap: 0.75rem;
+        min-width: 0;
+    }
+
+    /* Mesmo respiro do card "Clínicas Registradas" */
+    main .camp-clinic.camp-compact {
+        padding: 2rem;
+        gap: 1.25rem;
+    }
+}
