@@ -10,7 +10,7 @@ button {
     transition: background-color var(--transition-fast),
                 border-color var(--transition-fast),
                 color var(--transition-fast);
-    font-family: var(--font-primary, 'Inter', sans-serif);
+    font-family: var(--font-primary, 'Atkinson Hyperlegible Mono', monospace);
 }
 
 button:disabled {

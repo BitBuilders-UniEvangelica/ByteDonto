@@ -20,7 +20,7 @@
 }
 
 .card-info .card-title {
-    font-family: var(--font-primary, 'Inter', sans-serif);
+    font-family: var(--font-primary, 'Atkinson Hyperlegible Mono', monospace);
     font-size: 12px;
     font-weight: 700;
     color: var(--TextColor75);
@@ -31,7 +31,7 @@
 }
 
 .card-info .card-value {
-    font-family: var(--font-secondary, 'JetBrains Mono', monospace);
+    font-family: var(--font-secondary, 'Atkinson Hyperlegible Mono', monospace);
     font-size: 34px;
     font-weight: 700;
     color: var(--TextColor);
