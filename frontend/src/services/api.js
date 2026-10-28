@@ -1,5 +1,5 @@
 /* API BASE URL — troca para a URL do Render quando fizer o deploy */
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 /* --- AUTH --- */
 export async function apiRegistro(nome, email, password) {
