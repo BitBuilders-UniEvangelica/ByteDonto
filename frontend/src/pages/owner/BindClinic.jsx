@@ -672,10 +672,10 @@ function BindClinic() {
                 <div className="camp-clinic camp-register">
                     <div className="page-header" style={{ alignItems: "center", marginBottom: "2em" }}>
                         <div>
-                            <h1 style={{ margin: "0 0 0.5rem 0" }}>Equipe da Clínica</h1>
+                            <h1 style={{ margin: '0 0 0.5rem 0', color: 'var(--PrimaryColorsTheme)', fontSize: '28px' }}>Equipe da Clínica</h1>
                             <p className="text75 page-header-desc">Gerencie os acessos dos profissionais. Você define o login e o nível de permissão de cada membro.</p>
                         </div>
-                        <button className="submit" onClick={abrirForm} style={{ padding: "12px 24px", fontSize: "15px", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                        <button className="submit" onClick={abrirForm} style={{ background: 'var(--PrimaryColorsTheme)', color: 'white', padding: '12px 24px', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: 'var(--shadow-sm)', border: 'none', cursor: 'pointer' }}>
                             <UserPlus size={18} strokeWidth={2} /> Adicionar Membro
                         </button>
                     </div>

@@ -229,9 +229,17 @@ function Financial({ role }) {
                 forma_pagamento: form.forma_pagamento,
                 status_pagamento: form.status_pagamento,
             });
-            setLancamentos(prev => [novo, ...prev]);
-            setShowModal(false);
+            // A resposta do POST traz só o registro cru, sem os nomes que a
+            // listagem traz (pacientes.nome / dentista.nome). Preenche aqui com
+            // as listas já carregadas para a linha nova não aparecer com "—".
             const paciente = pacientes.find(p => p.id === form.paciente_id);
+            const dentista = dentistas.find(d => d.id === form.dentista_responsavel);
+            setLancamentos(prev => [{
+                ...novo,
+                pacientes: paciente ? { nome: paciente.nome } : null,
+                dentista: dentista ? { nome: dentista.nome } : null,
+            }, ...prev]);
+            setShowModal(false);
             toast({
                 tipo: "sucesso",
                 titulo: "Lançamento salvo",
@@ -267,8 +275,8 @@ function Financial({ role }) {
 
                 {/* ---- MODAL NOVO LANÇAMENTO ---- */}
                 {showModal && (
-                    <div style={{ position: "fixed", top: 0, left: 0, width: "calc(100vw / var(--app-zoom))", height: "calc(100vh / var(--app-zoom))", background: "rgba(15,23,42,0.4)", backdropFilter: "blur(8px)", zIndex: 9999, display: "flex", justifyContent: "center", alignItems: "center" }}>
-                        <div style={{ background: "var(--ThemeColor)", padding: "2rem", borderRadius: "16px", width: "100%", maxWidth: "600px", boxShadow: "0 20px 40px -12px rgba(15,23,42,0.2)", animation: "fadeIn 0.2s", border: "1px solid var(--LineColor)" }}>
+                    <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "calc(100vw / var(--app-zoom))", height: "calc(100vh / var(--app-zoom))", background: "rgba(15,23,42,0.4)", backdropFilter: "blur(8px)", zIndex: 9999, display: "flex", justifyContent: "center", alignItems: "center" }}>
+                        <div className="modal-caixa" style={{ background: "var(--ThemeColor)", padding: "2rem", borderRadius: "16px", width: "100%", maxWidth: "600px", boxShadow: "0 20px 40px -12px rgba(15,23,42,0.2)", animation: "fadeIn 0.2s", border: "1px solid var(--LineColor)" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem" }}>
                                 <div>
                                     <span style={{ background: "var(--PrimaryColorsBack)", color: "var(--PrimaryColorsTheme)", padding: "6px 12px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, marginBottom: "12px", display: "inline-block", textTransform: "uppercase", letterSpacing: "0.04em" }}>Novo Registro</span>
@@ -354,7 +362,7 @@ function Financial({ role }) {
                 {/* ---- HEADER ---- */}
                 <div className="page-header" style={{ marginBottom: "0.5rem" }}>
                     <div>
-                        <h1 style={{ margin: "0 0 0.5rem 0", color: "var(--TextColor)", fontSize: "26px" }}>Financeiro</h1>
+                        <h1  style={{ margin: '0 0 0.5rem 0', color: 'var(--PrimaryColorsTheme)', fontSize: '28px' }}>Financeiro</h1>
                         <p className="text75 page-header-desc">Controle de lançamentos, recebimentos e pendências.</p>
                     </div>
                     <button onClick={abrirModal} style={{ background: "var(--PrimaryColorsTheme)", color: "white", padding: "12px 24px", borderRadius: "12px", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.5rem", border: "none", cursor: "pointer", boxShadow: "var(--shadow-sm)" }}>
@@ -370,7 +378,7 @@ function Financial({ role }) {
                 )}
 
                 {/* ---- CARDS DE MÉTRICAS ---- */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem" }}>
+                <div className="fin-metricas">
                     <div style={{ background: "var(--ThemeColor)", borderRadius: "14px", border: "1px solid var(--LineColor)", padding: "22px", boxShadow: "var(--shadow-sm)" }}>
                         <p style={{ margin: "0 0 0.25rem 0", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Pago no Mês</p>
                         <p style={{ margin: 0, fontSize: "28px", fontWeight: 800, color: "var(--SuccessText)", fontFamily: "var(--font-secondary)" }}>
@@ -393,7 +401,7 @@ function Financial({ role }) {
 
                 {/* ---- GRÁFICOS ---- */}
                 {!loading && lancamentos.length > 0 && (
-                    <div style={{ display: "flex", gap: "1rem" }}>
+                    <div className="fin-graficos">
                         <GraficoMensal lancamentos={lancamentos} />
                         <GraficoFormas lancamentos={lancamentos} />
                     </div>
@@ -401,8 +409,8 @@ function Financial({ role }) {
 
                 {/* ---- REPASSES POR DENTISTA (somente Owner) ---- */}
                 {isOwner && (
-                    <div className="camp-clinic" style={{ padding: "2.5rem" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                    <div className="camp-clinic camp-register camp-compact">
+                        <div className="fin-repasse-header">
                             <div>
                                 <h2 style={{ margin: 0 }}>Repasse aos Dentistas</h2>
                                 <p className="text75" style={{ margin: "4px 0 0 0", fontSize: "13px" }}>Apenas valores PAGOS no mês entram no cálculo. Configure o % de cada um em Equipe.</p>
@@ -421,22 +429,22 @@ function Financial({ role }) {
                             <p className="text75" style={{ textAlign: "center", padding: "1.5rem" }}>Nenhum dentista com produção no mês.</p>
                         ) : (
                             <div className="table">
-                                <div className="table-header" style={{ gridTemplateColumns: "2fr 1fr 1.2fr 1.2fr" }}>
+                                <div className="table-header grid-repasse">
                                     <p className="text75">Dentista</p>
                                     <p className="text75">%</p>
-                                    <p className="text75">Produção (Pago)</p>
+                                    <p className="text75 hide-mobile">Produção (Pago)</p>
                                     <p className="text75" style={{ textAlign: "right" }}>Repasse</p>
                                 </div>
                                 <div className="table-body">
                                     {repasses.itens.map((r, idx) => (
                                         <div
                                             key={r.dentista_id}
-                                            className="table-row"
-                                            style={{ gridTemplateColumns: "2fr 1fr 1.2fr 1.2fr", borderBottom: idx === repasses.itens.length - 1 ? "none" : "1px solid var(--LineColor)" }}
+                                            className="table-row grid-repasse"
+                                            style={{ borderBottom: idx === repasses.itens.length - 1 ? "none" : "1px solid var(--LineColor)" }}
                                         >
                                             <p style={{ fontWeight: 600 }}>{r.dentista_nome}</p>
                                             <p style={{ fontWeight: 600 }}>{r.percentual_repasse}%</p>
-                                            <p style={{ fontFamily: "var(--font-secondary)" }}>{formatCurrency(r.producao)}</p>
+                                            <p className="hide-mobile" style={{ fontFamily: "var(--font-secondary)" }}>{formatCurrency(r.producao)}</p>
                                             <p style={{ fontFamily: "var(--font-secondary)", fontWeight: 700, color: "var(--SuccessText)", textAlign: "right" }}>
                                                 {formatCurrency(r.repasse)}
                                             </p>
@@ -449,7 +457,7 @@ function Financial({ role }) {
                 )}
 
                 {/* ---- FILTROS ---- */}
-                <div style={{ display: "flex", gap: "0.5rem" }}>
+                <div className="fin-filtros">
                     {["Todos", ...STATUS_OPTIONS].map(s => (
                         <button
                             key={s}
@@ -472,7 +480,7 @@ function Financial({ role }) {
                 </div>
 
                 {/* ---- TABELA ---- */}
-                <div className="camp-clinic" style={{ padding: "2.5rem" }}>
+                <div className="camp-clinic camp-register camp-compact">
                     <h2 style={{ margin: "0 0 1.5rem 0" }}>Lançamentos</h2>
 
                     {loading ? (
@@ -481,14 +489,14 @@ function Financial({ role }) {
                         <p className="text75" style={{ textAlign: "center", padding: "2rem" }}>Nenhum lançamento encontrado.</p>
                     ) : (
                         <div className="table">
-                            <div className="table-header" style={{ gridTemplateColumns: "1fr 1.5fr 1.5fr 1.5fr 1.2fr 1fr 1fr 1.2fr" }}>
-                                <p className="text75">Data</p>
+                            <div className="table-header grid-lancamentos">
+                                <p className="text75 hide-mobile">Data</p>
                                 <p className="text75">Paciente</p>
-                                <p className="text75">Dentista</p>
-                                <p className="text75">Procedimento</p>
-                                <p className="text75">Pagamento</p>
+                                <p className="text75 hide-mobile">Dentista</p>
+                                <p className="text75 hide-mobile">Procedimento</p>
+                                <p className="text75 hide-mobile">Pagamento</p>
                                 <p className="text75">Valor</p>
-                                <p className="text75">Status</p>
+                                <p className="text75 hide-mobile">Status</p>
                                 <p className="text75" style={{ textAlign: "right" }}>Ações</p>
                             </div>
                             <div className="table-body">
@@ -497,16 +505,26 @@ function Financial({ role }) {
                                     return (
                                         <div
                                             key={l.id}
-                                            className="table-row"
-                                            style={{ gridTemplateColumns: "1fr 1.5fr 1.5fr 1.5fr 1.2fr 1fr 1fr 1.2fr", borderBottom: idx === filtrados.length - 1 ? "none" : "1px solid var(--LineColor)" }}
+                                            className="table-row grid-lancamentos"
+                                            style={{ borderBottom: idx === filtrados.length - 1 ? "none" : "1px solid var(--LineColor)" }}
                                         >
-                                            <p style={{ fontFamily: "var(--font-secondary)", fontSize: "13px", fontWeight: 500 }}>{formatDate(l.created_at)}</p>
-                                            <p style={{ fontWeight: 600 }}>{l.pacientes?.nome || "—"}</p>
-                                            <p className="text75">{l.dentista?.nome || "—"}</p>
-                                            <p className="text75" style={{ fontSize: "13px" }}>{l.descricao || "—"}</p>
-                                            <p className="text75">{l.forma_pagamento || "—"}</p>
-                                            <p style={{ fontFamily: "var(--font-secondary)", fontWeight: 700 }}>{formatCurrency(l.valor)}</p>
-                                            <span style={{ background: st.bg, color: st.color, padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", alignSelf: "center" }}>
+                                            <p className="hide-mobile" style={{ fontFamily: "var(--font-secondary)", fontSize: "13px", fontWeight: 500 }}>{formatDate(l.created_at)}</p>
+                                            <div style={{ minWidth: 0 }}>
+                                                <p style={{ fontWeight: 600 }}>{l.pacientes?.nome || "—"}</p>
+                                                {/* No celular a data vai embaixo do nome */}
+                                                <span className="show-mobile text75" style={{ fontSize: "12px" }}>{formatDate(l.created_at)}</span>
+                                            </div>
+                                            <p className="text75 hide-mobile">{l.dentista?.nome || "—"}</p>
+                                            <p className="text75 hide-mobile" style={{ fontSize: "13px" }}>{l.descricao || "—"}</p>
+                                            <p className="text75 hide-mobile">{l.forma_pagamento || "—"}</p>
+                                            <div>
+                                                <p style={{ fontFamily: "var(--font-secondary)", fontWeight: 700 }}>{formatCurrency(l.valor)}</p>
+                                                {/* No celular o status vai embaixo do valor */}
+                                                <span className="show-mobile" style={{ background: st.bg, color: st.color, padding: "2px 8px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, width: "fit-content", marginTop: "4px" }}>
+                                                    {l.status_pagamento}
+                                                </span>
+                                            </div>
+                                            <span className="hide-mobile" style={{ background: st.bg, color: st.color, padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", alignSelf: "center" }}>
                                                 {l.status_pagamento}
                                             </span>
                                             <div style={{ textAlign: "right" }}>
@@ -515,7 +533,7 @@ function Financial({ role }) {
                                                         onClick={() => marcarComoPago(l.id)}
                                                         disabled={atualizando === l.id}
                                                         className="submit"
-                                                        style={{ padding: "6px 12px", fontSize: "12px", borderRadius: "8px", background: "var(--SuccessText)", boxShadow: "none", whiteSpace: "nowrap" }}
+                                                        style={{ padding: "6px 12px", fontSize: "12px", borderRadius: "8px", background: "var(--PrimaryColorsTheme)", color: "white", border: "none", boxShadow: "none", whiteSpace: "nowrap" }}
                                                     >
                                                         {atualizando === l.id ? "..." : "Marcar Pago"}
                                                     </button>

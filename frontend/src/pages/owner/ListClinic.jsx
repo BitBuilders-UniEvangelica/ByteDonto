@@ -199,7 +199,7 @@ function ListClinic() {
 
                 <div className="page-header" style={{ alignItems: 'center' }}>
                     <div>
-                        <h1 style={{ margin: 0, fontSize: '26px', color: 'var(--TextColor)' }}>Minhas Clínicas</h1>
+                        <h1 style={{ margin: '0 0 0.5rem 0', color: 'var(--PrimaryColorsTheme)', fontSize: '28px' }}>Minhas Clínicas</h1>
                         <p className="text75 page-header-desc">Gerencie as clínicas cadastradas em sua conta</p>
                     </div>
                     <ButtonH1 text={"Registrar Nova Clínica"} url="/owner/clinic/register" />

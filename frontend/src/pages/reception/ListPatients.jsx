@@ -76,7 +76,7 @@ function ListPatients() {
                         <p className="text75 page-header-desc">Listagem completa e busca avançada de todos os pacientes da clínica.</p>
                     </div>
                     <div>
-                        <Link to="/reception/patient/register" style={{background: 'var(--PrimaryColorsTheme)', color: 'white', padding: '12px 24px', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: 'var(--shadow-sm)'}}>
+                        <Link to="/reception/patient/register" style={{ background: 'var(--PrimaryColorsTheme)', color: 'white', padding: '12px 24px', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: 'var(--shadow-sm)', border: 'none', cursor: 'pointer' }}>
                             <UserPlus size={18} strokeWidth={2.5} /> Cadastrar Novo Paciente
                         </Link>
                     </div>
