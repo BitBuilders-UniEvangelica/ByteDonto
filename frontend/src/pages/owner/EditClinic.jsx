@@ -8,6 +8,8 @@ import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
 import { useOwnerSidebar } from "../../hooks/useSidebar";
 import { ArrowLeft } from "lucide-react";
+import { useFeedback } from "../../hooks/useFeedback";
+import { Banner, BlocoCarregando, ErroCampo } from "../../components/feedback/Feedback";
 import '../../styles/clinic.css';
 import '../../styles/Forms.css';
 
@@ -19,6 +21,9 @@ function EditClinic() {
     /* STATES */
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [erroCarregar, setErroCarregar] = useState(false);
+    const [erroCnpj, setErroCnpj] = useState("");
+    const { toast } = useFeedback();
     
     const [name_clinic, setNameClinic] = useState("");
     const [CNPJ, setCNPJ] = useState("");
@@ -38,8 +43,10 @@ function EditClinic() {
     const opc_bar = useOwnerSidebar("clinic");
 
     /* LOAD DATA FROM API */
-    useEffect(() => {
+    function carregar() {
         if (id && token) {
+            setLoading(true);
+            setErroCarregar(false);
             apiGetClinic(token, id)
                 .then((clinicData) => {
                     setNameClinic(clinicData.nome || clinicData.nome_fantasia || "");
@@ -60,18 +67,22 @@ function EditClinic() {
                 })
                 .catch((e) => {
                     console.error("Erro ao carregar clínica", e);
-                    alert("Não foi possível carregar os dados.");
+                    setErroCarregar(true);
                 })
                 .finally(() => setLoading(false));
         }
-    }, [id, token]);
+    }
+
+    useEffect(carregar, [id, token]);
 
     /* SUBMIT */
     async function handleSubmit(e) {
         e.preventDefault();
 
+        setErroCnpj("");
         if (CNPJ && !validarCNPJ(CNPJ)) {
-            alert("CNPJ inválido.");
+            setErroCnpj("CNPJ inválido. Confira os 14 dígitos.");
+            toast({ tipo: "erro", titulo: "Não foi possível salvar", mensagem: "Corrija os campos destacados e tente novamente." });
             return;
         }
 
@@ -98,16 +109,14 @@ function EditClinic() {
 
         try {
             await apiUpdateClinic(token, id, updatedClinic);
-            alert("Dados da clínica salvos com sucesso no banco principal!");
+            toast({ tipo: "sucesso", titulo: "Alterações salvas", mensagem: "Os dados da clínica foram atualizados." });
         } catch (e) {
             console.error(e);
-            alert("Falha ao salvar: " + e.message);
+            toast({ tipo: "erro", titulo: "Não foi possível salvar", mensagem: e.message || "Tente novamente em instantes." });
         } finally {
             setSaving(false);
         }
     }
-
-    if (loading) return <div style={{padding: '50px', textAlign: 'center'}}>Carregando os dados...</div>;
 
     return (
         <>
@@ -115,11 +124,19 @@ function EditClinic() {
             <SideBar opc={opc_bar} styles="owner" />
             
             <main className="mainBar owner register">
+                {loading ? <BlocoCarregando texto="Carregando os dados da clínica..." /> : (<>
                 <p>
                     <Link className="text75" to={`/owner/view-clinic/${id}`} style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
                         <ArrowLeft size={16} strokeWidth={2} /> Voltar para Visão Geral
                     </Link>
                 </p>
+
+                {erroCarregar && (
+                    <Banner
+                        texto="Não foi possível carregar os dados da clínica. Verifique sua conexão com a internet."
+                        onTentarNovamente={carregar}
+                    />
+                )}
 
                 <div className="camp-clinic camp-register">
                     <div>
@@ -149,8 +166,11 @@ function EditClinic() {
                                         <input
                                             type="text"
                                             value={CNPJ}
-                                            onChange={(e) => setCNPJ(maskCNPJ(e.target.value))}
+                                            className={erroCnpj ? "campo-invalido" : undefined}
+                                            aria-invalid={!!erroCnpj}
+                                            onChange={(e) => { setCNPJ(maskCNPJ(e.target.value)); setErroCnpj(""); }}
                                         />
+                                        <ErroCampo>{erroCnpj}</ErroCampo>
                                     </div>
                                     
                                     <div className="field">
@@ -269,6 +289,7 @@ function EditClinic() {
                         </form>
                     </div>
                 </div>
+                </>)}
             </main>
         </>
     );

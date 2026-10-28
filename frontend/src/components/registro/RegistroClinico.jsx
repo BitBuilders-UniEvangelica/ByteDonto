@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Plus, X } from "lucide-react";
+import { useFeedback } from "../../hooks/useFeedback";
+import { Banner, BlocoCarregando } from "../feedback/Feedback";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
@@ -177,6 +179,8 @@ export default function RegistroClinico({ pacienteId, token }) {
     const [consultas, setConsultas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [erro, setErro] = useState(null);
+    const [tentativa, setTentativa] = useState(0);
+    const { toast } = useFeedback();
     const [mostrarForm, setMostrarForm] = useState(false);
     const [form, setForm] = useState(FORM_INICIAL);
     const [salvando, setSalvando] = useState(false);
@@ -201,7 +205,7 @@ export default function RegistroClinico({ pacienteId, token }) {
             })
             .catch(err => setErro(err.message))
             .finally(() => setLoading(false));
-    }, [pacienteId, token]);
+    }, [pacienteId, token, tentativa]);
 
     function handleEvolucaoChange(consultaId, novaEvolucao) {
         setConsultas(prev =>
@@ -215,7 +219,12 @@ export default function RegistroClinico({ pacienteId, token }) {
                 Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ evolucao_clinica: novaEvolucao }),
-        }).catch(err => console.warn("Erro ao salvar evolucao:", err));
+        })
+            .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); })
+            .catch(err => {
+                console.warn("Erro ao salvar evolucao:", err);
+                toast({ tipo: "erro", titulo: "A evolução não foi salva", mensagem: "Verifique sua conexão e edite novamente." });
+            });
     }
 
     async function handleSubmitForm(e) {
@@ -250,6 +259,7 @@ export default function RegistroClinico({ pacienteId, token }) {
             setConsultas(prev => [data, ...prev]);
             setForm(FORM_INICIAL);
             setMostrarForm(false);
+            toast({ tipo: "sucesso", titulo: "Registro clínico salvo", mensagem: `${form.tipo_atendimento} · ${form.data.split("-").reverse().join("/")}` });
         } catch (err) {
             setErroForm(err.message);
         } finally {
@@ -401,13 +411,14 @@ export default function RegistroClinico({ pacienteId, token }) {
 
             {/* Timeline */}
             {loading && (
-                <p style={{ color: "var(--TextColor75)", fontSize: "14px" }}>Carregando histórico...</p>
+                <BlocoCarregando texto="Carregando histórico..." />
             )}
 
             {erro && !loading && (
-                <div style={{ background: "var(--DangerBack)", border: "1px solid var(--LineColor)", borderRadius: "var(--radius-md)", padding: "1rem", color: "var(--DangerText)", fontSize: "14px" }}>
-                    Erro ao carregar registros: {erro}
-                </div>
+                <Banner
+                    texto="Não foi possível carregar os registros clínicos. Verifique sua conexão."
+                    onTentarNovamente={() => setTentativa(t => t + 1)}
+                />
             )}
 
             {!loading && !erro && consultas.length === 0 && (

@@ -9,6 +9,8 @@ import Card from "../../components/card/CardInfo";
 import { formatCPF } from "../../utils/formatters";
 import { useReceptionSidebar } from "../../hooks/useSidebar";
 import { X, Check, Plus, CalendarPlus, UserPlus, Search, CalendarDays, UserCheck, Clock, UserX, Users } from "lucide-react";
+import { useFeedback } from "../../hooks/useFeedback";
+import { Banner, BlocoCarregando } from "../../components/feedback/Feedback";
 
 const FORM_INICIAL = {
     paciente_id: "",
@@ -66,7 +68,9 @@ function ReceptionDashboard() {
     const [quickSearch, setQuickSearch] = useState("");
 
     // Ações de status na agenda
-    const [statusErro, setStatusErro] = useState(null);
+    const [carregando, setCarregando] = useState(true);
+    const [erroCarregar, setErroCarregar] = useState(false);
+    const { toast } = useFeedback();
     const [atualizandoId, setAtualizandoId] = useState(null);
 
     const opc_bar = useReceptionSidebar("dashboard");
@@ -85,17 +89,22 @@ function ReceptionDashboard() {
     const mostrarAgenda = !modoAbas || abaAtiva === "agenda";
     const mostrarEspera = !modoAbas || abaAtiva === "espera";
 
-    useEffect(() => {
+    function carregar() {
+        setCarregando(true);
+        setErroCarregar(false);
+        const falhou = () => { setErroCarregar(true); return []; };
         Promise.all([
-            apiGetPacientes(token).catch(() => []),
-            apiGetEquipe(token).catch(() => []),
-            apiGetConsultas(token).catch(() => []),
+            apiGetPacientes(token).catch(falhou),
+            apiGetEquipe(token).catch(falhou),
+            apiGetConsultas(token).catch(falhou),
         ]).then(([p, e, c]) => {
             setPacientes(p);
             setEspecialistas(e.filter(m => m.papel === "Especialista"));
             setConsultas(c);
-        });
-    }, [token]);
+        }).finally(() => setCarregando(false));
+    }
+
+    useEffect(carregar, [token]);
 
     async function recarregarConsultas() {
         try {
@@ -107,13 +116,19 @@ function ReceptionDashboard() {
     }
 
     async function alterarStatus(id, novoStatus) {
-        setStatusErro(null);
         setAtualizandoId(id);
+        const nome = consultas.find(c => c.id === id)?.pacientes?.nome || "O paciente";
+        const MENSAGENS = {
+            Aguardando: { titulo: "Check-in realizado", mensagem: `${nome} foi para a Sala de Espera.` },
+            Faltou: { titulo: "Falta registrada", mensagem: `${nome} foi marcado como falta.` },
+            Cancelado: { titulo: "Consulta cancelada", mensagem: `A consulta de ${nome} foi cancelada.` },
+        };
         try {
             await apiAtualizarConsulta(token, id, { status: novoStatus });
             await recarregarConsultas();
+            toast({ tipo: "sucesso", ...(MENSAGENS[novoStatus] || { titulo: "Status atualizado" }) });
         } catch {
-            setStatusErro("Não foi possível atualizar o status da consulta. Tente novamente em instantes ou contate o suporte.");
+            toast({ tipo: "erro", titulo: "Não foi possível atualizar o status", mensagem: "Tente novamente em instantes ou contate o suporte." });
         } finally {
             setAtualizandoId(null);
         }
@@ -164,6 +179,7 @@ function ReceptionDashboard() {
             });
             setConsultas(prev => [nova, ...prev]);
             setAgSucesso(true);
+            toast({ tipo: "sucesso", titulo: "Consulta agendada", mensagem: `${selectedPatient.nome} · ${agForm.data.split("-").reverse().join("/")} às ${agForm.hora}` });
             setTimeout(() => setShowAgendamento(false), 1500);
         } catch (err) {
             setAgErro(err.message);
@@ -304,6 +320,13 @@ function ReceptionDashboard() {
                     </button>
                 </div>
 
+                {erroCarregar && (
+                    <Banner
+                        texto="Não foi possível carregar a agenda. Verifique sua conexão com a internet."
+                        onTentarNovamente={carregar}
+                    />
+                )}
+
                 {/* BUSCA RÁPIDA */}
                 <div className="camp-clinic camp-register" style={{ marginBottom: "2rem", padding: "1.5rem 2.5rem" }}>
                     <div className="quick-search-row">
@@ -363,13 +386,9 @@ function ReceptionDashboard() {
                             <span style={{ background: 'var(--PrimaryColorsBack)', color: 'var(--PrimaryColorsTheme)', padding: '2px 10px', borderRadius: '999px', fontWeight: 700, fontSize: '13px' }}>{consultasHoje.length}</span>
                         </div>
 
-                        {statusErro && (
-                            <div style={{ background: 'var(--DangerBack)', color: 'var(--DangerText)', padding: '10px 14px', borderRadius: '8px', marginBottom: '1rem', fontSize: '13px' }}>
-                                {statusErro}
-                            </div>
-                        )}
-
-                        {consultasHoje.length === 0 ? (
+                        {carregando ? (
+                            <BlocoCarregando texto="Carregando agenda..." />
+                        ) : consultasHoje.length === 0 ? (
                             <p className="text75" style={{ textAlign: 'center', padding: '2rem' }}>Nenhum agendamento para hoje.</p>
                         ) : (
                             <div className="table">
@@ -441,7 +460,9 @@ function ReceptionDashboard() {
                             <span style={{ background: 'var(--PrimaryColorsBack)', color: 'var(--PrimaryColorsTheme)', padding: '2px 10px', borderRadius: '999px', fontWeight: 700, fontSize: '13px' }}>{salaDeEspera.length}</span>
                         </div>
 
-                        {salaDeEspera.length === 0 ? (
+                        {carregando ? (
+                            <BlocoCarregando />
+                        ) : salaDeEspera.length === 0 ? (
                             <p className="text75" style={{ textAlign: 'center', padding: '2rem 0' }}>
                                 Nenhum paciente aguardando no momento.
                             </p>

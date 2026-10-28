@@ -7,6 +7,8 @@ import Section from "../../components/section/SectionAuth"
 import SideBar from "../../components/bar/SideBar"
 import { useOwnerSidebar } from "../../hooks/useSidebar";
 import { ArrowLeft } from "lucide-react";
+import { useFeedback } from "../../hooks/useFeedback";
+import { ErroCampo } from "../../components/feedback/Feedback";
 import '../../styles/clinic.css';
 import '../../styles/Forms.css';
 
@@ -16,7 +18,8 @@ function RegisterClinic() {
     const navigate = useNavigate();
     
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
+    const [erroCnpj, setErroCnpj] = useState("");
+    const { toast } = useFeedback();
 
     const [name_clinic, setNameClinic] = useState("");
     const [CNPJ, setCNPJ] = useState("");
@@ -37,10 +40,11 @@ function RegisterClinic() {
 
     async function handleSubmit(e) {
         e.preventDefault();
-        setError("");
+        setErroCnpj("");
 
         if (CNPJ && !validarCNPJ(CNPJ)) {
-            setError("CNPJ inválido.");
+            setErroCnpj("CNPJ inválido. Confira os 14 dígitos.");
+            toast({ tipo: "erro", titulo: "Não foi possível salvar", mensagem: "Corrija os campos destacados e tente novamente." });
             return;
         }
 
@@ -67,12 +71,11 @@ function RegisterClinic() {
         };
 
         try {
-            const clinic = await apiCreateClinic(token, newClinic);
-            alert("Clínica registrada com sucesso!");
+            await apiCreateClinic(token, newClinic);
+            toast({ tipo: "sucesso", titulo: "Clínica registrada com sucesso!", mensagem: `${name_clinic} já aparece em Minhas Clínicas.` });
             navigate(`/owner/clinic/`);
         } catch (err) {
-            setError(err.message || "Erro ao registrar clínica.");
-            alert(err.message || "Erro ao registrar clínica.");
+            toast({ tipo: "erro", titulo: "Não foi possível registrar a clínica", mensagem: err.message || "Tente novamente em instantes." });
         } finally {
             setLoading(false);
         }
@@ -116,8 +119,11 @@ function RegisterClinic() {
                                             id="CNPJ"
                                             type="text"
                                             value={CNPJ}
-                                            onChange={(e) => setCNPJ(maskCNPJ(e.target.value))}
+                                            className={erroCnpj ? "campo-invalido" : undefined}
+                                            aria-invalid={!!erroCnpj}
+                                            onChange={(e) => { setCNPJ(maskCNPJ(e.target.value)); setErroCnpj(""); }}
                                         />
+                                        <ErroCampo>{erroCnpj}</ErroCampo>
                                     </div>
                                     
                                     <div className="field">

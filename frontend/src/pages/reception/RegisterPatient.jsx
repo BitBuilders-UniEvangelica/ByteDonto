@@ -7,6 +7,7 @@ import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
 import { useReceptionSidebar } from "../../hooks/useSidebar";
 import { ArrowLeft } from "lucide-react";
+import { useFeedback } from "../../hooks/useFeedback";
 import '../../styles/clinic.css';
 import '../../styles/Forms.css';
 
@@ -24,6 +25,7 @@ function RegisterPatient() {
     // Controle de Abas
     const [activeTab, setActiveTab] = useState("dados");
     const [isLoading, setIsLoading] = useState(false);
+    const { toast } = useFeedback();
 
     // Estados Core (Aba 1 e Aba 3)
     const [formData, setFormData] = useState({
@@ -108,7 +110,7 @@ function RegisterPatient() {
                 setNumero(end.numero || '');
             } catch (err) {
                 console.error("Erro ao carregar paciente para edição", err);
-                alert(`Erro ao carregar paciente: ${err.message}`);
+                toast({ tipo: "erro", titulo: "Não foi possível carregar o paciente", mensagem: err.message });
             }
         };
 
@@ -137,16 +139,21 @@ function RegisterPatient() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        // Erros dos dados pessoais levam de volta à primeira aba, onde está o campo.
+        const erroDados = (mensagem) => {
+            setActiveTab("dados");
+            toast({ tipo: "erro", titulo: "Não foi possível salvar", mensagem });
+        };
         if (!validarCPF(formData.cpf)) {
-            alert("CPF inválido.");
+            erroDados("CPF inválido. Confira os 11 dígitos em Dados & Contato.");
             return;
         }
         if (!validarTelefone(formData.telefone_whatsapp)) {
-            alert("Telefone / WhatsApp inválido.");
+            erroDados("Telefone / WhatsApp inválido. Confira o número em Dados & Contato.");
             return;
         }
         if (formData.email && !validarEmail(formData.email)) {
-            alert("E-mail inválido.");
+            erroDados("E-mail inválido. Confira o endereço em Dados & Contato.");
             return;
         }
 
@@ -158,10 +165,11 @@ function RegisterPatient() {
             if (!formData.medicacoes.trim()) faltando.push("Medicações em uso");
             if (!formData.condicoes.trim()) faltando.push("Condições sistêmicas");
             if (faltando.length) {
-                alert(
-                    `Para cadastrar o paciente é preciso preencher: ${faltando.join(", ")}.\n\n` +
-                    `Se não houver, escreva "Nega" ou "Nenhuma".`
-                );
+                toast({
+                    tipo: "aviso",
+                    titulo: "Anamnese incompleta",
+                    mensagem: `Preencha: ${faltando.join(", ")}. Se não houver, escreva "Nega" ou "Nenhuma".`,
+                });
                 return;
             }
         }
@@ -214,15 +222,15 @@ function RegisterPatient() {
         try {
             if (isEditMode) {
                 await apiAtualizarPaciente(token, pacienteId, payload);
-                alert("Alterações salvas com sucesso!");
+                toast({ tipo: "sucesso", titulo: "Alterações salvas", mensagem: `Os dados de ${formData.nome} foram atualizados.` });
                 navigate(`/reception/patient/view?id=${pacienteId}`);
             } else {
                 await apiCriarPaciente(token, payload);
-                alert("Paciente cadastrado com sucesso!");
+                toast({ tipo: "sucesso", titulo: "Paciente cadastrado com sucesso!", mensagem: `${formData.nome} já está na lista de pacientes.` });
                 navigate("/reception/patients");
             }
         } catch (err) {
-            alert(`Erro: ${err.message}`);
+            toast({ tipo: "erro", titulo: "Não foi possível salvar", mensagem: err.message || "Tente novamente em instantes." });
             console.error(err);
         } finally {
             setIsLoading(false);

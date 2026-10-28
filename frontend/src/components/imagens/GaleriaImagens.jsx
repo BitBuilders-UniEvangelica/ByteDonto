@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { apiGetImagens, apiUploadImagem, apiDeletarImagem } from "../../services/api";
 import { ImagePlus, Trash2, Image as ImageIcon } from "lucide-react";
+import { useFeedback } from "../../hooks/useFeedback";
+import { BlocoCarregando } from "../feedback/Feedback";
 
 export default function GaleriaImagens({ pacienteId, token }) {
     const [imagens, setImagens] = useState([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [erro, setErro] = useState(null);
+    const { toast, confirmar } = useFeedback();
 
     useEffect(() => {
         if (!pacienteId) { setLoading(false); return; }
@@ -23,16 +26,24 @@ export default function GaleriaImagens({ pacienteId, token }) {
         try {
             const nova = await apiUploadImagem(token, pacienteId, file);
             setImagens(p => [nova, ...p]);
+            toast({ tipo: "sucesso", titulo: "Imagem adicionada", mensagem: file.name });
         } catch(e) { setErro(e.message); }
         finally { setUploading(false); e.target.value = ""; }
     }
 
     async function handleDeletar(id) {
-        if (!confirm("Remover imagem?")) return;
+        const ok = await confirmar({
+            titulo: "Remover imagem?",
+            mensagem: "A imagem será removida do prontuário do paciente. Esta ação não pode ser desfeita.",
+        });
+        if (!ok) return;
         try {
             await apiDeletarImagem(token, id);
             setImagens(p => p.filter(i => i.id !== id));
-        } catch(e) { setErro(e.message); }
+            toast({ tipo: "sucesso", titulo: "Imagem removida" });
+        } catch(e) {
+            toast({ tipo: "erro", titulo: "Não foi possível remover a imagem", mensagem: e.message });
+        }
     }
 
     return (
@@ -50,7 +61,7 @@ export default function GaleriaImagens({ pacienteId, token }) {
 
             {erro && <div style={{background:"var(--DangerBack)",color:"var(--DangerText)",padding:"10px 14px",borderRadius:"var(--radius-sm)",fontSize:"14px",marginBottom:"1rem"}}>{erro}</div>}
 
-            {loading ? <p style={{color:"var(--TextColor75)",fontSize:"14px"}}>Carregando...</p> :
+            {loading ? <BlocoCarregando texto="Carregando imagens..." /> :
              imagens.length === 0 ? (
                 <div style={{border:"1px dashed var(--LineColor)",borderRadius:"var(--radius-lg)",padding:"3rem",textAlign:"center",color:"var(--TextColor75)"}}>
                     <ImageIcon size={40} strokeWidth={1.5} style={{margin:"0 auto 12px",display:"block",color:"var(--TextColor75)"}} />

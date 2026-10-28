@@ -7,6 +7,8 @@ import SideBar from "../../components/bar/SideBar";
 import CampNotList from "../../components/camp/NotList";
 import CampList from "../../components/camp/ListClinic";
 import { useOwnerSidebar } from "../../hooks/useSidebar";
+import { useFeedback } from "../../hooks/useFeedback";
+import { Banner, BlocoCarregando, EstadoErro } from "../../components/feedback/Feedback";
 import { Users, CalendarDays, Wallet, Stethoscope } from "lucide-react";
 import ToothIcon from "../../components/icons/ToothIcon";
 import IMG from "../../assets/img/icon01.png";
@@ -54,6 +56,8 @@ function ListClinic() {
     const [metricas, setMetricas] = useState(null);
     const [loadingMetricas, setLoadingMetricas] = useState(true);
     const [ativandoId, setAtivandoId] = useState(null);
+    const [erroCarregar, setErroCarregar] = useState(false);
+    const { toast } = useFeedback();
 
     const opc_bar = useOwnerSidebar("clinic");
 
@@ -95,13 +99,19 @@ function ListClinic() {
     function carregarClinicas() {
         return apiGetClinics(token)
             .then(data => setClinicas(Array.isArray(data) ? data : []))
-            .catch(err => console.error("Erro ao carregar clínicas", err));
+            .catch(err => {
+                console.error("Erro ao carregar clínicas", err);
+                setErroCarregar(true);
+            });
     }
 
     function carregarMetricas() {
         return apiGetMetricas(token)
             .then(data => setMetricas(data))
-            .catch(err => console.error("Erro ao carregar métricas", err));
+            .catch(err => {
+                console.error("Erro ao carregar métricas", err);
+                setErroCarregar(true);
+            });
     }
 
     useEffect(() => {
@@ -113,6 +123,14 @@ function ListClinic() {
         carregarMetricas().finally(() => setLoadingMetricas(false));
     }, [token]);
 
+    function tentarNovamente() {
+        setErroCarregar(false);
+        setLoading(true);
+        setLoadingMetricas(true);
+        carregarClinicas().finally(() => setLoading(false));
+        carregarMetricas().finally(() => setLoadingMetricas(false));
+    }
+
     async function handleAtivar(clinicaId) {
         setAtivandoId(clinicaId);
         try {
@@ -121,8 +139,11 @@ function ListClinic() {
             // que passam a refletir a clínica recém-selecionada.
             await refreshUser();
             await Promise.all([carregarClinicas(), carregarMetricas()]);
+            const nome = clinicas.find(c => c.id === clinicaId);
+            toast({ tipo: "sucesso", titulo: "Clínica ativa alterada", mensagem: nome ? `${nome.nome || nome.nome_fantasia} agora é a clínica ativa.` : undefined });
         } catch (err) {
             console.error("Erro ao trocar de clínica", err);
+            toast({ tipo: "erro", titulo: "Não foi possível trocar de clínica", mensagem: "Tente novamente em instantes." });
         } finally {
             setAtivandoId(null);
         }
@@ -138,6 +159,12 @@ function ListClinic() {
             <Section type_styles="owner" />
             <SideBar opc={opc_bar} styles="owner" />
             <main className="mainBar owner">
+                {erroCarregar && (
+                    <Banner
+                        texto="Não foi possível carregar suas clínicas e métricas. Verifique sua conexão com a internet."
+                        onTentarNovamente={tentarNovamente}
+                    />
+                )}
 
                 {/* ---- MÉTRICAS DO DONO ---- */}
                 <div
@@ -190,7 +217,12 @@ function ListClinic() {
                 <div className="camp-clinic camp-list" style={{ marginTop: '1rem' }}>
                     <h2 style={{ margin: '0 0 1rem 0', fontSize: '20px' }}>Clínicas Registradas</h2>
                     {loading ? (
-                        <p className="text75">Carregando clínicas...</p>
+                        <BlocoCarregando texto="Carregando clínicas..." />
+                    ) : erroCarregar && clinicas.length === 0 ? (
+                        <EstadoErro
+                            mensagem="Não conseguimos carregar as clínicas. Verifique sua internet e tente novamente."
+                            onAcao={tentarNovamente}
+                        />
                     ) : clinicasFiltradas.length === 0 ? (
                         <CampNotList
                             img={IMG}

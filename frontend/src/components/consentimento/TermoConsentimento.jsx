@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { apiUploadImagem } from "../../services/api";
 import { Check, X, FileSignature } from "lucide-react";
+import { useFeedback } from "../../hooks/useFeedback";
 
 /* Texto padrão dos dois termos. Substituir pela versão validada pelo jurídico
  * da clínica antes de subir pra produção real. */
@@ -64,6 +65,7 @@ export default function TermoConsentimento({ paciente, token, onArquivado }) {
     const [aceitou, setAceitou] = useState(false);
     const [salvando, setSalvando] = useState(false);
     const [erro, setErro] = useState("");
+    const { toast } = useFeedback();
     const [sucesso, setSucesso] = useState(false);
 
     // Canvas de assinatura — simples (pointer events)
@@ -127,11 +129,13 @@ export default function TermoConsentimento({ paciente, token, onArquivado }) {
             const file = new File([blob], tituloArquivo, { type: "text/html" });
             await apiUploadImagem(token, paciente.id, file, tipo);
             setSucesso(true);
+            toast({ tipo: "sucesso", titulo: "Termo assinado e arquivado", mensagem: `Salvo nos arquivos de ${paciente.nome}.` });
             setAceitou(false);
             limparAssinatura();
             onArquivado && onArquivado();
         } catch (e) {
             setErro(e.message || "Não foi possível salvar o termo.");
+            toast({ tipo: "erro", titulo: "Não foi possível salvar o termo", mensagem: e.message || "Tente novamente em instantes." });
         } finally {
             setSalvando(false);
         }

@@ -15,6 +15,8 @@ import { useOwnerSidebar } from "../../hooks/useSidebar";
 import { useReceptionSidebar } from "../../hooks/useSidebar";
 import { formatCurrency, formatDate } from "../../utils/formatters";
 import { FilePlus, X, AlertTriangle } from "lucide-react";
+import { useFeedback } from "../../hooks/useFeedback";
+import { Banner, BlocoCarregando } from "../../components/feedback/Feedback";
 import "../../styles/clinic.css";
 import "../../styles/Forms.css";
 
@@ -131,6 +133,8 @@ function Financial({ role }) {
     const [pacientes, setPacientes] = useState([]);
     const [dentistas, setDentistas] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [erroCarregar, setErroCarregar] = useState(false);
+    const { toast } = useFeedback();
     const [filtroStatus, setFiltroStatus] = useState("Todos");
 
     /* modal novo lançamento */
@@ -148,10 +152,14 @@ function Financial({ role }) {
     const [repassesLoading, setRepassesLoading] = useState(false);
 
     /* fetch inicial */
-    useEffect(() => {
+    function carregar() {
         if (!token) return;
+        setLoading(true);
+        setErroCarregar(false);
+        // Antes os erros viravam lista vazia em silêncio; agora o banner avisa.
+        const falhou = () => { setErroCarregar(true); return []; };
         Promise.all([
-            apiGetFinanceiro(token).catch(() => []),
+            apiGetFinanceiro(token).catch(falhou),
             apiGetPacientes(token).catch(() => []),
             apiGetEquipe(token).catch(() => []),
         ]).then(([f, p, e]) => {
@@ -161,7 +169,9 @@ function Financial({ role }) {
             const equipe = Array.isArray(e) ? e : [];
             setDentistas(equipe.filter(m => m.papel === "Especialista" || m.papel === "Dono"));
         }).finally(() => setLoading(false));
-    }, [token]);
+    }
+
+    useEffect(carregar, [token]);
 
     /* fetch repasses quando o mês muda (apenas para o Owner) */
     useEffect(() => {
@@ -221,6 +231,12 @@ function Financial({ role }) {
             });
             setLancamentos(prev => [novo, ...prev]);
             setShowModal(false);
+            const paciente = pacientes.find(p => p.id === form.paciente_id);
+            toast({
+                tipo: "sucesso",
+                titulo: "Lançamento salvo",
+                mensagem: [formatCurrency(Number(form.valor)), paciente?.nome, form.status_pagamento].filter(Boolean).join(" · "),
+            });
         } catch (err) {
             setErroForm(err.message);
         } finally {
@@ -233,8 +249,10 @@ function Financial({ role }) {
         try {
             const atualizado = await apiAtualizarLancamento(token, id, { status_pagamento: "Pago" });
             setLancamentos(prev => prev.map(l => l.id === id ? { ...l, status_pagamento: "Pago", ...atualizado } : l));
+            toast({ tipo: "sucesso", titulo: "Pagamento registrado", mensagem: "O lançamento foi marcado como pago." });
         } catch (err) {
             console.error("Erro ao atualizar lançamento", err);
+            toast({ tipo: "erro", titulo: "Não foi possível atualizar o lançamento", mensagem: err.message || "Tente novamente em instantes." });
         } finally {
             setAtualizando(null);
         }
@@ -344,6 +362,13 @@ function Financial({ role }) {
                     </button>
                 </div>
 
+                {erroCarregar && (
+                    <Banner
+                        texto="Não foi possível carregar os lançamentos. Os valores abaixo podem estar incompletos."
+                        onTentarNovamente={carregar}
+                    />
+                )}
+
                 {/* ---- CARDS DE MÉTRICAS ---- */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem" }}>
                     <div style={{ background: "var(--ThemeColor)", borderRadius: "14px", border: "1px solid var(--LineColor)", padding: "22px", boxShadow: "var(--shadow-sm)" }}>
@@ -391,7 +416,7 @@ function Financial({ role }) {
                         </div>
 
                         {repassesLoading ? (
-                            <p className="text75" style={{ textAlign: "center", padding: "1.5rem" }}>Carregando...</p>
+                            <BlocoCarregando />
                         ) : !repasses?.itens?.length ? (
                             <p className="text75" style={{ textAlign: "center", padding: "1.5rem" }}>Nenhum dentista com produção no mês.</p>
                         ) : (
@@ -451,7 +476,7 @@ function Financial({ role }) {
                     <h2 style={{ margin: "0 0 1.5rem 0" }}>Lançamentos</h2>
 
                     {loading ? (
-                        <p className="text75" style={{ textAlign: "center", padding: "2rem" }}>Carregando...</p>
+                        <BlocoCarregando />
                     ) : filtrados.length === 0 ? (
                         <p className="text75" style={{ textAlign: "center", padding: "2rem" }}>Nenhum lançamento encontrado.</p>
                     ) : (

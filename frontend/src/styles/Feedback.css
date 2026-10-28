@@ -1,0 +1,213 @@
+/* FEEDBACK — toast, banner, spinner, estado de erro e modal de confirmação
+   (Figma ByteDonto2.0 › Guia de Estilo › Propostas). */
+
+/* BOTÕES DOS COMPONENTES DE FEEDBACK */
+.btn-feedback {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    min-height: 40px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    font-family: var(--font-primary);
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.btn-feedback-primario { background: var(--PrimaryColors); border-color: var(--PrimaryColors); color: #FFFFFF; }
+.btn-feedback-primario:hover { background: var(--PrimaryColorsTheme); border-color: var(--PrimaryColorsTheme); }
+.btn-feedback-secundario { background: var(--ThemeColor); border-color: var(--LineColor); color: var(--TextColor); }
+.btn-feedback-secundario:hover { background: var(--BackColor); }
+.btn-feedback-destrutivo { background: var(--NotPrimaryColors); border-color: var(--NotPrimaryColors); color: #FFFFFF; }
+.btn-feedback-destrutivo:hover { background: var(--NotPrimaryColorsTheme); border-color: var(--NotPrimaryColorsTheme); }
+
+/* TOAST */
+.toast-area {
+    position: fixed;
+    top: var(--space-lg);
+    right: var(--space-lg);
+    z-index: var(--z-toast);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: none;
+}
+
+.toast {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: 380px;
+    max-width: calc(100vw / var(--app-zoom) - 48px);
+    box-sizing: border-box;
+    padding: 14px 16px;
+    background: var(--ThemeColor);
+    border: 1px solid var(--LineColor);
+    border-radius: var(--radius-md);
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+    overflow: hidden;
+    pointer-events: auto;
+    animation: toast-entrada 0.2s ease-out;
+}
+
+@keyframes toast-entrada {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.toast-faixa { position: absolute; top: 0; bottom: 0; left: 0; width: 4px; }
+.toast-icone {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+}
+.toast-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.toast-titulo { margin: 0; font-size: 14px; font-weight: 600; color: var(--TextColor); }
+.toast-mensagem { margin: 0; font-size: 13px; line-height: 1.5; color: var(--TextColor75); word-break: break-word; }
+.toast-fechar {
+    flex-shrink: 0;
+    display: flex;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--TextColor75);
+    cursor: pointer;
+}
+
+.toast-sucesso .toast-faixa { background: var(--SuccessText); }
+.toast-sucesso .toast-icone { background: var(--SuccessBack); color: var(--SuccessText); }
+.toast-erro .toast-faixa { background: var(--DangerText); }
+.toast-erro .toast-icone { background: var(--DangerBack); color: var(--DangerText); }
+.toast-aviso .toast-faixa { background: var(--WarningText); }
+.toast-aviso .toast-icone { background: var(--WarningBack); color: var(--WarningText); }
+.toast-info .toast-faixa { background: var(--PrimaryColors); }
+.toast-info .toast-icone { background: var(--PrimaryColorsBack); color: var(--PrimaryColors); }
+
+/* BANNER */
+.banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-sizing: border-box;
+    width: 100%;
+    margin-bottom: var(--space-lg);
+    padding: 14px 20px;
+    border: 1px solid;
+    border-radius: var(--radius-md);
+}
+.banner > svg { flex-shrink: 0; }
+.banner-texto { flex: 1; min-width: 0; margin: 0; font-size: 14px; font-weight: 500; }
+.banner-conexao { background: var(--DangerBack); border-color: var(--DangerText); color: var(--DangerText); }
+.banner-aviso { background: var(--WarningBack); border-color: var(--WarningText); color: var(--WarningText); }
+.banner-info { background: var(--PrimaryColorsBack); border-color: var(--PrimaryColorsTheme); color: var(--PrimaryColorsTheme); }
+
+/* SPINNER E BLOCO CARREGANDO */
+.spinner { color: var(--PrimaryColors); animation: spinner-giro 0.9s linear infinite; }
+@keyframes spinner-giro { to { transform: rotate(360deg); } }
+
+.bloco-carregando {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: var(--space-2xl);
+}
+.bloco-carregando p { margin: 0; font-size: 14px; font-weight: 500; color: var(--TextColor75); }
+
+/* ESTADO DE ERRO (sem conexão / 404) */
+.estado-erro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 520px;
+    margin: 0 auto;
+    padding: var(--space-2xl);
+    text-align: center;
+}
+.estado-erro-icone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    border-radius: 999px;
+    background: var(--DangerBack);
+    color: var(--DangerText);
+}
+.estado-erro-codigo {
+    margin: 0;
+    font-family: 'Atkinson Hyperlegible Mono', monospace;
+    font-size: 72px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--PrimaryColorsTheme);
+}
+.estado-erro-textos { display: flex; flex-direction: column; gap: var(--space-sm); padding: 20px 0 var(--space-lg); }
+.estado-erro-titulo { margin: 0; font-size: 24px; font-weight: 700; color: var(--TextColor); }
+.estado-erro-mensagem { margin: 0; font-size: 16px; line-height: 1.6; color: var(--TextColor75); }
+
+/* MODAL DE CONFIRMAÇÃO */
+.confirmacao-fundo {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-md);
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(3px);
+}
+.confirmacao {
+    display: flex;
+    flex-direction: column;
+    width: 440px;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: var(--space-xl);
+    background: var(--ThemeColor);
+    border: 1px solid var(--LineColor);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+}
+.confirmacao-icone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 999px;
+    background: var(--DangerBack);
+    color: var(--DangerText);
+}
+.confirmacao-textos { display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-md) 0 var(--space-lg); }
+.confirmacao-titulo { margin: 0; font-size: 20px; font-weight: 700; color: var(--TextColor); }
+.confirmacao-mensagem { margin: 0; font-size: 14px; line-height: 1.6; color: var(--TextColor75); }
+.confirmacao-acoes { display: flex; justify-content: flex-end; gap: 12px; }
+
+/* ERRO EM CAMPO DE FORMULÁRIO */
+.erro-campo {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 6px 0 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--DangerText);
+}
+input.campo-invalido,
+select.campo-invalido,
+textarea.campo-invalido {
+    border-color: var(--DangerText) !important;
+    box-shadow: 0 0 0 3px var(--DangerBack);
+}
