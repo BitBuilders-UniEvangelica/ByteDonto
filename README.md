@@ -94,22 +94,8 @@ venv/bin/python run.py
 
 ---
 
-## 🔑 Acessos de teste
-
-Contas de demonstração já cadastradas para testar o sistema (cada papel cai em uma área diferente, conforme as permissões):
-
-| Papel | E-mail | Senha |
-|---|---|---|
-| Proprietário (Dono) | `vitorhugosteam3@gmail.com` | `Bytedonto@2026` |
-| Atendente (Recepção) | `recepcao.demo@bytedonto.com` | `Recepcao@2026` |
-| Profissional (Especialista) | `profissional.demo@bytedonto.com` | `Profissional@2026` |
-
-> Os dados de demonstração (clínica, pacientes, consultas, financeiro) podem ser recriados rodando `python seed_demo.py` dentro da pasta `backend`.
-
----
-
 ## 🤝 Repositório e Contribuição
-🔗 **Link do GitHub:** [LucasfcBastos/ByteDonto](https://github.com/LucasfcBastos/ByteDonto)
+🔗 **Link do GitHub:** [BitBuilders-UniEvangelica](https://github.com/BitBuilders-UniEvangelica/ByteDonto)
 
 **Atenção para as Variáveis de Ambiente:**  
 Tanto o frontend quanto o backend dependem de variáveis sensíveis (`.env` com chaves de API, URLs de banco de dados, etc.). Essas chaves não sobem para o GitHub por questões de segurança. Para o sistema funcionar 100%, peça para alguém do grupo compartilhar com você como preencher o seu arquivo `.env` localmente.
