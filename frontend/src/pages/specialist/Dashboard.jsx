@@ -278,8 +278,8 @@ function SpecialistDashboard() {
 
                 {/* ---- MODAL ENCERRAR ATENDIMENTO ---- */}
                 {showEncerrar && (
-                    <div style={{ position: "fixed", top: 0, left: 0, width: "calc(100vw / var(--app-zoom))", height: "calc(100vh / var(--app-zoom))", background: "rgba(15,23,42,0.4)", backdropFilter: "blur(8px)", zIndex: 1000, display: "flex", justifyContent: "center", alignItems: "center" }}>
-                        <div style={{ background: "var(--ThemeColor)", padding: "2.5rem", borderRadius: "var(--radius-lg)", width: "100%", maxWidth: "600px", boxShadow: "var(--shadow-md)", animation: "fadeIn 0.2s", border: "1px solid var(--LineColor)" }}>
+                    <div className="modal-overlay" style={{ zIndex: 1000 }}>
+                        <div className="modal-caixa" style={{ background: "var(--ThemeColor)", padding: "2.5rem", borderRadius: "var(--radius-lg)", width: "100%", maxWidth: "600px", boxShadow: "var(--shadow-md)", animation: "fadeIn 0.2s", border: "1px solid var(--LineColor)" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem" }}>
                                 <div>
                                     <span className="ui-label" style={{ background: "var(--PrimaryColorsBack)", color: "var(--PrimaryColorsTheme)", padding: "6px 12px", borderRadius: "var(--radius-sm)", marginBottom: "12px", display: "inline-block" }}>ENCERRAR CONSULTA</span>

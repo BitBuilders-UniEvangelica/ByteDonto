@@ -203,8 +203,8 @@ function ReceptionDashboard() {
 
                 {/* ---------- MODAL DE AGENDAMENTO ---------- */}
                 {showAgendamento && (
-                    <div style={{ position: 'fixed', top: 0, left: 0, width: 'calc(100vw / var(--app-zoom))', height: 'calc(100vh / var(--app-zoom))', background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '100%', maxWidth: '750px', boxShadow: 'var(--shadow-sm)', animation: 'fadeIn 0.2s', border: '1px solid var(--LineColor)' }}>
+                    <div className="modal-overlay" style={{ zIndex: 9999 }}>
+                        <div className="modal-caixa" style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '100%', maxWidth: '750px', boxShadow: 'var(--shadow-sm)', animation: 'fadeIn 0.2s', border: '1px solid var(--LineColor)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
                                 <div>
                                     <span style={{ background: 'var(--PrimaryColorsBack)', color: 'var(--PrimaryColorsTheme)', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700, marginBottom: '12px', display: 'inline-block', letterSpacing: '0.04em' }}>NOVO EVENTO</span>

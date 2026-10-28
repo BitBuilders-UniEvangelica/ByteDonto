@@ -236,33 +236,33 @@ export default function ViewPatient() {
             
             <main className="mainBar reception">
                 {/* CABEÇALHO DO PRONTUÁRIO */}
-                <div style={{background: 'var(--PrimaryColorsTheme)', borderRadius: '16px', padding: '2rem', color: 'white', display: 'flex', alignItems: 'center', gap: '2rem', marginBottom: '2rem', boxShadow: 'var(--shadow-sm)'}}>
-                    <div style={{width: '84px', height: '84px', borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0}}>
+                <div className="pv-hero" style={{background: 'var(--PrimaryColorsTheme)', borderRadius: '16px', color: 'white', marginBottom: '2rem', boxShadow: 'var(--shadow-sm)'}}>
+                    <div className="pv-hero-avatar" style={{borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0}}>
                         <UserRound size={40} strokeWidth={1.8} color="white" />
                     </div>
-                    <div style={{flex: 1}}>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-                            <h1 style={{margin: '0', fontSize: '26px', color: 'white'}}>{paciente.nome}</h1>
+                    <div className="pv-hero-info">
+                        <div className="pv-hero-nome">
+                            <h1 style={{margin: '0', color: 'white'}}>{paciente.nome}</h1>
                             <span style={{background: 'rgba(255,255,255,0.18)', padding: '4px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 600}}>{paciente.status}</span>
                         </div>
-                        <div style={{display: 'flex', gap: '2rem', marginTop: '0.75rem', fontFamily: 'var(--font-secondary)', flexWrap: 'wrap'}}>
+                        <div className="pv-hero-dados" style={{marginTop: '0.75rem', fontFamily: 'var(--font-secondary)'}}>
                             <span style={{fontSize: '13px', fontWeight: 500}}><strong style={{opacity: 0.75, fontWeight: 700}}>CPF:</strong> {formatCPF(paciente.cpf)}</span>
                             <span style={{fontSize: '13px', fontWeight: 500}}><strong style={{opacity: 0.75, fontWeight: 700}}>Nascimento:</strong> {formatDate(paciente.data_nascimento)}{idadeLabel(paciente.data_nascimento)}</span>
                             <span style={{fontSize: '13px', fontWeight: 500}}><strong style={{opacity: 0.75, fontWeight: 700}}>WhatsApp:</strong> {formatPhone(paciente.telefone_whatsapp)}</span>
                         </div>
                     </div>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0}}>
+                    <div className="pv-hero-acoes">
                         {podeVerProntuario && (
                             <Link
                                 to={`/specialist/patient/view?id=${pacienteId}`}
-                                style={{display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.35)', color: 'white', padding: '10px 18px', borderRadius: '999px', fontSize: '14px', fontWeight: 700, textDecoration: 'none'}}
+                                style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.35)', color: 'white', padding: '10px 18px', borderRadius: '999px', fontSize: '14px', fontWeight: 700, textDecoration: 'none'}}
                             >
                                 <Stethoscope size={16} strokeWidth={2.2} /> Prontuário Clínico
                             </Link>
                         )}
                         <Link
                             to={`/reception/patient/register?id=${pacienteId}`}
-                            style={{display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'white', color: 'var(--PrimaryColorsTheme)', padding: '10px 18px', borderRadius: '999px', fontSize: '14px', fontWeight: 700, textDecoration: 'none', boxShadow: 'var(--shadow-sm)'}}
+                            style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'white', color: 'var(--PrimaryColorsTheme)', padding: '10px 18px', borderRadius: '999px', fontSize: '14px', fontWeight: 700, textDecoration: 'none', boxShadow: 'var(--shadow-sm)'}}
                         >
                             <Pencil size={16} strokeWidth={2.2} /> Editar Paciente
                         </Link>
@@ -281,7 +281,7 @@ export default function ViewPatient() {
                 {/* ABA 1: HISTÓRICO CLINICO */}
                 {activeTab === "historico" && (
                     <div className="forms-section" style={{animation: 'fadeIn 0.3s', padding: 0}}>
-                        <div style={{display: 'grid', gridTemplateColumns: '1fr 300px', gap: '2rem'}}>
+                        <div className="pv-grid pv-grid-historico">
                             {/* LINHA DO TEMPO */}
                             <div>
                                 <h3 style={{color: 'var(--PrimaryColorsTheme)', margin: '0 0 1.5rem 0'}}>Timeline de Atendimentos</h3>
@@ -338,7 +338,7 @@ export default function ViewPatient() {
                 {activeTab === "anamnese" && (
                     <div className="forms-section" style={{animation: 'fadeIn 0.3s'}}>
                         <h3 style={{color: 'var(--PrimaryColorsTheme)', margin: '0 0 1.5rem 0'}}>Registro Sistêmico</h3>
-                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem'}}>
+                        <div className="pv-grid pv-grid-2">
                             <div>
                                 <p style={{fontWeight: 700, margin: '0 0 8px 0', color: 'var(--TextColor75)'}}>Condições Sistêmicas (Doenças)?</p>
                                 <p style={{margin: '0 0 24px 0'}}>{anamnese.condicoes || "Negado."}</p>
@@ -362,7 +362,7 @@ export default function ViewPatient() {
                         </div>
 
                         <h3 style={{color: 'var(--PrimaryColorsTheme)', margin: '1rem 0 1.5rem 0'}}>Dados Pessoais & Histórico</h3>
-                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem'}}>
+                        <div className="pv-grid pv-grid-2">
                             <div>
                                 <p style={{fontWeight: 700, margin: '0 0 8px 0', color: 'var(--TextColor75)'}}>Naturalidade</p>
                                 <p style={{margin: '0 0 24px 0'}}>{anamnese.naturalidade || "-"}</p>
@@ -413,7 +413,7 @@ export default function ViewPatient() {
                 {/* ABA 3: ARQUIVOS (Laudos, Raio-X) */}
                 {activeTab === "arquivos" && (
                     <div className="forms-section" style={{animation: 'fadeIn 0.3s'}}>
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem'}}>
+                        <div className="pv-imagens-header">
                             <h3 style={{color: 'var(--PrimaryColorsTheme)', margin: 0}}>Imagens e Laudos</h3>
                             <label className="submit" style={{cursor: uploading ? 'wait' : 'pointer', margin: 0, opacity: uploading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: '8px'}}>
                                 <Upload size={16} strokeWidth={2} /> {uploading ? "Enviando..." : "Fazer Upload Novo"}
@@ -432,7 +432,7 @@ export default function ViewPatient() {
                         ) : imagens.length === 0 ? (
                             <p style={{color: 'var(--TextColor75)'}}>Nenhum arquivo ou imagem enviado para este paciente.</p>
                         ) : (
-                            <div style={{display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem'}}>
+                            <div className="pv-grid-imagens">
                                 {imagens.map((img) => {
                                     const isImagem = /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(img.nome || img.url || "");
                                     return (
@@ -465,7 +465,7 @@ export default function ViewPatient() {
                 {/* ABA 4: FINANCEIRO (Feita pela recepção) */}
                 {activeTab === "financeiro" && (
                     <div className="forms-section" style={{animation: 'fadeIn 0.3s'}}>
-                        <div style={{display: 'grid', gridTemplateColumns: '2fr 1.5fr', gap: '2rem'}}>
+                        <div className="pv-grid pv-grid-financeiro">
                             <div>
                                 <h3 style={{color: 'var(--PrimaryColorsTheme)', margin: '0 0 1.5rem 0'}}>Lançar Novo Faturamento</h3>
                                 <div style={{background: 'var(--PrimaryColorsBack)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--LineColor)'}}>

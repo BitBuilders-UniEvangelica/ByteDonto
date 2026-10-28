@@ -74,11 +74,11 @@ form textarea {
 
 /* MODAL FORMS */
 .forms-hover {
-    width: 100%;
-    height: calc(100vh / var(--app-zoom));
+    /* inset: 0 em vez de 100vh: centraliza na área visível também no celular */
     position: fixed;
-    top: 0;
-    left: 0;
+    inset: 0;
+    padding: 2rem;
+    box-sizing: border-box;
     background-color: rgba(15, 23, 42, 0.4);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
@@ -96,6 +96,9 @@ form textarea {
     box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
     width: 100%;
     max-width: 500px;
+    box-sizing: border-box;
+    max-height: 100%;
+    overflow-y: auto;
 }
 
 .forms-hover .forms-card input {
@@ -103,6 +106,13 @@ form textarea {
 }
 
 @media (max-width: 768px) {
+    .forms-hover {
+        padding: 1rem;
+    }
+    .forms-hover .forms-card {
+        padding: 1.5em;
+    }
+
     form .forms-section {
         display: flex;
         flex-direction: column;
