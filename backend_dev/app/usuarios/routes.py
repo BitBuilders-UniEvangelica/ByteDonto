@@ -18,6 +18,7 @@ PERMISSOES_PADRAO = {
         "agendar_consultas":  False,
         "cancelar_consultas": False,
         "ver_financeiro":     False,
+        "estoque":            True,
     },
     "Recepção": {
         "ver_pacientes":      True,
@@ -28,6 +29,7 @@ PERMISSOES_PADRAO = {
         "agendar_consultas":  True,
         "cancelar_consultas": True,
         "ver_financeiro":     True,
+        "estoque":            True,
     },
 }
 

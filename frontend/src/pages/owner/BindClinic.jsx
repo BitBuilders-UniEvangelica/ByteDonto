@@ -24,6 +24,7 @@ const LABELS_PERMISSAO = {
     agendar_consultas:  "Agendar consultas",
     cancelar_consultas: "Cancelar consultas",
     ver_financeiro:     "Ver financeiro",
+    estoque:            "Gerenciar estoque",
 };
 
 const PAPEL_LABEL = {

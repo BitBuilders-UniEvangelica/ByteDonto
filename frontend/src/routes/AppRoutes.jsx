@@ -25,6 +25,10 @@ import RegisterPatient from "../pages/reception/RegisterPatient";
 import ListPatients from "../pages/reception/ListPatients";
 import ViewPatient from "../pages/reception/ViewPatient";
 
+import Estoque from "../pages/estoque/Estoque";
+import ItemEstoque from "../pages/estoque/ItemEstoque";
+import HistoricoEstoque from "../pages/estoque/HistoricoEstoque";
+
 /* Tela exibida quando o usuário está autenticado mas não tem acesso à página.
    Importante: NÃO redireciona para /login — isso criaria um ciclo de
    redirecionamento (a LoginPage re-autenticaria pela sessão salva). */
@@ -114,6 +118,11 @@ export function AppRoutes() {
           <Route path="/reception/patient/register" element={<PermissionRoute perm="ver_pacientes"><RegisterPatient /></PermissionRoute>} />
           <Route path="/reception/patients" element={<PermissionRoute perm="ver_pacientes"><ListPatients /></PermissionRoute>} />
           <Route path="/reception/patient/view" element={<PermissionRoute perm="ver_pacientes"><ViewPatient /></PermissionRoute>} />
+
+          {/* ESTOQUE (qualquer papel com a permissão "estoque") */}
+          <Route path="/estoque" element={<PermissionRoute perm="estoque"><Estoque /></PermissionRoute>} />
+          <Route path="/estoque/item/:id" element={<PermissionRoute perm="estoque"><ItemEstoque /></PermissionRoute>} />
+          <Route path="/estoque/historico" element={<PermissionRoute perm="estoque"><HistoricoEstoque /></PermissionRoute>} />
 
           {/* Qualquer rota inexistente */}
           <Route path="*" element={<NotFoundPage />} />

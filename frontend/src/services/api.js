@@ -369,3 +369,52 @@ export async function apiGetMetricas(token, clinicaId = null) {
     if (!res.ok) throw new Error(data.error || "Erro ao buscar métricas");
     return data;
 }
+
+/* --- ESTOQUE --- */
+async function reqEstoque(token, caminho, { method = "GET", body, erro = "Erro no estoque" } = {}) {
+    const res = await fetch(`${API_URL}/api/estoque${caminho}`, {
+        method,
+        headers: {
+            Authorization: `Bearer ${token}`,
+            ...(body ? { "Content-Type": "application/json" } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || erro);
+    return data;
+}
+
+export const apiGetItensEstoque = (token) =>
+    reqEstoque(token, "/itens", { erro: "Erro ao buscar itens do estoque" });
+export const apiGetItemEstoque = (token, id) =>
+    reqEstoque(token, `/itens/${id}`, { erro: "Erro ao buscar o item" });
+export const apiCriarItemEstoque = (token, dados) =>
+    reqEstoque(token, "/itens", { method: "POST", body: dados, erro: "Erro ao salvar o item" });
+export const apiAtualizarItemEstoque = (token, id, dados) =>
+    reqEstoque(token, `/itens/${id}`, { method: "PUT", body: dados, erro: "Erro ao atualizar o item" });
+export const apiRemoverItemEstoque = (token, id) =>
+    reqEstoque(token, `/itens/${id}`, { method: "DELETE", erro: "Erro ao remover o item" });
+
+export const apiRegistrarEntradaEstoque = (token, dados) =>
+    reqEstoque(token, "/entradas", { method: "POST", body: dados, erro: "Erro ao registrar a entrada" });
+export const apiRegistrarSaidaEstoque = (token, dados) =>
+    reqEstoque(token, "/saidas", { method: "POST", body: dados, erro: "Erro ao registrar a saída" });
+
+export function apiGetMovimentacoesEstoque(token, { itemId, tipo, limit } = {}) {
+    const qs = new URLSearchParams();
+    if (itemId) qs.set("item_id", itemId);
+    if (tipo) qs.set("tipo", tipo);
+    if (limit) qs.set("limit", limit);
+    const sufixo = qs.toString() ? `?${qs}` : "";
+    return reqEstoque(token, `/movimentacoes${sufixo}`, { erro: "Erro ao buscar o histórico" });
+}
+export const apiGetResumoEstoque = (token, dias = 30) =>
+    reqEstoque(token, `/resumo?dias=${dias}`, { erro: "Erro ao buscar o resumo do estoque" });
+
+export const apiGetFornecedores = (token) =>
+    reqEstoque(token, "/fornecedores", { erro: "Erro ao buscar fornecedores" });
+export const apiCriarFornecedor = (token, dados) =>
+    reqEstoque(token, "/fornecedores", { method: "POST", body: dados, erro: "Erro ao salvar o fornecedor" });
+export const apiAtualizarFornecedor = (token, id, dados) =>
+    reqEstoque(token, `/fornecedores/${id}`, { method: "PUT", body: dados, erro: "Erro ao atualizar o fornecedor" });

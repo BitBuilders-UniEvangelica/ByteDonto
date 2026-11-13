@@ -255,3 +255,73 @@ CREATE INDEX IF NOT EXISTS pacotes_esterilizados_ciclo_idx
     ON pacotes_esterilizados(ciclo_id);
 CREATE INDEX IF NOT EXISTS pacotes_esterilizados_estado_idx
     ON pacotes_esterilizados(clinica_id, estado, data_limite_uso);
+
+-- ------------------------------------------------------------
+-- 10. ESTOQUE (materiais e insumos da clínica)
+-- Saldo controlado por lote (validade/rastreabilidade). Cada entrada ou
+-- saída gera uma movimentação, que é o histórico/auditoria do estoque.
+-- Sem exclusão física: itens e fornecedores são inativados (ativo = false).
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS fornecedores_estoque (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    clinica_id UUID NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+    nome TEXT NOT NULL,
+    cnpj TEXT,
+    telefone TEXT,
+    email TEXT,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (clinica_id, nome)
+);
+
+CREATE TABLE IF NOT EXISTS itens_estoque (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    clinica_id UUID NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+    nome TEXT NOT NULL,
+    categoria TEXT NOT NULL CHECK (categoria IN ('Material', 'Insumo')),
+    unidade TEXT NOT NULL,
+    estoque_minimo DECIMAL(12,2) NOT NULL DEFAULT 0 CHECK (estoque_minimo >= 0),
+    fornecedor_id UUID REFERENCES fornecedores_estoque(id),
+    localizacao TEXT,
+    observacoes TEXT,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS lotes_estoque (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    clinica_id UUID NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+    item_id UUID NOT NULL REFERENCES itens_estoque(id),
+    lote TEXT,
+    validade DATE,
+    quantidade DECIMAL(12,2) NOT NULL DEFAULT 0 CHECK (quantidade >= 0),
+    fornecedor_id UUID REFERENCES fornecedores_estoque(id),
+    data_entrada DATE NOT NULL DEFAULT CURRENT_DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS movimentacoes_estoque (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    clinica_id UUID NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+    item_id UUID NOT NULL REFERENCES itens_estoque(id),
+    lote_id UUID REFERENCES lotes_estoque(id),
+    tipo TEXT NOT NULL CHECK (tipo IN ('Entrada', 'Saída')),
+    quantidade DECIMAL(12,2) NOT NULL CHECK (quantidade > 0),
+    data DATE NOT NULL,
+    motivo TEXT,
+    fornecedor_id UUID REFERENCES fornecedores_estoque(id),
+    nota_fiscal TEXT,
+    valor_unitario DECIMAL(12,2) CHECK (valor_unitario >= 0),
+    paciente_id UUID REFERENCES pacientes(id),
+    procedimento TEXT,
+    responsavel_id UUID REFERENCES usuarios(id),
+    observacao TEXT,
+    registrado_por UUID REFERENCES usuarios(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS itens_estoque_clinica_idx ON itens_estoque(clinica_id, nome);
+CREATE INDEX IF NOT EXISTS lotes_estoque_item_idx ON lotes_estoque(item_id, validade);
+CREATE INDEX IF NOT EXISTS movimentacoes_estoque_item_idx ON movimentacoes_estoque(item_id, data DESC);
+CREATE INDEX IF NOT EXISTS movimentacoes_estoque_clinica_idx ON movimentacoes_estoque(clinica_id, data DESC);

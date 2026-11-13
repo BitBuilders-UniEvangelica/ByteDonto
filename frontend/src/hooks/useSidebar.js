@@ -1,6 +1,6 @@
 import { useAuth } from "../context/AuthContext";
 import { usePermissao } from "./usePermissao";
-import { Hospital, Users, CalendarDays, UserRound, Wallet } from "lucide-react";
+import { Hospital, Users, CalendarDays, UserRound, Wallet, Package } from "lucide-react";
 
 /* Definição única do menu, dirigida por permissões.
    Cada item declara como sua visibilidade é decidida:
@@ -15,6 +15,7 @@ const MENU = [
     { id: "team",      name: "Equipe",     icon: Users,        donoOnly: true },
     { id: "agenda",    name: "Agenda",     icon: CalendarDays, perm: "ver_agenda" },
     { id: "patients",  name: "Pacientes",  icon: UserRound,    perm: "ver_pacientes" },
+    { id: "stock",     name: "Estoque",    icon: Package,      perm: "estoque" },
     { id: "financial", name: "Financeiro", icon: Wallet,       perm: "ver_financeiro" },
 ];
 
@@ -36,11 +37,13 @@ export function useSidebar(activeId) {
     const verAgenda     = usePermissao("ver_agenda");
     const verPacientes  = usePermissao("ver_pacientes");
     const verFinanceiro = usePermissao("ver_financeiro");
+    const verEstoque    = usePermissao("estoque");
 
     const permitido = {
         ver_agenda: verAgenda,
         ver_pacientes: verPacientes,
         ver_financeiro: verFinanceiro,
+        estoque: verEstoque,
     };
 
     // O Especialista usa as telas clínicas (/specialist/*); o Dono e a
@@ -51,6 +54,7 @@ export function useSidebar(activeId) {
         team:      "/owner/team",
         agenda:    ehEspecialista ? "/specialist/dashboard" : "/reception/dashboard",
         patients:  ehEspecialista ? "/specialist/patients"  : "/reception/patients",
+        stock:     "/estoque",
         financial: ehDono ? "/owner/financial" : "/reception/financial",
     };
 
