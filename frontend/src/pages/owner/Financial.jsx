@@ -14,7 +14,7 @@ import SideBar from "../../components/bar/SideBar";
 import { useOwnerSidebar } from "../../hooks/useSidebar";
 import { useReceptionSidebar } from "../../hooks/useSidebar";
 import { formatCurrency, formatDate } from "../../utils/formatters";
-import { FilePlus, X, AlertTriangle } from "lucide-react";
+import { FilePlus, AlertTriangle } from "lucide-react";
 import { useFeedback } from "../../hooks/useFeedback";
 import { Banner, BlocoCarregando } from "../../components/feedback/Feedback";
 import "../../styles/clinic.css";
@@ -283,9 +283,6 @@ function Financial({ role }) {
                                     <h2 style={{ color: "var(--TextColor)", margin: 0, fontSize: "24px" }}>Novo Lançamento</h2>
                                     <p style={{ color: "var(--TextColor75)", margin: "8px 0 0 0" }}>Registre um novo movimento financeiro.</p>
                                 </div>
-                                <button aria-label="Fechar" onClick={() => setShowModal(false)} style={{ background: "var(--BackColor)", border: "1px solid var(--LineColor)", width: "40px", height: "40px", borderRadius: "10px", cursor: "pointer", color: "var(--TextColor)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                    <X size={18} strokeWidth={2} />
-                                </button>
                             </div>
 
                             <form onSubmit={handleCriar} className="forms-section" style={{ padding: 0 }}>

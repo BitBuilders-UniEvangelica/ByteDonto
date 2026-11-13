@@ -5,7 +5,7 @@ import { apiGetConsultas, apiGetMetricas, apiAtualizarConsulta } from "../../ser
 import Section from "../../components/section/SectionAuth";
 import SideBar from "../../components/bar/SideBar";
 import { useSpecialistSidebar } from "../../hooks/useSidebar";
-import { CalendarDays, Users, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { CalendarDays, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { useFeedback } from "../../hooks/useFeedback";
 import { Banner, BlocoCarregando } from "../../components/feedback/Feedback";
 import "../../styles/clinic.css";
@@ -291,7 +291,6 @@ function SpecialistDashboard() {
                                         </p>
                                     )}
                                 </div>
-                                <button aria-label="Fechar" onClick={() => setShowEncerrar(false)} style={{ background: "var(--BackColor)", border: "1px solid var(--LineColor)", width: "40px", height: "40px", borderRadius: "50%", cursor: "pointer", color: "var(--TextColor75)", display: "flex", alignItems: "center", justifyContent: "center" }}><X size={18} strokeWidth={2} /></button>
                             </div>
 
                             <div className="forms-section" style={{ padding: 0 }}>

@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { apiUploadImagem } from "../../services/api";
-import { Check, X, FileSignature } from "lucide-react";
+import { Check, X, FileSignature, Camera, RotateCcw } from "lucide-react";
+import CapturaFoto from "./CapturaFoto";
+import { formatarDataHora } from "./formatarDataHora";
 import { useFeedback } from "../../hooks/useFeedback";
 
 /* Texto padrão dos dois termos. Substituir pela versão validada pelo jurídico
@@ -27,11 +29,11 @@ sem prejuízo do tratamento já realizado.`;
  * usuário usa Ctrl+P / "Salvar como PDF". Funciona em qualquer navegador
  * sem precisar instalar lib pesada de PDF.
  *
- * Para upload, fazemos uma 2ª etapa: gera um Blob HTML com o termo + assinatura
- * em data-url e envia pra galeria como "termo_consentimento". A clínica fica
+ * Para upload, o termo é renderizado como imagem JPEG (ver gerarImagemDoTermo)
+ * e enviado pra galeria como "termo_lgpd"/"termo_consentimento". A clínica fica
  * com a prova digital no prontuário do paciente.
  */
-function htmlDoTermo({ paciente, tipo, assinaturaDataUrl }) {
+function htmlDoTermo({ paciente, tipo, assinaturaDataUrl, foto }) {
     const hoje = new Date().toLocaleDateString("pt-BR");
     const titulo = tipo === "termo_lgpd" ? "Termo de Consentimento – LGPD" : "Termo de Consentimento Informado";
     const corpo = tipo === "termo_lgpd" ? TEXTO_LGPD : TEXTO_PROCEDIMENTO;
@@ -44,6 +46,8 @@ function htmlDoTermo({ paciente, tipo, assinaturaDataUrl }) {
     pre{white-space:pre-wrap;font-family:inherit;font-size:14px}
     .assinatura{margin-top:48px;border-top:1px solid #999;padding-top:8px;text-align:center;font-size:13px;color:#555}
     .assinatura img{max-width:280px;max-height:120px;display:block;margin:0 auto 8px auto}
+    .foto{margin-top:32px;text-align:center;font-size:13px;color:#555}
+    .foto img{max-width:220px;max-height:220px;border-radius:8px;border:1px solid #ccc;display:block;margin:0 auto 8px auto}
 </style></head>
 <body>
     <h1>${titulo}</h1>
@@ -57,7 +61,105 @@ function htmlDoTermo({ paciente, tipo, assinaturaDataUrl }) {
         ${assinaturaDataUrl ? `<img src="${assinaturaDataUrl}" alt="Assinatura"/>` : ""}
         Assinatura do(a) paciente ou responsável
     </div>
+    ${foto ? `<div class="foto">
+        <img src="${foto.dataUrl}" alt="Foto do(a) paciente"/>
+        Foto registrada em ${formatarDataHora(foto.tiradaEm)}
+    </div>` : ""}
 </body></html>`;
+}
+
+/* Gera o termo completo (texto + assinatura + foto + horário) como uma imagem JPEG.
+ * O backend só aceita imagens/PDF no upload, e a galeria exibe os arquivos como
+ * <img>, então a imagem é o formato que funciona ponta a ponta sem libs extras. */
+function carregarImagem(src) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+    });
+}
+
+async function gerarImagemDoTermo({ paciente, tipo, assinaturaDataUrl, foto }) {
+    const W = 1240, M = 90, LARG = W - M * 2; // ~A4 a 150dpi
+    const titulo = tipo === "termo_lgpd" ? "Termo de Consentimento – LGPD" : "Termo de Consentimento Informado";
+    const corpo = tipo === "termo_lgpd" ? TEXTO_LGPD : TEXTO_PROCEDIMENTO;
+    const [imgAss, imgFoto] = await Promise.all([
+        carregarImagem(assinaturaDataUrl),
+        foto ? carregarImagem(foto.dataUrl) : null,
+    ]);
+
+    const c = document.createElement("canvas");
+    const ctx = c.getContext("2d");
+    const FONTE = "Arial, sans-serif";
+
+    // Quebra o texto respeitando parágrafos (linha em branco) e a largura útil
+    ctx.font = `26px ${FONTE}`;
+    const linhas = [];
+    corpo.split(/\n\s*\n/).forEach((par, i) => {
+        if (i > 0) linhas.push("");
+        let linha = "";
+        par.replace(/\s+/g, " ").trim().split(" ").forEach(palavra => {
+            const teste = linha ? `${linha} ${palavra}` : palavra;
+            if (ctx.measureText(teste).width > LARG && linha) { linhas.push(linha); linha = palavra; }
+            else linha = teste;
+        });
+        if (linha) linhas.push(linha);
+    });
+
+    const FOTO_H = 360;
+    const fotoW = imgFoto ? Math.round(FOTO_H * imgFoto.width / imgFoto.height) : 0;
+    const H = Math.max(1754, M + 300 + linhas.length * 40 + 360 + (imgFoto ? FOTO_H + 120 : 0) + M);
+    c.width = W;
+    c.height = H;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, W, H);
+    ctx.textBaseline = "top";
+
+    let y = M;
+    ctx.fillStyle = "#155E75";
+    ctx.font = `bold 40px ${FONTE}`;
+    ctx.fillText(titulo, M, y);
+    y += 60;
+    ctx.fillRect(M, y, LARG, 3);
+    y += 30;
+
+    ctx.fillStyle = "#333333";
+    ctx.font = `24px ${FONTE}`;
+    [`Paciente: ${paciente?.nome || "—"}`, `CPF: ${paciente?.cpf || "—"}`, `Data: ${new Date().toLocaleDateString("pt-BR")}`]
+        .forEach(t => { ctx.fillText(t, M, y); y += 36; });
+    y += 30;
+
+    ctx.fillStyle = "#111111";
+    ctx.font = `26px ${FONTE}`;
+    linhas.forEach(l => { ctx.fillText(l, M, y); y += 40; });
+    y += 60;
+
+    // Assinatura centralizada
+    const assW = 600, assH = Math.round(assW * imgAss.height / imgAss.width);
+    ctx.drawImage(imgAss, (W - assW) / 2, y, assW, assH);
+    y += assH + 10;
+    ctx.fillStyle = "#999999";
+    ctx.fillRect(M + 150, y, LARG - 300, 2);
+    y += 14;
+    ctx.fillStyle = "#555555";
+    ctx.font = `22px ${FONTE}`;
+    ctx.textAlign = "center";
+    ctx.fillText("Assinatura do(a) paciente ou responsável", W / 2, y);
+    y += 70;
+
+    if (imgFoto) {
+        ctx.drawImage(imgFoto, (W - fotoW) / 2, y, fotoW, FOTO_H);
+        ctx.strokeStyle = "#cccccc";
+        ctx.lineWidth = 2;
+        ctx.strokeRect((W - fotoW) / 2, y, fotoW, FOTO_H);
+        y += FOTO_H + 14;
+        ctx.fillText(`Foto registrada em ${formatarDataHora(foto.tiradaEm)}`, W / 2, y);
+    }
+
+    return new Promise((resolve, reject) =>
+        c.toBlob(b => (b ? resolve(b) : reject(new Error("Falha ao gerar a imagem do termo."))), "image/jpeg", 0.9));
 }
 
 export default function TermoConsentimento({ paciente, token, onArquivado }) {
@@ -67,6 +169,8 @@ export default function TermoConsentimento({ paciente, token, onArquivado }) {
     const [erro, setErro] = useState("");
     const { toast } = useFeedback();
     const [sucesso, setSucesso] = useState(false);
+    const [foto, setFoto] = useState(null); // { dataUrl, tiradaEm } — só via câmera ao vivo
+    const [cameraAberta, setCameraAberta] = useState(false);
 
     // Canvas de assinatura — simples (pointer events)
     const canvasRef = useRef(null);
@@ -118,20 +222,21 @@ export default function TermoConsentimento({ paciente, token, onArquivado }) {
         setErro("");
         if (!aceitou) { setErro("Marque a confirmação de leitura."); return; }
         if (!temAssinatura()) { setErro("Colete a assinatura no quadro abaixo."); return; }
+        if (!foto) { setErro("Registre a foto do(a) paciente."); return; }
         setSalvando(true);
         try {
             const assinaturaDataUrl = canvasRef.current.toDataURL("image/png");
-            const html = htmlDoTermo({ paciente, tipo, assinaturaDataUrl });
-            const blob = new Blob([html], { type: "text/html" });
+            const blob = await gerarImagemDoTermo({ paciente, tipo, assinaturaDataUrl, foto });
             const tituloArquivo = tipo === "termo_lgpd"
-                ? `termo-lgpd-${paciente.id}.html`
-                : `termo-consentimento-${paciente.id}.html`;
-            const file = new File([blob], tituloArquivo, { type: "text/html" });
+                ? `termo-lgpd-${paciente.id}.jpg`
+                : `termo-consentimento-${paciente.id}.jpg`;
+            const file = new File([blob], tituloArquivo, { type: "image/jpeg" });
             await apiUploadImagem(token, paciente.id, file, tipo);
             setSucesso(true);
             toast({ tipo: "sucesso", titulo: "Termo assinado e arquivado", mensagem: `Salvo nos arquivos de ${paciente.nome}.` });
             setAceitou(false);
             limparAssinatura();
+            setFoto(null);
             onArquivado && onArquivado();
         } catch (e) {
             setErro(e.message || "Não foi possível salvar o termo.");
@@ -143,8 +248,9 @@ export default function TermoConsentimento({ paciente, token, onArquivado }) {
 
     function imprimir() {
         if (!temAssinatura()) { setErro("Colete a assinatura no quadro antes de imprimir."); return; }
+        if (!foto) { setErro("Registre a foto do(a) paciente antes de imprimir."); return; }
         const assinaturaDataUrl = canvasRef.current.toDataURL("image/png");
-        const html = htmlDoTermo({ paciente, tipo, assinaturaDataUrl });
+        const html = htmlDoTermo({ paciente, tipo, assinaturaDataUrl, foto });
         const w = window.open("", "_blank", "width=800,height=600");
         w.document.write(html);
         w.document.close();
@@ -191,7 +297,8 @@ export default function TermoConsentimento({ paciente, token, onArquivado }) {
                 <span style={{ fontSize: "13px", fontWeight: 400, lineHeight: 1.5 }}>Li e concordo com os termos acima. Confirmo que sou o(a) paciente ou responsável legal.</span>
             </label>
 
-            <div>
+            <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div style={{ flex: "1 1 320px", maxWidth: "600px", minWidth: 0 }}>
                 <p style={{ margin: "0 0 6px 0", fontWeight: 700, fontSize: "12px", color: "var(--TextColor75)", textTransform: "uppercase" }}>Assinatura</p>
                 <canvas
                     ref={canvasRef}
@@ -215,6 +322,51 @@ export default function TermoConsentimento({ paciente, token, onArquivado }) {
                     <X size={12} strokeWidth={2.5} style={{ verticalAlign: "middle" }} /> Limpar assinatura
                 </button>
             </div>
+
+            <div style={{ flex: "0 0 auto", width: "200px", maxWidth: "100%" }}>
+                <p style={{ margin: "0 0 6px 0", fontWeight: 700, fontSize: "12px", color: "var(--TextColor75)", textTransform: "uppercase" }}>Foto do(a) paciente</p>
+                <button
+                    type="button"
+                    onClick={() => setCameraAberta(true)}
+                    aria-label={foto ? "Tirar outra foto" : "Abrir câmera para registrar foto"}
+                    style={{
+                        width: "100%", height: "160px", padding: 0, overflow: "hidden",
+                        border: foto ? "1px solid var(--LineColor)" : "1px dashed var(--LineColor)", borderRadius: "10px",
+                        background: "white", cursor: "pointer", display: "flex", flexDirection: "column",
+                        alignItems: "center", justifyContent: "center", gap: "6px", color: "var(--TextColor75)",
+                    }}
+                >
+                    {foto ? (
+                        <img src={foto.dataUrl} alt="Foto do(a) paciente" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                        <>
+                            <Camera size={28} strokeWidth={1.75} color="var(--PrimaryColorsTheme)" />
+                            <span style={{ fontSize: "12px", fontWeight: 600 }}>Tirar foto</span>
+                        </>
+                    )}
+                </button>
+                {foto ? (
+                    <div style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "2px" }}>
+                        <span style={{ fontSize: "12px", color: "var(--TextColor75)" }}>Tirada em {formatarDataHora(foto.tiradaEm)}</span>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                            <button type="button" onClick={() => setCameraAberta(true)} style={{ fontSize: "12px", background: "none", border: "none", padding: 0, color: "var(--TextColor75)", cursor: "pointer" }}>
+                                <RotateCcw size={12} strokeWidth={2.5} style={{ verticalAlign: "middle" }} /> Tirar outra
+                            </button>
+                            <button type="button" onClick={() => setFoto(null)} style={{ fontSize: "12px", background: "none", border: "none", padding: 0, color: "var(--TextColor75)", cursor: "pointer" }}>
+                                <X size={12} strokeWidth={2.5} style={{ verticalAlign: "middle" }} /> Remover
+                            </button>
+                        </div>
+                    </div>
+                ) : null}
+            </div>
+            </div>
+
+            {cameraAberta && (
+                <CapturaFoto
+                    onConfirmar={f => { setFoto(f); setCameraAberta(false); setErro(""); }}
+                    onFechar={() => setCameraAberta(false)}
+                />
+            )}
 
             {erro && <p style={{ background: "var(--DangerBack)", color: "var(--DangerText)", padding: "8px 12px", borderRadius: "8px", fontSize: "13px", margin: 0 }}>{erro}</p>}
             {sucesso && (

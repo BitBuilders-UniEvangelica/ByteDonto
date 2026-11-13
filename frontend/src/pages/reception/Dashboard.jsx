@@ -211,7 +211,6 @@ function ReceptionDashboard() {
                                     <h2 style={{ color: 'var(--TextColor)', margin: 0, fontSize: '26px' }}>Agendar Consulta</h2>
                                     <p style={{ color: 'var(--TextColor75)', margin: '6px 0 0 0' }}>Selecione paciente, profissional e horário.</p>
                                 </div>
-                                <button aria-label="Fechar" onClick={() => setShowAgendamento(false)} style={{ background: 'var(--BackColor)', border: '1px solid var(--LineColor)', width: '40px', height: '40px', borderRadius: '10px', cursor: 'pointer', color: 'var(--TextColor)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={18} strokeWidth={2} /></button>
                             </div>
 
                             {agSucesso ? (

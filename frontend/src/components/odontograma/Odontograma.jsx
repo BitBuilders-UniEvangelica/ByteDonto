@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { X } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /* Estados clínicos                                                    */
@@ -452,9 +451,6 @@ function PainelEdicao({ numero, dadoAtual, onSalvar, onFechar, onAdicionarAoPlan
                         <h3 style={{ margin: 0, color: "var(--TextColor)", fontSize: "17px" }}>Dente {numero}</h3>
                         <span style={{ fontSize: "12px", color: "var(--TextColor75)" }}>{NOME_TIPO[tipoDente(numero)]}</span>
                     </div>
-                    <button onClick={onFechar} aria-label="Fechar" style={{ background: "var(--BackColor)", border: "1px solid var(--LineColor)", borderRadius: "8px", width: "32px", height: "32px", cursor: "pointer", color: "var(--TextColor75)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <X size={16} strokeWidth={2} />
-                    </button>
                 </div>
 
                 <div style={{ padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1.1rem" }}>
