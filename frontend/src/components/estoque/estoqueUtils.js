@@ -43,13 +43,6 @@ export function statusLote(validade) {
     return { rotulo: "Normal", classe: "normal" };
 }
 
-/* Estilo da topbar/sidebar conforme o papel de quem está logado. */
-export function estiloDoPapel(papel) {
-    if (papel === "Dono") return "owner";
-    if (papel === "Especialista") return "specialist";
-    return "reception";
-}
-
 /* Texto da coluna "Motivo" de uma movimentação.
    Saída: "Uso em procedimento — Restauração dente 36 (Maria Souza)"
    Entrada: "Compra / reposição — NF 004692 · Dental Sul" */

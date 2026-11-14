@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { apiCreateClinic } from "../../services/api";
-import { maskCNPJ, maskPhone, validarCNPJ } from "../../utils/formatters";
-import Section from "../../components/section/SectionAuth"
-import SideBar from "../../components/bar/SideBar"
-import { useOwnerSidebar } from "../../hooks/useSidebar";
+import { useAuth } from "../../../context/AuthContext";
+import { apiCreateClinic } from "../../../services/api";
+import { maskCNPJ, maskPhone, validarCNPJ } from "../../../utils/formatters";
+import Section from "../../../components/section/SectionAuth"
+import SideBar from "../../../components/bar/SideBar"
+import { useOwnerSidebar } from "../../../hooks/useSidebar";
 import { ArrowLeft } from "lucide-react";
-import { useFeedback } from "../../hooks/useFeedback";
-import { ErroCampo } from "../../components/feedback/Feedback";
-import '../../styles/clinic.css';
-import '../../styles/Forms.css';
+import { useFeedback } from "../../../hooks/useFeedback";
+import { ErroCampo } from "../../../components/feedback/Feedback";
+import '../../../styles/clinic.css';
+import '../../../styles/Forms.css';
 
 /* MAIN COMPONENT */
 function RegisterClinic() {

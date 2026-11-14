@@ -1,21 +1,22 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { apiGetPaciente, apiAtualizarPaciente } from "../../services/api";
-import Section from "../../components/section/SectionAuth";
-import SideBar from "../../components/bar/SideBar";
-import { useSpecialistSidebar } from "../../hooks/useSidebar";
-import Odontograma from "../../components/odontograma/Odontograma";
-import RegistroClinico from "../../components/registro/RegistroClinico";
-import PlanoDeTratamento from "../../components/plano/PlanoDeTratamento";
-import GaleriaImagens from "../../components/imagens/GaleriaImagens";
-import PainelClinico from "../../components/clinico/PainelClinico";
+import { useAuth } from "../../../context/AuthContext";
+import { apiGetPaciente, apiAtualizarPaciente } from "../../../services/api";
+import Section from "../../../components/section/SectionAuth";
+import SideBar from "../../../components/bar/SideBar";
+import { useSpecialistSidebar } from "../../../hooks/useSidebar";
+import { useRotas } from "../../../hooks/useRotas";
+import Odontograma from "../../../components/odontograma/Odontograma";
+import RegistroClinico from "../../../components/registro/RegistroClinico";
+import PlanoDeTratamento from "../../../components/plano/PlanoDeTratamento";
+import GaleriaImagens from "../../../components/imagens/GaleriaImagens";
+import PainelClinico from "../../../components/clinico/PainelClinico";
 import { UserRound, Printer, Plus, X, AlertTriangle, Check } from "lucide-react";
-import { useFeedback } from "../../hooks/useFeedback";
-import { BlocoCarregando, EstadoErro } from "../../components/feedback/Feedback";
-import "../../styles/clinic.css";
-import "../../styles/Forms.css";
-import { formatDate, calcIdade, idadeLabel } from "../../utils/formatters";
+import { useFeedback } from "../../../hooks/useFeedback";
+import { BlocoCarregando, EstadoErro } from "../../../components/feedback/Feedback";
+import "../../../styles/clinic.css";
+import "../../../styles/Forms.css";
+import { formatDate, calcIdade, idadeLabel } from "../../../utils/formatters";
 
 function Receituario({ paciente, dentista }) {
     const [medicamentos, setMedicamentos] = useState([{ nome:"", posologia:"", duracao:"" }]);
@@ -105,6 +106,7 @@ export default function SpecialistViewRecord() {
     const [itemSugeridoPlano, setItemSugeridoPlano] = useState(null);
 
     const opc_bar = useSpecialistSidebar("patients");
+    const { estilo, rota } = useRotas();
     const { toast } = useFeedback();
     const navigate = useNavigate();
 
@@ -166,9 +168,9 @@ export default function SpecialistViewRecord() {
     if (loading) {
         return (
             <>
-                <Section type_styles="specialist" />
-                <SideBar opc={opc_bar} styles="specialist" />
-                <main className="mainBar specialist"><BlocoCarregando texto="Carregando prontuário..." /></main>
+                <Section type_styles={estilo} />
+                <SideBar opc={opc_bar} styles={estilo} />
+                <main className={`mainBar ${estilo}`}><BlocoCarregando texto="Carregando prontuário..." /></main>
             </>
         );
     }
@@ -176,15 +178,15 @@ export default function SpecialistViewRecord() {
     if (!paciente) {
         return (
             <>
-                <Section type_styles="specialist" />
-                <SideBar opc={opc_bar} styles="specialist" />
-                <main className="mainBar specialist">
+                <Section type_styles={estilo} />
+                <SideBar opc={opc_bar} styles={estilo} />
+                <main className={`mainBar ${estilo}`}>
                     <EstadoErro
                         tipo="nao-encontrado"
                         titulo="Prontuário não encontrado"
                         mensagem="Este paciente pode ter sido removido ou o link está incorreto."
                         textoBotao="Voltar para Pacientes"
-                        onAcao={() => navigate("/specialist/patients")}
+                        onAcao={() => navigate(rota("patients"))}
                     />
                 </main>
             </>
@@ -195,10 +197,10 @@ export default function SpecialistViewRecord() {
 
     return (
         <>
-            <Section type_styles="specialist" />
-            <SideBar opc={opc_bar} styles="specialist" />
+            <Section type_styles={estilo} />
+            <SideBar opc={opc_bar} styles={estilo} />
             
-            <main className="mainBar specialist">
+            <main className={`mainBar ${estilo}`}>
                 {/* CABEÇALHO CLÍNICO DO DENTISTA */}
                 <div style={{background: 'var(--PrimaryColorsTheme)', borderRadius: 'var(--radius-lg)', padding: '2rem', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem'}}>
                     <div style={{display: 'flex', gap: '1.5rem', alignItems: 'center'}}>

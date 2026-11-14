@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
-import { apiGetItensEstoque, apiGetMovimentacoesEstoque } from "../../services/api";
-import { Banner } from "../../components/feedback/Feedback";
-import PaginaEstoque from "../../components/estoque/PaginaEstoque";
-import TabelaMovimentacoes from "../../components/estoque/TabelaMovimentacoes";
+import { useAuth } from "../../../context/AuthContext";
+import { useRotas } from "../../../hooks/useRotas";
+import { apiGetItensEstoque, apiGetMovimentacoesEstoque } from "../../../services/api";
+import { Banner } from "../../../components/feedback/Feedback";
+import PaginaEstoque from "../../../components/estoque/PaginaEstoque";
+import TabelaMovimentacoes from "../../../components/estoque/TabelaMovimentacoes";
 
 const TIPOS = [
     { id: "", rotulo: "Todas" },
@@ -19,6 +20,7 @@ const LIMITE = 500;
 export default function HistoricoEstoque() {
     const { token } = useAuth();
     const [params, setParams] = useSearchParams();
+    const { rota } = useRotas();
     const itemId = params.get("item") || "";
     const tipo = params.get("tipo") || "";
 
@@ -51,7 +53,7 @@ export default function HistoricoEstoque() {
     return (
         <PaginaEstoque>
             <div>
-                <Link className="est-voltar" to={itemId ? `/estoque/item/${itemId}` : "/estoque"}>
+                <Link className="est-voltar" to={rota(itemId ? `estoque/item/${itemId}` : "estoque")}>
                     <ArrowLeft size={16} strokeWidth={2} /> {itemId ? "Voltar para o item" : "Voltar para Estoque"}
                 </Link>
                 <div className="est-header">

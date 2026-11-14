@@ -2,7 +2,7 @@ import { useAuth } from "../../context/AuthContext";
 import Section from "../section/SectionAuth";
 import SideBar from "../bar/SideBar";
 import { useSidebar } from "../../hooks/useSidebar";
-import { estiloDoPapel } from "./estoqueUtils";
+import { estiloDoPapel } from "../../utils/rotas";
 import "../../styles/clinic.css";
 import "../../styles/Forms.css";
 import "../../styles/Estoque.css";

@@ -1,16 +1,17 @@
 /* IMPORTS */
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { apiGetPacientes, apiGetEquipe, apiCriarConsulta, apiGetConsultas, apiAtualizarConsulta } from "../../services/api";
-import Section from "../../components/section/SectionAuth";
-import SideBar from "../../components/bar/SideBar";
-import Card from "../../components/card/CardInfo";
-import { formatCPF } from "../../utils/formatters";
-import { useReceptionSidebar } from "../../hooks/useSidebar";
+import { useAuth } from "../../../context/AuthContext";
+import { apiGetPacientes, apiGetEquipe, apiCriarConsulta, apiGetConsultas, apiAtualizarConsulta } from "../../../services/api";
+import Section from "../../../components/section/SectionAuth";
+import SideBar from "../../../components/bar/SideBar";
+import Card from "../../../components/card/CardInfo";
+import { formatCPF } from "../../../utils/formatters";
+import { useReceptionSidebar } from "../../../hooks/useSidebar";
+import { useRotas } from "../../../hooks/useRotas";
 import { X, Check, Plus, CalendarPlus, UserPlus, Search, CalendarDays, UserCheck, Clock, UserX, Users } from "lucide-react";
-import { useFeedback } from "../../hooks/useFeedback";
-import { Banner, BlocoCarregando } from "../../components/feedback/Feedback";
+import { useFeedback } from "../../../hooks/useFeedback";
+import { Banner, BlocoCarregando } from "../../../components/feedback/Feedback";
 
 const FORM_INICIAL = {
     paciente_id: "",
@@ -74,6 +75,7 @@ function ReceptionDashboard() {
     const [atualizandoId, setAtualizandoId] = useState(null);
 
     const opc_bar = useReceptionSidebar("dashboard");
+    const { estilo, rota } = useRotas();
 
     // Seletor Agenda | Espera (só aparece quando falta espaço)
     const [modoAbas, setModoAbas] = useState(() => window.matchMedia(MEDIA_CELULAR).matches);
@@ -196,10 +198,10 @@ function ReceptionDashboard() {
 
     return (
         <>
-            <Section type_styles="reception" />
-            <SideBar opc={opc_bar} styles="reception" />
+            <Section type_styles={estilo} />
+            <SideBar opc={opc_bar} styles={estilo} />
 
-            <main className="mainBar reception" style={{ position: 'relative' }}>
+            <main className={`mainBar ${estilo}`} style={{ position: 'relative' }}>
 
                 {/* ---------- MODAL DE AGENDAMENTO ---------- */}
                 {showAgendamento && (
@@ -248,7 +250,7 @@ function ReceptionDashboard() {
                                                 ))}
                                             </ul>
                                         )}
-                                        <Link to="/reception/patient/register" style={{ color: 'var(--PrimaryColorsTheme)', fontSize: '13px', marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}>
+                                        <Link to={rota("patient/register")} style={{ color: 'var(--PrimaryColorsTheme)', fontSize: '13px', marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}>
                                             <UserPlus size={14} strokeWidth={2.5} /> Paciente não encontrado? (Cadastrar)
                                         </Link>
                                     </div>
@@ -346,7 +348,7 @@ function ReceptionDashboard() {
                                 </ul>
                             )}
                         </div>
-                        <Link to="/reception/patients" className="submit" style={{ padding: '16px 32px', textAlign: 'center' }}>Acessar Ficha</Link>
+                        <Link to={rota("patients")} className="submit" style={{ padding: '16px 32px', textAlign: 'center' }}>Acessar Ficha</Link>
                     </div>
                 </div>
 

@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Pencil, Trash2, TriangleAlert } from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
-import { useFeedback } from "../../hooks/useFeedback";
+import { useAuth } from "../../../context/AuthContext";
+import { useFeedback } from "../../../hooks/useFeedback";
+import { useRotas } from "../../../hooks/useRotas";
 import {
     apiGetItensEstoque, apiGetResumoEstoque, apiGetFornecedores, apiRemoverItemEstoque,
-} from "../../services/api";
-import { Banner } from "../../components/feedback/Feedback";
-import PaginaEstoque from "../../components/estoque/PaginaEstoque";
-import ModalItem from "../../components/estoque/ModalItem";
-import ModalEntrada from "../../components/estoque/ModalEntrada";
-import ModalFornecedores from "../../components/estoque/ModalFornecedores";
-import { CLASSE_STATUS, formatQtd } from "../../components/estoque/estoqueUtils";
+} from "../../../services/api";
+import { Banner } from "../../../components/feedback/Feedback";
+import PaginaEstoque from "../../../components/estoque/PaginaEstoque";
+import ModalItem from "../../../components/estoque/ModalItem";
+import ModalEntrada from "../../../components/estoque/ModalEntrada";
+import ModalFornecedores from "../../../components/estoque/ModalFornecedores";
+import { CLASSE_STATUS, formatQtd } from "../../../components/estoque/estoqueUtils";
 
 const FILTROS = [
     { id: "todos", rotulo: "Todos" },
@@ -89,6 +90,7 @@ export default function Estoque() {
     const { token } = useAuth();
     const { toast, confirmar } = useFeedback();
     const navigate = useNavigate();
+    const { rota } = useRotas();
 
     const [itens, setItens] = useState([]);
     const [fornecedores, setFornecedores] = useState([]);
@@ -137,7 +139,7 @@ export default function Estoque() {
         });
     }, [itens, busca, filtro]);
 
-    const abrirItem = (i) => navigate(`/estoque/item/${i.id}`);
+    const abrirItem = (i) => navigate(rota(`estoque/item/${i.id}`));
 
     async function remover(item) {
         const ok = await confirmar({
@@ -203,7 +205,7 @@ export default function Estoque() {
                 </div>
                 <div className="est-acoes">
                     <button type="button" className="est-btn" onClick={() => setModal({ tipo: "fornecedores" })}>Fornecedores</button>
-                    <button type="button" className="est-btn" onClick={() => navigate("/estoque/historico")}>Histórico</button>
+                    <button type="button" className="est-btn" onClick={() => navigate(rota("estoque/historico"))}>Histórico</button>
                     <button type="button" className="est-btn" onClick={() => setModal({ tipo: "entrada" })} disabled={itens.length === 0}>Nova entrada</button>
                     <button type="button" className="est-btn primario" onClick={() => setModal({ tipo: "item" })}>Novo Item</button>
                 </div>

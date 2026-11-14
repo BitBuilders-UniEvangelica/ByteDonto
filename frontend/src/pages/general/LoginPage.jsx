@@ -5,6 +5,7 @@ import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { apiLogin, apiMe } from "../../services/api";
 import { supabase } from "../../services/supabaseClient";
+import { rotaInicial } from "../../utils/rotas";
 import '../../styles/Auth.css';
 
 /* MAIN COMPONENT */
@@ -19,23 +20,11 @@ function LoginPage() {
     const { login } = useAuth();
     const navigate = useNavigate();
 
-    /* Função de Roteamento Inteligente */
+    /* Cada papel entra no próprio prefixo (/owner, /specialist, /reception),
+       na primeira tela que tem permissão. Sem perfil ainda → área do Dono. */
     const routBasedOnRole = (userData) => {
-        // Se o usuário tiver um perfil definido no banco...
-        if (userData && userData.perfil && userData.perfil.papel) {
-            const role = userData.perfil.papel;
-            if (role === "Recepção") {
-                navigate("/reception/dashboard");
-            } else if (role === "Especialista") {
-                navigate("/specialist/dashboard");
-            } else {
-                // "Dono" — vai direto pra lista de clínicas (já mostra empty state
-                // com call-to-action de cadastrar a primeira clínica).
-                navigate("/owner/clinic");
-            }
-        } else {
-            navigate("/owner/clinic");
-        }
+        const perfil = userData?.perfil;
+        navigate(perfil?.papel ? rotaInicial(perfil) : "/owner/clinic");
     };
 
     /* Detecta retorno do OAuth do Google */

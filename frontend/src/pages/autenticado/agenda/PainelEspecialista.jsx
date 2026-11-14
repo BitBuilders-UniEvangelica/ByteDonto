@@ -1,15 +1,15 @@
 /* IMPORTS */
 import { useState, useEffect } from "react";
-import { useAuth } from "../../context/AuthContext";
-import { apiGetConsultas, apiGetMetricas, apiAtualizarConsulta } from "../../services/api";
-import Section from "../../components/section/SectionAuth";
-import SideBar from "../../components/bar/SideBar";
-import { useSpecialistSidebar } from "../../hooks/useSidebar";
+import { useAuth } from "../../../context/AuthContext";
+import { apiGetConsultas, apiGetMetricas, apiAtualizarConsulta } from "../../../services/api";
+import Section from "../../../components/section/SectionAuth";
+import SideBar from "../../../components/bar/SideBar";
+import { useSpecialistSidebar } from "../../../hooks/useSidebar";
 import { CalendarDays, Users, ChevronLeft, ChevronRight } from "lucide-react";
-import { useFeedback } from "../../hooks/useFeedback";
-import { Banner, BlocoCarregando } from "../../components/feedback/Feedback";
-import "../../styles/clinic.css";
-import "../../styles/Forms.css";
+import { useFeedback } from "../../../hooks/useFeedback";
+import { Banner, BlocoCarregando } from "../../../components/feedback/Feedback";
+import "../../../styles/clinic.css";
+import "../../../styles/Forms.css";
 
 /* ---- helpers de data ---- */
 function getMondayOfWeek(date) {

@@ -2,18 +2,13 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { EstadoErro } from "../../components/feedback/Feedback";
-
-const INICIO_POR_PAPEL = {
-    "Recepção": { url: "/reception/dashboard", texto: "Voltar para a Agenda" },
-    "Especialista": { url: "/specialist/dashboard", texto: "Voltar para a Agenda" },
-    "Dono": { url: "/owner/clinic", texto: "Voltar para Minhas Clínicas" },
-};
+import { rotaInicial } from "../../utils/rotas";
 
 function NotFoundPage() {
     const navigate = useNavigate();
     const { token, user } = useAuth();
     const destino = token
-        ? INICIO_POR_PAPEL[user?.perfil?.papel] || INICIO_POR_PAPEL.Dono
+        ? { url: user?.perfil?.papel ? rotaInicial(user.perfil) : "/owner/clinic", texto: "Voltar para o sistema" }
         : { url: "/", texto: "Voltar para o início" };
 
     return (

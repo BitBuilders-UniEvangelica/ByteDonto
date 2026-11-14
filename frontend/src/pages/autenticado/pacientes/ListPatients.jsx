@@ -1,16 +1,25 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { apiGetPacientes, apiGetConsultas } from "../../services/api";
-import { formatCPF, formatPhone, formatDate } from "../../utils/formatters";
-import Section from "../../components/section/SectionAuth";
-import SideBar from "../../components/bar/SideBar";
-import { useReceptionSidebar } from "../../hooks/useSidebar";
+import { useAuth } from "../../../context/AuthContext";
+import { apiGetPacientes, apiGetConsultas } from "../../../services/api";
+import { formatCPF, formatPhone, formatDate } from "../../../utils/formatters";
+import Section from "../../../components/section/SectionAuth";
+import SideBar from "../../../components/bar/SideBar";
+import { useSidebar } from "../../../hooks/useSidebar";
+import { usePermissao } from "../../../hooks/usePermissao";
+import { useRotas } from "../../../hooks/useRotas";
 import { UserPlus } from "lucide-react";
-import { Banner, BlocoCarregando } from "../../components/feedback/Feedback";
-import '../../styles/clinic.css';
+import { Banner, BlocoCarregando } from "../../../components/feedback/Feedback";
+import '../../../styles/clinic.css';
 
-/* MAIN COMPONENT */
+const ESTILO_ACAO = {padding: '6px 16px', fontSize: '13px', background: 'var(--PrimaryColorsBack)', color: 'var(--PrimaryColorsTheme)', boxShadow: 'none', border: '1px solid var(--LineColor)', display: 'inline-block'};
+
+/* LISTA DE PACIENTES — mesma tela para Dono, Especialista e Recepção
+   (/owner/patients, /specialist/patients, /reception/patients).
+   As ações aparecem conforme a permissão de quem está logado:
+   - editar_pacientes → "Cadastrar Novo Paciente"
+   - ver_prontuario   → "Prontuário" (prontuário clínico)
+   - ver_pacientes    → "Ver Ficha" (exigida para abrir a própria tela) */
 function ListPatients() {
     const { token } = useAuth();
     const [pacientes, setPacientes] = useState([]);
@@ -19,8 +28,10 @@ function ListPatients() {
     const [loading, setLoading] = useState(true);
     const [erroCarregar, setErroCarregar] = useState(false);
 
-    // Menu da recepção
-    const opc_bar = useReceptionSidebar("patients");
+    const opc_bar = useSidebar("patients");
+    const podeCadastrar = usePermissao("editar_pacientes");
+    const podeVerProntuario = usePermissao("ver_prontuario");
+    const { estilo, rota } = useRotas();
 
     function buscarDados() {
         const falhou = () => { setErroCarregar(true); return []; };
@@ -60,10 +71,10 @@ function ListPatients() {
 
     return (
         <>
-            <Section type_styles="reception" />
-            <SideBar opc={opc_bar} styles="reception" />
+            <Section type_styles={estilo} />
+            <SideBar opc={opc_bar} styles={estilo} />
             
-            <main className="mainBar reception">
+            <main className={`mainBar ${estilo}`}>
                 {erroCarregar && (
                     <Banner
                         texto="Não foi possível carregar os pacientes. Verifique sua conexão com a internet."
@@ -75,11 +86,13 @@ function ListPatients() {
                         <h1 style={{margin: '0 0 0.5rem 0', color: 'var(--PrimaryColorsTheme)', fontSize: '28px'}}>Pacientes e Prontuários</h1>
                         <p className="text75 page-header-desc">Listagem completa e busca avançada de todos os pacientes da clínica.</p>
                     </div>
+                    {podeCadastrar && (
                     <div>
-                        <Link to="/reception/patient/register" style={{ background: 'var(--PrimaryColorsTheme)', color: 'white', padding: '12px 24px', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: 'var(--shadow-sm)', border: 'none', cursor: 'pointer' }}>
+                        <Link to={rota("patient/register")} style={{ background: 'var(--PrimaryColorsTheme)', color: 'white', padding: '12px 24px', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: 'var(--shadow-sm)', border: 'none', cursor: 'pointer' }}>
                             <UserPlus size={18} strokeWidth={2.5} /> Cadastrar Novo Paciente
                         </Link>
                     </div>
+                    )}
                 </div>
 
                 <div className="camp-clinic camp-view camp-compact">
@@ -109,7 +122,7 @@ function ListPatients() {
                                         ? "Lista indisponível no momento. Use “Tentar novamente” no aviso acima."
                                         : busca.trim()
                                         ? `Nenhum paciente encontrado para "${busca.trim()}". Confira o nome ou cadastre um novo paciente.`
-                                        : "Nenhum paciente encontrado. Crie seu primeiro paciente!"}
+                                        : podeCadastrar ? "Nenhum paciente encontrado. Crie seu primeiro paciente!" : "Nenhum paciente cadastrado ainda."}
                                 </div>
                             ) : (
                                 pacientesFiltrados.map((p, idx) => (
@@ -125,7 +138,12 @@ function ListPatients() {
                                                 );
                                             })()}
                                         </p>
-                                        <div style={{textAlign: 'right'}}><Link to={`/reception/patient/view?id=${p.id}`} className="submit" style={{padding: '6px 16px', fontSize: '13px', background: 'var(--PrimaryColorsBack)', color: 'var(--PrimaryColorsTheme)', boxShadow: 'none', border: '1px solid var(--LineColor)', display: 'inline-block'}}>Ver Ficha</Link></div>
+                                        <div style={{display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap'}}>
+                                            {podeVerProntuario && (
+                                                <Link to={rota(`patient/record?id=${p.id}`)} className="submit" style={{...ESTILO_ACAO, fontWeight: 700}}>Prontuário</Link>
+                                            )}
+                                            <Link to={rota(`patient/view?id=${p.id}`)} className="submit" style={ESTILO_ACAO}>Ver Ficha</Link>
+                                        </div>
                                     </div>
                                 ))
                             )}

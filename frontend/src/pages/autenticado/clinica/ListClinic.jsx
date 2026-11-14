@@ -1,19 +1,19 @@
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
-import { useAuth } from "../../context/AuthContext";
-import { apiGetClinics, apiGetMetricas, apiAtivarClinica } from "../../services/api";
-import Section from "../../components/section/SectionAuth";
-import ButtonH1 from "../../components/buttons/ButtonsRediTitle";
-import SideBar from "../../components/bar/SideBar";
-import CampNotList from "../../components/camp/NotList";
-import CampList from "../../components/camp/ListClinic";
-import { useOwnerSidebar } from "../../hooks/useSidebar";
-import { useFeedback } from "../../hooks/useFeedback";
-import { Banner, BlocoCarregando, EstadoErro } from "../../components/feedback/Feedback";
+import { useAuth } from "../../../context/AuthContext";
+import { apiGetClinics, apiGetMetricas, apiAtivarClinica } from "../../../services/api";
+import Section from "../../../components/section/SectionAuth";
+import ButtonH1 from "../../../components/buttons/ButtonsRediTitle";
+import SideBar from "../../../components/bar/SideBar";
+import CampNotList from "../../../components/camp/NotList";
+import CampList from "../../../components/camp/ListClinic";
+import { useOwnerSidebar } from "../../../hooks/useSidebar";
+import { useFeedback } from "../../../hooks/useFeedback";
+import { Banner, BlocoCarregando, EstadoErro } from "../../../components/feedback/Feedback";
 import { Users, CalendarDays, Wallet, Stethoscope } from "lucide-react";
-import ToothIcon from "../../components/icons/ToothIcon";
-import IMG from "../../assets/img/icon01.png";
-import '../../styles/clinic.css';
-import '../../styles/Input.css';
+import ToothIcon from "../../../components/icons/ToothIcon";
+import IMG from "../../../assets/img/icon01.png";
+import '../../../styles/clinic.css';
+import '../../../styles/Input.css';
 
 const METRICAS_CONFIG = [
     { key: "total_pacientes",    label: "Total de Pacientes",  Icon: Users,       moeda: false },

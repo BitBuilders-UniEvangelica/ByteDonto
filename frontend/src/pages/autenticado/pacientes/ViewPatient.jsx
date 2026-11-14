@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../../context/AuthContext";
 import {
     apiGetPaciente,
     apiGetImagens,
@@ -9,18 +9,19 @@ import {
     apiGetFinanceiro,
     apiCriarLancamento,
     apiGetConsultas,
-} from "../../services/api";
-import Section from "../../components/section/SectionAuth";
-import SideBar from "../../components/bar/SideBar";
-import { useReceptionSidebar } from "../../hooks/useSidebar";
-import { usePermissao } from "../../hooks/usePermissao";
-import TermoConsentimento from "../../components/consentimento/TermoConsentimento";
+} from "../../../services/api";
+import Section from "../../../components/section/SectionAuth";
+import SideBar from "../../../components/bar/SideBar";
+import { useReceptionSidebar } from "../../../hooks/useSidebar";
+import { useRotas } from "../../../hooks/useRotas";
+import { usePermissao } from "../../../hooks/usePermissao";
+import TermoConsentimento from "../../../components/consentimento/TermoConsentimento";
 import { UserRound, Upload, FileText, AlertTriangle, X, Pencil, Stethoscope } from "lucide-react";
-import { useFeedback } from "../../hooks/useFeedback";
-import { BlocoCarregando, EstadoErro } from "../../components/feedback/Feedback";
-import "../../styles/clinic.css";
-import "../../styles/Forms.css";
-import { formatCPF, formatPhone, formatDate, idadeLabel, formatCurrency } from "../../utils/formatters";
+import { useFeedback } from "../../../hooks/useFeedback";
+import { BlocoCarregando, EstadoErro } from "../../../components/feedback/Feedback";
+import "../../../styles/clinic.css";
+import "../../../styles/Forms.css";
+import { formatCPF, formatPhone, formatDate, idadeLabel, formatCurrency } from "../../../utils/formatters";
 
 export default function ViewPatient() {
     const { token } = useAuth();
@@ -52,12 +53,15 @@ export default function ViewPatient() {
 
     // Menu da recepção
     const opc_bar = useReceptionSidebar("patients");
+    const { estilo, rota } = useRotas();
     const { toast, confirmar } = useFeedback();
     const navigate = useNavigate();
 
     // Acesso ao prontuário clínico (odontograma, plano de tratamento).
     // Disponível para o Dono e para quem tiver a permissão "ver_prontuario".
     const podeVerProntuario = usePermissao("ver_prontuario");
+    const podeEditarPaciente = usePermissao("editar_pacientes");
+    const podeVerFinanceiro = usePermissao("ver_financeiro");
 
     useEffect(() => {
         if (!pacienteId) {
@@ -128,7 +132,7 @@ export default function ViewPatient() {
     useEffect(() => {
         if (!pacienteId) return;
         if (activeTab === "arquivos") carregarImagens();
-        if (activeTab === "financeiro") carregarFinanceiro();
+        if (activeTab === "financeiro" && podeVerFinanceiro) carregarFinanceiro();
         if (activeTab === "historico") carregarAtendimentos();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab, pacienteId, token]);
@@ -201,9 +205,9 @@ export default function ViewPatient() {
     if (loading) {
         return (
             <>
-                <Section type_styles="reception" />
-                <SideBar opc={opc_bar} styles="reception" />
-                <main className="mainBar reception"><BlocoCarregando texto="Carregando ficha do paciente..." /></main>
+                <Section type_styles={estilo} />
+                <SideBar opc={opc_bar} styles={estilo} />
+                <main className={`mainBar ${estilo}`}><BlocoCarregando texto="Carregando ficha do paciente..." /></main>
             </>
         );
     }
@@ -211,15 +215,15 @@ export default function ViewPatient() {
     if (!paciente) {
         return (
             <>
-                <Section type_styles="reception" />
-                <SideBar opc={opc_bar} styles="reception" />
-                <main className="mainBar reception">
+                <Section type_styles={estilo} />
+                <SideBar opc={opc_bar} styles={estilo} />
+                <main className={`mainBar ${estilo}`}>
                     <EstadoErro
                         tipo="nao-encontrado"
                         titulo="Paciente não encontrado"
                         mensagem="Este paciente pode ter sido removido ou o link está incorreto."
                         textoBotao="Voltar para Pacientes"
-                        onAcao={() => navigate("/reception/patients")}
+                        onAcao={() => navigate(rota("patients"))}
                     />
                 </main>
             </>
@@ -231,10 +235,10 @@ export default function ViewPatient() {
 
     return (
         <>
-            <Section type_styles="reception" />
-            <SideBar opc={opc_bar} styles="reception" />
+            <Section type_styles={estilo} />
+            <SideBar opc={opc_bar} styles={estilo} />
             
-            <main className="mainBar reception">
+            <main className={`mainBar ${estilo}`}>
                 {/* CABEÇALHO DO PRONTUÁRIO */}
                 <div className="pv-hero" style={{background: 'var(--PrimaryColorsTheme)', borderRadius: '16px', color: 'white', marginBottom: '2rem', boxShadow: 'var(--shadow-sm)'}}>
                     <div className="pv-hero-avatar" style={{borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0}}>
@@ -254,18 +258,20 @@ export default function ViewPatient() {
                     <div className="pv-hero-acoes">
                         {podeVerProntuario && (
                             <Link
-                                to={`/specialist/patient/view?id=${pacienteId}`}
+                                to={rota(`patient/record?id=${pacienteId}`)}
                                 style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.35)', color: 'white', padding: '10px 18px', borderRadius: '999px', fontSize: '14px', fontWeight: 700, textDecoration: 'none'}}
                             >
                                 <Stethoscope size={16} strokeWidth={2.2} /> Prontuário Clínico
                             </Link>
                         )}
+                        {podeEditarPaciente && (
                         <Link
-                            to={`/reception/patient/register?id=${pacienteId}`}
+                            to={rota(`patient/register?id=${pacienteId}`)}
                             style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'white', color: 'var(--PrimaryColorsTheme)', padding: '10px 18px', borderRadius: '999px', fontSize: '14px', fontWeight: 700, textDecoration: 'none', boxShadow: 'var(--shadow-sm)'}}
                         >
                             <Pencil size={16} strokeWidth={2.2} /> Editar Paciente
                         </Link>
+                        )}
                     </div>
                 </div>
 
@@ -275,7 +281,7 @@ export default function ViewPatient() {
                     <li className={activeTab === "anamnese" ? "select" : ""} onClick={() => setActiveTab("anamnese")}>Anamnese (Ficha Médica)</li>
                     <li className={activeTab === "termos" ? "select" : ""} onClick={() => setActiveTab("termos")}>Termos de Consentimento</li>
                     <li className={activeTab === "arquivos" ? "select" : ""} onClick={() => setActiveTab("arquivos")}>Arquivos & Imagens</li>
-                    <li className={activeTab === "financeiro" ? "select" : ""} onClick={() => setActiveTab("financeiro")}>Financeiro e Cobranças</li>
+                    {podeVerFinanceiro && <li className={activeTab === "financeiro" ? "select" : ""} onClick={() => setActiveTab("financeiro")}>Financeiro e Cobranças</li>}
                 </ul>
 
                 {/* ABA 1: HISTÓRICO CLINICO */}
@@ -463,7 +469,7 @@ export default function ViewPatient() {
                 )}
 
                 {/* ABA 4: FINANCEIRO (Feita pela recepção) */}
-                {activeTab === "financeiro" && (
+                {activeTab === "financeiro" && podeVerFinanceiro && (
                     <div className="forms-section" style={{animation: 'fadeIn 0.3s'}}>
                         <div className="pv-grid pv-grid-financeiro">
                             <div>

@@ -1,6 +1,6 @@
 /* IMPORTS */
 import { useState, useEffect, useMemo } from "react";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../../context/AuthContext";
 import {
     apiGetFinanceiro,
     apiCriarLancamento,
@@ -8,17 +8,17 @@ import {
     apiGetPacientes,
     apiGetRepasses,
     apiGetEquipe,
-} from "../../services/api";
-import Section from "../../components/section/SectionAuth";
-import SideBar from "../../components/bar/SideBar";
-import { useOwnerSidebar } from "../../hooks/useSidebar";
-import { useReceptionSidebar } from "../../hooks/useSidebar";
-import { formatCurrency, formatDate } from "../../utils/formatters";
+} from "../../../services/api";
+import Section from "../../../components/section/SectionAuth";
+import SideBar from "../../../components/bar/SideBar";
+import { useSidebar } from "../../../hooks/useSidebar";
+import { useRotas } from "../../../hooks/useRotas";
+import { formatCurrency, formatDate } from "../../../utils/formatters";
 import { FilePlus, AlertTriangle } from "lucide-react";
-import { useFeedback } from "../../hooks/useFeedback";
-import { Banner, BlocoCarregando } from "../../components/feedback/Feedback";
-import "../../styles/clinic.css";
-import "../../styles/Forms.css";
+import { useFeedback } from "../../../hooks/useFeedback";
+import { Banner, BlocoCarregando } from "../../../components/feedback/Feedback";
+import "../../../styles/clinic.css";
+import "../../../styles/Forms.css";
 
 const FORMAS_PAGAMENTO = ["Dinheiro", "Cartão Débito", "Cartão Crédito", "Pix", "Convênio"];
 const STATUS_OPTIONS = ["Pago", "Pendente", "Cancelado"];
@@ -119,14 +119,14 @@ function GraficoFormas({ lancamentos }) {
 }
 
 /* ---- MAIN COMPONENT ---- */
-function Financial({ role }) {
+/* Mesma tela em /owner/financial, /specialist/financial e /reception/financial.
+   O repasse aos dentistas só aparece para o Dono. */
+function Financial() {
     const { token } = useAuth();
 
-    const isOwner = role === "owner";
-    const ownerBar     = useOwnerSidebar("financial");
-    const receptionBar = useReceptionSidebar("financial");
-    const opc_bar      = isOwner ? ownerBar : receptionBar;
-    const sectionStyle = isOwner ? "owner" : "reception";
+    const { papel, estilo: sectionStyle } = useRotas();
+    const isOwner = papel === "Dono";
+    const opc_bar = useSidebar("financial");
 
     /* estados */
     const [lancamentos, setLancamentos] = useState([]);

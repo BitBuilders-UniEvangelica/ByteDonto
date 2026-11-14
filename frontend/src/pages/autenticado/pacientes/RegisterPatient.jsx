@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { apiCriarPaciente, apiAtualizarPaciente, apiGetPaciente } from "../../services/api";
-import { maskCPF, maskPhone, maskCEP, validarCPF, validarTelefone, validarEmail } from "../../utils/formatters";
-import Section from "../../components/section/SectionAuth";
-import SideBar from "../../components/bar/SideBar";
-import { useReceptionSidebar } from "../../hooks/useSidebar";
+import { useAuth } from "../../../context/AuthContext";
+import { apiCriarPaciente, apiAtualizarPaciente, apiGetPaciente } from "../../../services/api";
+import { maskCPF, maskPhone, maskCEP, validarCPF, validarTelefone, validarEmail } from "../../../utils/formatters";
+import Section from "../../../components/section/SectionAuth";
+import SideBar from "../../../components/bar/SideBar";
+import { useReceptionSidebar } from "../../../hooks/useSidebar";
+import { useRotas } from "../../../hooks/useRotas";
 import { ArrowLeft } from "lucide-react";
-import { useFeedback } from "../../hooks/useFeedback";
-import '../../styles/clinic.css';
-import '../../styles/Forms.css';
+import { useFeedback } from "../../../hooks/useFeedback";
+import '../../../styles/clinic.css';
+import '../../../styles/Forms.css';
 
 /* MAIN COMPONENT */
 function RegisterPatient() {
@@ -21,6 +22,7 @@ function RegisterPatient() {
 
     // Menu da recepção
     const opc_bar = useReceptionSidebar("patients");
+    const { estilo, rota } = useRotas();
 
     // Controle de Abas
     const [activeTab, setActiveTab] = useState("dados");
@@ -223,11 +225,11 @@ function RegisterPatient() {
             if (isEditMode) {
                 await apiAtualizarPaciente(token, pacienteId, payload);
                 toast({ tipo: "sucesso", titulo: "Alterações salvas", mensagem: `Os dados de ${formData.nome} foram atualizados.` });
-                navigate(`/reception/patient/view?id=${pacienteId}`);
+                navigate(rota(`patient/view?id=${pacienteId}`));
             } else {
                 await apiCriarPaciente(token, payload);
                 toast({ tipo: "sucesso", titulo: "Paciente cadastrado com sucesso!", mensagem: `${formData.nome} já está na lista de pacientes.` });
-                navigate("/reception/patients");
+                navigate(rota("patients"));
             }
         } catch (err) {
             toast({ tipo: "erro", titulo: "Não foi possível salvar", mensagem: err.message || "Tente novamente em instantes." });
@@ -239,18 +241,18 @@ function RegisterPatient() {
 
     return (
         <>
-            <Section type_styles="reception" />
-            <SideBar opc={opc_bar} styles="reception" />
+            <Section type_styles={estilo} />
+            <SideBar opc={opc_bar} styles={estilo} />
             
-            <main className="mainBar reception register">
+            <main className={`mainBar ${estilo} register`}>
                 <p>
                     {isEditMode ? (
-                        <Link className="text75" to={`/reception/patient/view?id=${pacienteId}`} style={{display: 'inline-flex', alignItems: 'center', gap: '6px'}}>
+                        <Link className="text75" to={rota(`patient/view?id=${pacienteId}`)} style={{display: 'inline-flex', alignItems: 'center', gap: '6px'}}>
                             <ArrowLeft size={16} strokeWidth={2} /> Voltar para a Ficha do Paciente
                         </Link>
                     ) : (
-                        <Link className="text75" to="/reception/dashboard" style={{display: 'inline-flex', alignItems: 'center', gap: '6px'}}>
-                            <ArrowLeft size={16} strokeWidth={2} /> Voltar para o Painel
+                        <Link className="text75" to={rota("patients")} style={{display: 'inline-flex', alignItems: 'center', gap: '6px'}}>
+                            <ArrowLeft size={16} strokeWidth={2} /> Voltar para Pacientes
                         </Link>
                     )}
                 </p>

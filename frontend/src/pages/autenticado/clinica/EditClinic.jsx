@@ -1,17 +1,17 @@
 /* IMPORTS OF COMPONENTS */
 import { useState, useEffect } from "react";
 import { Link, useParams, Navigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { apiGetClinic, apiUpdateClinic } from "../../services/api";
-import { maskCNPJ, maskPhone, validarCNPJ } from "../../utils/formatters";
-import Section from "../../components/section/SectionAuth";
-import SideBar from "../../components/bar/SideBar";
-import { useOwnerSidebar } from "../../hooks/useSidebar";
+import { useAuth } from "../../../context/AuthContext";
+import { apiGetClinic, apiUpdateClinic } from "../../../services/api";
+import { maskCNPJ, maskPhone, validarCNPJ } from "../../../utils/formatters";
+import Section from "../../../components/section/SectionAuth";
+import SideBar from "../../../components/bar/SideBar";
+import { useOwnerSidebar } from "../../../hooks/useSidebar";
 import { ArrowLeft } from "lucide-react";
-import { useFeedback } from "../../hooks/useFeedback";
-import { Banner, BlocoCarregando, ErroCampo } from "../../components/feedback/Feedback";
-import '../../styles/clinic.css';
-import '../../styles/Forms.css';
+import { useFeedback } from "../../../hooks/useFeedback";
+import { Banner, BlocoCarregando, ErroCampo } from "../../../components/feedback/Feedback";
+import '../../../styles/clinic.css';
+import '../../../styles/Forms.css';
 
 /* MAIN COMPONENT */
 function EditClinic() {

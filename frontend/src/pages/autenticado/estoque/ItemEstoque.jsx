@@ -1,19 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Pencil } from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
-import { useFeedback } from "../../hooks/useFeedback";
-import { apiGetItemEstoque, apiGetFornecedores } from "../../services/api";
-import { formatDate } from "../../utils/formatters";
-import { EstadoErro } from "../../components/feedback/Feedback";
-import PaginaEstoque from "../../components/estoque/PaginaEstoque";
-import ModalItem from "../../components/estoque/ModalItem";
-import ModalEntrada from "../../components/estoque/ModalEntrada";
-import ModalSaida from "../../components/estoque/ModalSaida";
-import TabelaMovimentacoes from "../../components/estoque/TabelaMovimentacoes";
+import { useAuth } from "../../../context/AuthContext";
+import { useFeedback } from "../../../hooks/useFeedback";
+import { useRotas } from "../../../hooks/useRotas";
+import { apiGetItemEstoque, apiGetFornecedores } from "../../../services/api";
+import { formatDate } from "../../../utils/formatters";
+import { EstadoErro } from "../../../components/feedback/Feedback";
+import PaginaEstoque from "../../../components/estoque/PaginaEstoque";
+import ModalItem from "../../../components/estoque/ModalItem";
+import ModalEntrada from "../../../components/estoque/ModalEntrada";
+import ModalSaida from "../../../components/estoque/ModalSaida";
+import TabelaMovimentacoes from "../../../components/estoque/TabelaMovimentacoes";
 import {
     CLASSE_STATUS, DIAS_ALERTA_VENCIMENTO, diasAte, formatQtd, statusLote,
-} from "../../components/estoque/estoqueUtils";
+} from "../../../components/estoque/estoqueUtils";
 
 const COR_STATUS = { Normal: "var(--SuccessText)", "Estoque baixo": "#C2410C", Esgotado: "#BE123C" };
 
@@ -31,6 +32,7 @@ export default function ItemEstoque() {
     const { token } = useAuth();
     const { toast } = useFeedback();
     const navigate = useNavigate();
+    const { rota } = useRotas();
 
     const [item, setItem] = useState(null);
     const [fornecedores, setFornecedores] = useState([]);
@@ -60,13 +62,13 @@ export default function ItemEstoque() {
     if (erro) {
         return (
             <PaginaEstoque>
-                <Link className="est-voltar" to="/estoque"><ArrowLeft size={16} strokeWidth={2} /> Voltar para Estoque</Link>
+                <Link className="est-voltar" to={rota("estoque")}><ArrowLeft size={16} strokeWidth={2} /> Voltar para Estoque</Link>
                 <EstadoErro
                     tipo={erro === "404" ? "nao-encontrado" : "conexao"}
                     titulo={erro === "404" ? "Item não encontrado" : undefined}
                     mensagem={erro === "404" ? "Ele pode ter sido removido ou pertencer a outra clínica." : "Não foi possível carregar o item."}
                     textoBotao={erro === "404" ? "Voltar para Estoque" : "Tentar novamente"}
-                    onAcao={erro === "404" ? () => navigate("/estoque") : carregar}
+                    onAcao={erro === "404" ? () => navigate(rota("estoque")) : carregar}
                 />
             </PaginaEstoque>
         );
@@ -115,7 +117,7 @@ export default function ItemEstoque() {
             )}
 
             <div>
-                <Link className="est-voltar" to="/estoque"><ArrowLeft size={16} strokeWidth={2} /> Voltar para Estoque</Link>
+                <Link className="est-voltar" to={rota("estoque")}><ArrowLeft size={16} strokeWidth={2} /> Voltar para Estoque</Link>
                 <div className="est-header">
                     <div style={{ minWidth: 0 }}>
                         <h1>{item.nome}{!item.ativo && <span className="est-chip esgotado" style={{ marginLeft: "10px", verticalAlign: "middle" }}>Removido</span>}</h1>
@@ -213,7 +215,7 @@ export default function ItemEstoque() {
             <div className="est-card">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap" }}>
                     <p className="est-card-titulo" style={{ margin: 0 }}>Últimas movimentações</p>
-                    <button type="button" className="est-btn" onClick={() => navigate(`/estoque/historico?item=${item.id}`)}>Ver histórico completo</button>
+                    <button type="button" className="est-btn" onClick={() => navigate(rota(`estoque/historico?item=${item.id}`))}>Ver histórico completo</button>
                 </div>
                 <TabelaMovimentacoes movimentacoes={item.movimentacoes} unidade={item.unidade} />
             </div>

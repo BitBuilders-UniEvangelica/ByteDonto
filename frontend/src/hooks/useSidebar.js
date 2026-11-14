@@ -1,22 +1,22 @@
 import { useAuth } from "../context/AuthContext";
-import { usePermissao } from "./usePermissao";
+import { rotaDoPapel, temPermissao } from "../utils/rotas";
 import { Hospital, Users, CalendarDays, UserRound, Wallet, Package } from "lucide-react";
 
 /* Definição única do menu, dirigida por permissões.
    Cada item declara como sua visibilidade é decidida:
    - donoOnly: visível apenas para o papel "Dono"
-   - perm: chave de permissão (Dono sempre tem tudo via usePermissao)
+   - perm: chave de permissão (Dono sempre tem tudo)
    O campo `icon` é um componente de ícone do lucide-react.
-   As URLs de Agenda/Pacientes dependem do papel: o Especialista usa as
-   telas clínicas (/specialist/*); o Dono e a Recepção usam as telas de
-   gestão (/reception/*), que têm agendamento e cadastro de pacientes. */
+   `caminho` é relativo ao prefixo do papel logado: o mesmo item "Pacientes"
+   leva o Dono a /owner/patients, o Especialista a /specialist/patients e a
+   Recepção a /reception/patients (ver utils/rotas.js). */
 const MENU = [
-    { id: "clinic",    name: "Clínica",    icon: Hospital,    donoOnly: true },
-    { id: "team",      name: "Equipe",     icon: Users,        donoOnly: true },
-    { id: "agenda",    name: "Agenda",     icon: CalendarDays, perm: "ver_agenda" },
-    { id: "patients",  name: "Pacientes",  icon: UserRound,    perm: "ver_pacientes" },
-    { id: "stock",     name: "Estoque",    icon: Package,      perm: "estoque" },
-    { id: "financial", name: "Financeiro", icon: Wallet,       perm: "ver_financeiro" },
+    { id: "clinic",    name: "Clínica",    icon: Hospital,     caminho: "clinic",    donoOnly: true },
+    { id: "team",      name: "Equipe",     icon: Users,        caminho: "team",      donoOnly: true },
+    { id: "agenda",    name: "Agenda",     icon: CalendarDays, caminho: "dashboard", perm: "ver_agenda" },
+    { id: "patients",  name: "Pacientes",  icon: UserRound,    caminho: "patients",  perm: "ver_pacientes" },
+    { id: "stock",     name: "Estoque",    icon: Package,      caminho: "estoque",   perm: "estoque" },
+    { id: "financial", name: "Financeiro", icon: Wallet,       caminho: "financial", perm: "ver_financeiro" },
 ];
 
 /* Trata "dashboard" como equivalente a "agenda" para destacar o item certo */
@@ -26,49 +26,24 @@ function mesmoItem(itemId, activeId) {
     return false;
 }
 
-/* Hook unificado — retorna o menu filtrado por permissão, com URLs
-   apropriadas ao papel do usuário. */
+/* Hook unificado — retorna o menu filtrado por permissão, com as URLs no
+   prefixo do papel do usuário. */
 export function useSidebar(activeId) {
     const { user } = useAuth();
-    const papel = user?.perfil?.papel;
-    const ehDono = papel === "Dono";
-    const ehEspecialista = papel === "Especialista";
-
-    const verAgenda     = usePermissao("ver_agenda");
-    const verPacientes  = usePermissao("ver_pacientes");
-    const verFinanceiro = usePermissao("ver_financeiro");
-    const verEstoque    = usePermissao("estoque");
-
-    const permitido = {
-        ver_agenda: verAgenda,
-        ver_pacientes: verPacientes,
-        ver_financeiro: verFinanceiro,
-        estoque: verEstoque,
-    };
-
-    // O Especialista usa as telas clínicas (/specialist/*); o Dono e a
-    // Recepção usam as telas de gestão (/reception/*), com agendamento e
-    // cadastro de pacientes. O Financeiro do Dono é o painel /owner/financial.
-    const urls = {
-        clinic:    "/owner/clinic",
-        team:      "/owner/team",
-        agenda:    ehEspecialista ? "/specialist/dashboard" : "/reception/dashboard",
-        patients:  ehEspecialista ? "/specialist/patients"  : "/reception/patients",
-        stock:     "/estoque",
-        financial: ehDono ? "/owner/financial" : "/reception/financial",
-    };
+    const perfil = user?.perfil;
+    const ehDono = perfil?.papel === "Dono";
 
     return MENU
         .filter(item => {
             if (item.donoOnly) return ehDono;
-            if (item.perm) return permitido[item.perm];
+            if (item.perm) return temPermissao(perfil, item.perm);
             return true;
         })
         .map(item => ({
             id: item.id,
             icon: item.icon,
             name: item.name,
-            url: urls[item.id],
+            url: rotaDoPapel(perfil?.papel, item.caminho),
             style: mesmoItem(item.id, activeId) ? "select" : "",
         }));
 }

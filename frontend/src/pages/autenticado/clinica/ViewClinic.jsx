@@ -1,17 +1,17 @@
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { apiGetClinic, apiGetMetricas } from "../../services/api";
-import { formatCNPJ, formatPhone } from "../../utils/formatters";
-import Section from "../../components/section/SectionAuth";
-import SideBar from "../../components/bar/SideBar";
-import Card from "../../components/card/CardInfo";
-import IMG from "../../assets/img/icon01.png";
-import { useOwnerSidebar } from "../../hooks/useSidebar";
-import ButtonP from "../../components/buttons/ButtonsRediText";
+import { useAuth } from "../../../context/AuthContext";
+import { apiGetClinic, apiGetMetricas } from "../../../services/api";
+import { formatCNPJ, formatPhone } from "../../../utils/formatters";
+import Section from "../../../components/section/SectionAuth";
+import SideBar from "../../../components/bar/SideBar";
+import Card from "../../../components/card/CardInfo";
+import IMG from "../../../assets/img/icon01.png";
+import { useOwnerSidebar } from "../../../hooks/useSidebar";
+import ButtonP from "../../../components/buttons/ButtonsRediText";
 import { ArrowLeft } from "lucide-react";
-import { BlocoCarregando, EstadoErro } from "../../components/feedback/Feedback";
-import '../../styles/clinic.css';
+import { BlocoCarregando, EstadoErro } from "../../../components/feedback/Feedback";
+import '../../../styles/clinic.css';
 
 function ViewClinic() {
     const { id } = useParams();

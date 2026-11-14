@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { apiGetEquipe, apiCriarMembro, apiRemoverMembro, apiAtualizarMembro, apiAtualizarPermissoes, apiRedefinirSenha } from "../../services/api";
-import Section from "../../components/section/SectionAuth";
-import SideBar from "../../components/bar/SideBar";
-import { useOwnerSidebar } from "../../hooks/useSidebar";
-import { validarEmail, formatDate } from "../../utils/formatters";
+import { useAuth } from "../../../context/AuthContext";
+import { apiGetEquipe, apiCriarMembro, apiRemoverMembro, apiAtualizarMembro, apiAtualizarPermissoes, apiRedefinirSenha } from "../../../services/api";
+import Section from "../../../components/section/SectionAuth";
+import SideBar from "../../../components/bar/SideBar";
+import { useOwnerSidebar } from "../../../hooks/useSidebar";
+import { validarEmail, formatDate } from "../../../utils/formatters";
 import { ArrowLeft, CheckCircle2, UserPlus, AlertTriangle, EllipsisVertical, Power, KeyRound, ShieldCheck, Pencil, Trash2 } from "lucide-react";
-import { useFeedback } from "../../hooks/useFeedback";
-import { BlocoCarregando, Banner, EstadoErro } from "../../components/feedback/Feedback";
-import "../../styles/clinic.css";
-import "../../styles/Forms.css";
-import "../../styles/Table.css";
+import { useFeedback } from "../../../hooks/useFeedback";
+import { BlocoCarregando, Banner, EstadoErro } from "../../../components/feedback/Feedback";
+import "../../../styles/clinic.css";
+import "../../../styles/Forms.css";
+import "../../../styles/Table.css";
 
 const PAPEIS = ["Especialista", "Recepção"];
 
