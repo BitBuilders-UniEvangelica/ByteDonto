@@ -5,6 +5,9 @@ load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Valores de exemplo (antigos padrões e o .env.example) que não valem como chave real.
+CHAVES_DE_EXEMPLO = {"dev-secret", "troque-por-uma-chave-aleatoria"}
+
 
 class Config:
     # PostgreSQL local (ambiente de desenvolvimento)
@@ -16,9 +19,10 @@ class Config:
     SUPABASE_KEY = None
     SUPABASE_ANON_KEY = None
 
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
+    SECRET_KEY = os.getenv("SECRET_KEY")
 
-    # Auth local: tokens JWT assinados com esta chave
+    # Auth local: tokens JWT assinados com esta chave. Sem valor padrão: quem
+    # conhece a chave consegue forjar o login de qualquer usuário.
     JWT_SECRET = os.getenv("JWT_SECRET") or SECRET_KEY
     JWT_EXPIRES_SECONDS = int(os.getenv("JWT_EXPIRES_SECONDS", "3600"))
 
@@ -31,3 +35,15 @@ class Config:
     EVOLUTION_API_URL = os.getenv("EVOLUTION_API_URL")
     EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY")
     EVOLUTION_INSTANCE = os.getenv("EVOLUTION_INSTANCE", "byedonto")
+
+    @classmethod
+    def problemas(cls):
+        """Lista o que falta no .env para a API subir com segurança."""
+        erros = []
+        if not cls.DATABASE_URL:
+            erros.append("DATABASE_URL não definida.")
+        if not cls.JWT_SECRET:
+            erros.append("JWT_SECRET (ou SECRET_KEY) não definida.")
+        elif cls.JWT_SECRET in CHAVES_DE_EXEMPLO or len(cls.JWT_SECRET) < 32:
+            erros.append("JWT_SECRET (ou SECRET_KEY) precisa ser aleatória e ter pelo menos 32 caracteres.")
+        return erros

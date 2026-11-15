@@ -6,6 +6,13 @@ from config import Config
 from app.extensions import limiter
 
 def create_app():
+    problemas = Config.problemas()
+    if problemas:
+        raise RuntimeError(
+            "Configuração incompleta — confira o .env (modelo em .env.example):\n  - "
+            + "\n  - ".join(problemas)
+        )
+
     app = Flask(__name__)
     app.config.from_object(Config)
 
