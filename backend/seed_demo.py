@@ -10,34 +10,32 @@ Como rodar:
     cd backend
     venv/bin/python seed_demo.py
 
+Contas: os e-mails e senhas vêm do .env (DEMO_DONO_EMAIL, DEMO_DONO_SENHA,
+DEMO_RECEPCAO_EMAIL, DEMO_RECEPCAO_SENHA, DEMO_ESPECIALISTA_EMAIL,
+DEMO_ESPECIALISTA_SENHA). Senha não informada é gerada na hora e mostrada no
+fim; quem já existe mantém a senha que tem. Nada de credencial fica no código.
+
 Pode rodar mais de uma vez: a clínica e a equipe não são duplicadas.
 Pacientes/consultas/financeiro só são criados se a clínica ainda não tiver pacientes.
 """
+import os
 import random
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from config import Config
 from supabase import create_client
+from app.auth_utils import PERMISSOES_PADRAO
 
 admin = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
 
 # ---- Configuração das contas -------------------------------------------------
-OWNER_EMAIL = "vitorhugosteam3@gmail.com"
-OWNER_SENHA_SE_NOVO = "Bytedonto@2026"   # usada só se a conta ainda não existir
+OWNER_EMAIL = os.getenv("DEMO_DONO_EMAIL", "dono.demo@bytedonto.com")
+RECEP_EMAIL = os.getenv("DEMO_RECEPCAO_EMAIL", "recepcao.demo@bytedonto.com")
+ESPEC_EMAIL = os.getenv("DEMO_ESPECIALISTA_EMAIL", "profissional.demo@bytedonto.com")
 
-RECEP_EMAIL, RECEP_SENHA = "recepcao.demo@bytedonto.com", "Recepcao@2026"
-ESPEC_EMAIL, ESPEC_SENHA = "profissional.demo@bytedonto.com", "Profissional@2026"
-
-PERMISSOES_RECEPCAO = {
-    "ver_pacientes": True, "editar_pacientes": True, "ver_prontuario": False,
-    "editar_prontuario": False, "ver_agenda": True, "agendar_consultas": True,
-    "cancelar_consultas": True, "ver_financeiro": True,
-}
-PERMISSOES_ESPECIALISTA = {
-    "ver_pacientes": True, "editar_pacientes": False, "ver_prontuario": True,
-    "editar_prontuario": True, "ver_agenda": True, "agendar_consultas": False,
-    "cancelar_consultas": False, "ver_financeiro": False,
-}
+PERMISSOES_RECEPCAO = PERMISSOES_PADRAO["Recepção"]
+PERMISSOES_ESPECIALISTA = PERMISSOES_PADRAO["Especialista"]
 
 
 def gerar_cpf():
@@ -62,19 +60,24 @@ def achar_auth_user(email):
     return None
 
 
-def garantir_auth_user(email, senha):
-    """Retorna (user_id, foi_criado). Se já existir, garante a senha conhecida."""
+def garantir_auth_user(email, variavel_senha):
+    """Retorna (user_id, senha_exibida).
+
+    Se a senha estiver no .env, ela é aplicada (conta nova ou existente).
+    Sem senha no .env: conta nova recebe uma senha aleatória; conta existente
+    mantém a dela (senha_exibida fica None).
+    """
+    senha_env = os.getenv(variavel_senha)
     user = achar_auth_user(email)
     if user:
-        try:
-            admin.auth.admin.update_user_by_id(user.id, {"password": senha})
-        except Exception:
-            pass
-        return user.id, False
+        if senha_env:
+            admin.auth.admin.update_user_by_id(user.id, {"password": senha_env})
+        return user.id, senha_env
+    senha = senha_env or secrets.token_urlsafe(12)
     novo = admin.auth.admin.create_user(
         {"email": email, "password": senha, "email_confirm": True}
     )
-    return novo.user.id, True
+    return novo.user.id, senha
 
 
 def upsert_perfil(uid, nome, papel, clinica_id=None, permissoes=None):
@@ -99,8 +102,8 @@ print("ByteDonto — Seed de demonstração")
 print("=" * 60)
 
 # ---- 1. Proprietário ---------------------------------------------------------
-owner_id, owner_novo = garantir_auth_user(OWNER_EMAIL, OWNER_SENHA_SE_NOVO)
-print(f"\n[1] Proprietário: {OWNER_EMAIL} ({'conta criada agora' if owner_novo else 'conta já existia'})")
+owner_id, owner_senha = garantir_auth_user(OWNER_EMAIL, "DEMO_DONO_SENHA")
+print(f"\n[1] Proprietário: {OWNER_EMAIL}")
 
 # ---- 2. Clínica --------------------------------------------------------------
 perfil = admin.table("usuarios").select("clinica_id").eq("id", owner_id).execute().data
@@ -128,13 +131,13 @@ if not clinica_id:
 else:
     print(f"[2] Clínica já existente reutilizada")
 
-upsert_perfil(owner_id, "Victor Hugo (Proprietário)", "Dono", clinica_id, {})
+upsert_perfil(owner_id, "Proprietário Demo", "Dono", clinica_id, {})
 
 # ---- 3. Equipe ---------------------------------------------------------------
-recep_id, recep_novo = garantir_auth_user(RECEP_EMAIL, RECEP_SENHA)
+recep_id, recep_senha = garantir_auth_user(RECEP_EMAIL, "DEMO_RECEPCAO_SENHA")
 upsert_perfil(recep_id, "Ana Recepção", "Recepção", clinica_id, PERMISSOES_RECEPCAO)
 
-espec_id, espec_novo = garantir_auth_user(ESPEC_EMAIL, ESPEC_SENHA)
+espec_id, espec_senha = garantir_auth_user(ESPEC_EMAIL, "DEMO_ESPECIALISTA_SENHA")
 upsert_perfil(espec_id, "Dr. Bruno Especialista", "Especialista", clinica_id, PERMISSOES_ESPECIALISTA)
 print(f"[3] Equipe pronta: 1 atendente (Recepção) + 1 profissional (Especialista)")
 
@@ -225,15 +228,14 @@ else:
 
 # ---- Resumo ------------------------------------------------------------------
 print("\n" + "=" * 60)
-print("SEED CONCLUÍDO — credenciais de acesso")
+print("SEED CONCLUÍDO — contas de acesso")
 print("=" * 60)
-print(f"\n  PROPRIETÁRIO (Dono)")
-print(f"    e-mail: {OWNER_EMAIL}")
-print(f"    senha : {'(use a senha que você já definiu)' if not owner_novo else OWNER_SENHA_SE_NOVO}")
-print(f"\n  ATENDENTE (Recepção)")
-print(f"    e-mail: {RECEP_EMAIL}")
-print(f"    senha : {RECEP_SENHA}")
-print(f"\n  PROFISSIONAL (Especialista)")
-print(f"    e-mail: {ESPEC_EMAIL}")
-print(f"    senha : {ESPEC_SENHA}")
+for titulo, email, senha in (
+    ("PROPRIETÁRIO (Dono)", OWNER_EMAIL, owner_senha),
+    ("ATENDENTE (Recepção)", RECEP_EMAIL, recep_senha),
+    ("PROFISSIONAL (Especialista)", ESPEC_EMAIL, espec_senha),
+):
+    print(f"\n  {titulo}")
+    print(f"    e-mail: {email}")
+    print(f"    senha : {senha or '(mantida: a conta já existia)'}")
 print()

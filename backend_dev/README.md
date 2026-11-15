@@ -26,6 +26,13 @@ venv/bin/python seed_demo.py   # (opcional) clínica, equipe e pacientes de exem
 
 `DATABASE_URL` no formato `postgresql://USUARIO:SENHA@localhost:5432/bytedonto_dev`.
 
+A API não sobe sem `DATABASE_URL` e sem uma `SECRET_KEY` (ou `JWT_SECRET`)
+aleatória de pelo menos 32 caracteres. O valor de exemplo do `.env.example` é recusado.
+
+O `seed_demo.py` não tem senha no código: os e-mails e senhas das contas vêm das
+variáveis `DEMO_*` do `.env`. Sem senha definida, ele gera uma aleatória para cada
+conta nova e mostra no final; quem já existe mantém a senha que tem.
+
 > Se você não souber a senha do usuário `postgres`, defina uma:
 > `sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'nova_senha';"`
 
