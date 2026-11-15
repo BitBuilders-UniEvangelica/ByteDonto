@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.database import supabase
 from app.validators import campo_obrigatorio, validar_cnpj
-from app.auth_utils import get_token, tratar_erro
+from app.auth_utils import get_token, eh_dono_da_clinica, tratar_erro
 
 clinicas_bp = Blueprint("clinicas", __name__)
 
@@ -192,7 +192,8 @@ def atualizar_clinica(clinica_id):
 
     try:
         user_id = get_user_id(token)
-        if not pode_acessar_clinica(user_id, clinica_id):
+        # Ler a clínica vale para a equipe; alterar os dados dela, só o dono.
+        if not eh_dono_da_clinica(user_id, clinica_id):
             return jsonify({"error": "Você não tem permissão para atualizar esta clínica"}), 403
 
         data = request.get_json(silent=True) or {}

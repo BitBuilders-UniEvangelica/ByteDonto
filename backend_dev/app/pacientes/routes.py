@@ -9,7 +9,9 @@ from app.validators import (
     validar_data_nascimento,
     validar_email,
 )
-from app.auth_utils import get_token, get_user_clinica, tratar_erro
+from app.auth_utils import (
+    get_token, get_contexto, exigir_permissao, exigir_alguma_permissao, exigir_papel, tratar_erro,
+)
 
 pacientes_bp = Blueprint("pacientes", __name__)
 
@@ -22,6 +24,22 @@ CAMPOS_EDITAVEIS = {
 # Campos da anamnese que precisam estar declarados (mesmo que "Nega").
 # Em odonto, anestesiar sem alergia documentada é negligência — bloqueamos no cadastro.
 ANAMNESE_OBRIGATORIA = ["alergias", "medicacoes", "condicoes"]
+
+# Quem pode editar cada grupo de campos no PUT:
+# - odontograma é prontuário clínico (editar_prontuario);
+# - anamnese é preenchida no cadastro (recepção) e revista no prontuário (especialista);
+# - o resto é cadastro (editar_pacientes).
+CAMPOS_PRONTUARIO = {"odontograma"}
+CAMPOS_COMPARTILHADOS = {"anamnese"}
+
+
+def _exigir_permissao_edicao(ctx, campos):
+    if campos & CAMPOS_PRONTUARIO:
+        exigir_permissao(ctx, "editar_prontuario")
+    if campos & CAMPOS_COMPARTILHADOS:
+        exigir_alguma_permissao(ctx, "editar_pacientes", "editar_prontuario")
+    if campos - CAMPOS_PRONTUARIO - CAMPOS_COMPARTILHADOS:
+        exigir_permissao(ctx, "editar_pacientes")
 
 
 def _validar_anamnese(anamnese, exigir_obrigatorios=False):
@@ -55,7 +73,9 @@ def listar_pacientes():
         return jsonify({"error": "Não autorizado"}), 401
 
     try:
-        _, clinica_id = get_user_clinica(token)
+        ctx = get_contexto(token)
+        exigir_permissao(ctx, "ver_pacientes")
+        clinica_id = ctx["clinica_id"]
         if not clinica_id:
             return jsonify([]), 200
         result = supabase.table("pacientes").select("*").eq("clinica_id", clinica_id).order("created_at", desc=True).execute()
@@ -71,7 +91,9 @@ def obter_paciente(paciente_id):
         return jsonify({"error": "Não autorizado"}), 401
 
     try:
-        _, clinica_id = get_user_clinica(token)
+        ctx = get_contexto(token)
+        exigir_permissao(ctx, "ver_pacientes")
+        clinica_id = ctx["clinica_id"]
         if not clinica_id:
             return jsonify({"error": "Paciente não encontrado"}), 404
         result = supabase.table("pacientes").select("*").eq("id", paciente_id).eq("clinica_id", clinica_id).maybe_single().execute()
@@ -89,7 +111,9 @@ def criar_paciente():
         return jsonify({"error": "Não autorizado"}), 401
 
     try:
-        user_id, clinica_id = get_user_clinica(token)
+        ctx = get_contexto(token)
+        exigir_permissao(ctx, "editar_pacientes")
+        user_id, clinica_id = ctx["user_id"], ctx["clinica_id"]
         if not clinica_id:
             return jsonify({"error": "Perfil sem clínica vinculada. Contate o proprietário."}), 403
         data = request.get_json(silent=True) or {}
@@ -145,7 +169,8 @@ def atualizar_paciente(paciente_id):
         return jsonify({"error": "Não autorizado"}), 401
 
     try:
-        user_id, clinica_id = get_user_clinica(token)
+        ctx = get_contexto(token)
+        user_id, clinica_id = ctx["user_id"], ctx["clinica_id"]
         if not clinica_id:
             return jsonify({"error": "Paciente não encontrado"}), 404
         data = request.get_json(silent=True) or {}
@@ -155,6 +180,8 @@ def atualizar_paciente(paciente_id):
 
         if not payload:
             return jsonify({"error": "Nenhum campo válido para atualizar"}), 400
+
+        _exigir_permissao_edicao(ctx, set(payload))
 
         try:
             if "nome" in payload:
@@ -220,7 +247,10 @@ def deletar_paciente(paciente_id):
         return jsonify({"error": "Não autorizado"}), 401
 
     try:
-        user_id, clinica_id = get_user_clinica(token)
+        ctx = get_contexto(token)
+        # Remover paciente apaga o prontuário, que tem guarda obrigatória: só o proprietário.
+        exigir_papel(ctx, "Dono")
+        user_id, clinica_id = ctx["user_id"], ctx["clinica_id"]
         if not clinica_id:
             return jsonify({"error": "Paciente não encontrado"}), 404
 

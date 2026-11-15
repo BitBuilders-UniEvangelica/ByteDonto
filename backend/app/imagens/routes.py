@@ -3,7 +3,7 @@ from werkzeug.utils import secure_filename
 from uuid import uuid4
 from supabase import create_client
 from app.database import supabase
-from app.auth_utils import get_token, get_user_clinica, tratar_erro
+from app.auth_utils import get_token, get_contexto, exigir_alguma_permissao, exigir_clinica, tratar_erro
 from config import Config
 
 imagens_bp = Blueprint("imagens", __name__)
@@ -46,7 +46,9 @@ def upload_imagem():
         return jsonify({"error": "Nao autorizado"}), 401
 
     try:
-        _, clinica_id = get_user_clinica(token)
+        ctx = get_contexto(token)
+        exigir_alguma_permissao(ctx, "editar_pacientes", "editar_prontuario")
+        clinica_id = exigir_clinica(ctx)
 
         paciente_id = request.form.get("paciente_id")
         if not paciente_id:
@@ -131,7 +133,9 @@ def listar_imagens():
         return jsonify({"error": "paciente_id e obrigatorio"}), 400
 
     try:
-        _, clinica_id = get_user_clinica(token)
+        ctx = get_contexto(token)
+        exigir_alguma_permissao(ctx, "ver_pacientes", "ver_prontuario")
+        clinica_id = exigir_clinica(ctx)
 
         result = (
             supabase.table("paciente_imagens")
@@ -162,7 +166,9 @@ def deletar_imagem(imagem_id):
         return jsonify({"error": "Nao autorizado"}), 401
 
     try:
-        _, clinica_id = get_user_clinica(token)
+        ctx = get_contexto(token)
+        exigir_alguma_permissao(ctx, "editar_pacientes", "editar_prontuario")
+        clinica_id = exigir_clinica(ctx)
 
         check = (
             supabase.table("paciente_imagens")

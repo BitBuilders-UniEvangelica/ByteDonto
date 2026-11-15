@@ -4,7 +4,7 @@ from app.database import supabase
 from app.auditoria import registrar_alteracao
 from app.validators import campo_obrigatorio, validar_enum
 from app.auth_utils import (
-    get_token, get_contexto, exigir_permissao, exigir_clinica,
+    get_token, get_contexto, exigir_permissao, exigir_alguma_permissao, exigir_clinica,
     pertence_a_clinica, tratar_erro,
 )
 
@@ -13,6 +13,27 @@ consultas_bp = Blueprint("consultas", __name__)
 STATUS_VALIDOS = {"Agendado", "Aguardando", "Cancelado", "Finalizado", "Faltou"}
 
 SELECT_COMPLETO = "*, pacientes(nome), dentista:usuarios!dentista_id(nome)"
+
+# Quem pode editar cada grupo de campos no PUT:
+# - evolução e procedimentos são prontuário (editar_prontuario);
+# - horário, duração, cadeira e tipo são agenda (agendar_consultas);
+# - status: cancelar exige cancelar_consultas; os demais (check-in, falta,
+#   finalizar) valem para quem agenda ou para quem atende.
+CAMPOS_CLINICOS = {"evolucao_clinica", "procedimentos_descritos", "queixa_principal"}
+CAMPOS_AGENDA = {"data_agendada", "duracao_minutos", "cadeira", "tipo_atendimento"}
+
+
+def _exigir_permissao_edicao(ctx, payload):
+    campos = set(payload)
+    if campos & CAMPOS_CLINICOS:
+        exigir_permissao(ctx, "editar_prontuario")
+    if campos & CAMPOS_AGENDA:
+        exigir_permissao(ctx, "agendar_consultas")
+    if "status" in payload:
+        if payload["status"] == "Cancelado":
+            exigir_permissao(ctx, "cancelar_consultas")
+        else:
+            exigir_alguma_permissao(ctx, "agendar_consultas", "editar_prontuario")
 
 
 def _validar_duracao(d):
@@ -72,6 +93,7 @@ def listar_consultas():
 
     try:
         ctx = get_contexto(token)
+        exigir_permissao(ctx, "ver_agenda")
         clinica_id = ctx["clinica_id"]
         if not clinica_id:
             return jsonify([]), 200
@@ -185,6 +207,8 @@ def atualizar_consulta(consulta_id):
 
         if not payload:
             return jsonify({"error": "Nenhum campo válido para atualizar"}), 400
+
+        _exigir_permissao_edicao(ctx, payload)
 
         try:
             if "status" in payload:

@@ -101,6 +101,12 @@ def exigir_permissao(ctx, chave):
         raise AuthError("Você não tem permissão para esta ação.", 403)
 
 
+def exigir_alguma_permissao(ctx, *chaves):
+    """Levanta AuthError(403) se o usuário não tiver nenhuma das permissões."""
+    if not any(tem_permissao(ctx, c) for c in chaves):
+        raise AuthError("Você não tem permissão para esta ação.", 403)
+
+
 def exigir_papel(ctx, *papeis):
     """Levanta AuthError(403) se o papel do usuário não estiver na lista."""
     if ctx.get("papel") not in papeis:

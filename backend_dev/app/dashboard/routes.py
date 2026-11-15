@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.database import supabase
-from app.auth_utils import get_token, get_contexto, eh_dono_da_clinica, tratar_erro
+from app.auth_utils import get_token, get_contexto, eh_dono_da_clinica, tem_permissao, tratar_erro
 from datetime import date
 
 dashboard_bp = Blueprint("dashboard", __name__)
@@ -87,20 +87,22 @@ def metricas():
             1 for m in (membros.data or []) if m.get("papel") == "Especialista"
         )
 
-        # Receita e pendências do mês
-        fat_mes = (
-            supabase.table("faturamento")
-            .select("valor, status_pagamento")
-            .eq("clinica_id", clinica_id)
-            .gte("created_at", f"{primeiro_dia_mes}T00:00:00")
-            .execute()
-        )
-        receita_mes = sum(
-            float(f.get("valor") or 0) for f in fat_mes.data if f.get("status_pagamento") == "Pago"
-        )
-        pendente_mes = sum(
-            float(f.get("valor") or 0) for f in fat_mes.data if f.get("status_pagamento") == "Pendente"
-        )
+        # Receita e pendências do mês — só para quem pode ver o financeiro
+        receita_mes = pendente_mes = 0
+        if tem_permissao(ctx, "ver_financeiro"):
+            fat_mes = (
+                supabase.table("faturamento")
+                .select("valor, status_pagamento")
+                .eq("clinica_id", clinica_id)
+                .gte("created_at", f"{primeiro_dia_mes}T00:00:00")
+                .execute()
+            )
+            receita_mes = sum(
+                float(f.get("valor") or 0) for f in fat_mes.data if f.get("status_pagamento") == "Pago"
+            )
+            pendente_mes = sum(
+                float(f.get("valor") or 0) for f in fat_mes.data if f.get("status_pagamento") == "Pendente"
+            )
 
         return jsonify({
             "total_pacientes": total_pacientes,

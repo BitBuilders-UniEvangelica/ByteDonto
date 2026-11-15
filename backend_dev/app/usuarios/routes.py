@@ -1,37 +1,15 @@
 from flask import Blueprint, request, jsonify
 from app.database import create_client
 from app.database import supabase
-from app.auth_utils import get_token, get_contexto, tratar_erro
+from app.auth_utils import get_token, get_contexto, tem_permissao, tratar_erro, PERMISSOES_PADRAO
 from config import Config
 
 supabase_admin = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
 
 usuarios_bp = Blueprint("usuarios", __name__)
 
-PERMISSOES_PADRAO = {
-    "Especialista": {
-        "ver_pacientes":      True,
-        "editar_pacientes":   False,
-        "ver_prontuario":     True,
-        "editar_prontuario":  True,
-        "ver_agenda":         True,
-        "agendar_consultas":  False,
-        "cancelar_consultas": False,
-        "ver_financeiro":     False,
-        "estoque":            True,
-    },
-    "Recepção": {
-        "ver_pacientes":      True,
-        "editar_pacientes":   True,
-        "ver_prontuario":     False,
-        "editar_prontuario":  False,
-        "ver_agenda":         True,
-        "agendar_consultas":  True,
-        "cancelar_consultas": True,
-        "ver_financeiro":     True,
-        "estoque":            True,
-    },
-}
+# Campos da equipe que qualquer membro pode ver (ex.: escolher o dentista na agenda).
+CAMPOS_EQUIPE_PUBLICOS = ("id", "nome", "papel", "ativo", "cro")
 
 
 def get_user_e_clinica(token):
@@ -47,7 +25,8 @@ def listar_equipe():
         return jsonify({"error": "Não autorizado"}), 401
 
     try:
-        _, clinica_id, _ = get_user_e_clinica(token)
+        ctx = get_contexto(token)
+        clinica_id = ctx["clinica_id"]
 
         # select("*") — robusto: funciona com ou sem a coluna 'ativo'
         result = (
@@ -57,7 +36,14 @@ def listar_equipe():
             .order("created_at")
             .execute()
         )
-        return jsonify(result.data), 200
+        if ctx["papel"] == "Dono":
+            return jsonify(result.data), 200
+
+        visiveis = set(CAMPOS_EQUIPE_PUBLICOS)
+        if tem_permissao(ctx, "ver_financeiro"):
+            visiveis.add("percentual_repasse")
+        membros = [{k: v for k, v in m.items() if k in visiveis} for m in result.data or []]
+        return jsonify(membros), 200
     except Exception as e:
         return tratar_erro(e)
 
