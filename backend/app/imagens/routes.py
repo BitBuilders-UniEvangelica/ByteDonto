@@ -1,16 +1,14 @@
 from flask import Blueprint, request, jsonify
 from uuid import uuid4
-from supabase import create_client
-from app.database import supabase
+from app.database import supabase, cliente_admin
 from app.auth_utils import (
     get_token, get_contexto, exigir_clinica, exigir_alguma_permissao,
     tem_permissao, tratar_erro,
 )
-from config import Config
 
 imagens_bp = Blueprint("imagens", __name__)
 
-supabase_admin = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
+supabase_admin = cliente_admin()
 
 BUCKET = "paciente-imagens"
 

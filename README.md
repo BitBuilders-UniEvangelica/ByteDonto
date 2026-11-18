@@ -49,48 +49,34 @@ npm run dev -- --host
 
 ### ⚙️ Passo 2.2: Rodando o Backend (Python/Flask)
 
+Existe **um único backend** (`backend/`). O mesmo código roda na sua máquina e em
+produção (Railway); só muda o `.env`, através de `DATA_BACKEND`:
+
+| | `DATA_BACKEND=local` (desenvolvimento) | `DATA_BACKEND=supabase` (produção) |
+|---|---|---|
+| Banco | PostgreSQL da sua máquina | Supabase Database |
+| Login | auth local (JWT) | Supabase Auth (inclui Google) |
+| Arquivos | pasta `backend/storage/` | Supabase Storage (bucket privado) |
+
 Abra uma segunda aba no terminal e siga estes passos:
 
 ```bash
-# Entre na pasta do backend
 cd backend/
-
-# Crie um ambiente virtual para isolar as dependências do Python
 python3 -m venv venv
-
-# Ative o ambiente virtual:
-# - No Mac/Linux:
-source venv/bin/activate
-# - No Windows:
-# .\venv\Scripts\Activate.ps1
-
-# Instale as bibliotecas necessárias para a API (Flask, Supabase, etc.)
+source venv/bin/activate          # Windows: .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
-# Inicie o servidor do backend
-python run.py
+cp .env.example .env              # preencha DATABASE_URL, SECRET_KEY e JWT_SECRET (modo local)
+python init_db.py                 # cria o banco local e aplica schema + migrations
+python seed_demo.py               # (opcional) dados de demonstração — veja as variáveis SEED_*
+python run.py                     # API local em http://127.0.0.1:8001 (PORT do .env)
 ```
 
-*(A API do backend será executada em `http://127.0.0.1:8000`)*
+O frontend já aponta para a porta 8001 por padrão (proxy do Vite). Detalhes,
+variáveis de cada modo, testes e migrations: [`backend/README.md`](backend/README.md).
 
----
-
-### ⚙️ Passo 2.2: Rodando o Backend Local
-
-Abra uma segunda aba no terminal e siga estes passos:
-
-```bash
-# Entre na pasta do backend
-cd backend_dev/
-
-# Crie um ambiente virtual para isolar as dependências do Python
-venv/bin/python init_db.py && venv/bin/python seed_demo.py
-
-# Inicie o servidor do backend
-venv/bin/python run.py
-```
-
-*(A API do backend será executada em `http://127.0.0.1:8001`)*
+> A pasta `backend_dev/` é a versão antiga do backend local e foi **substituída**
+> pelo modo `DATA_BACKEND=local` do `backend/`. Ela será removida após a validação.
 
 ---
 

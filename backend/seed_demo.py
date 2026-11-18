@@ -14,9 +14,9 @@ Segurança:
   - NUNCA redefine a senha nem sobrescreve o perfil de uma conta já existente.
   - Não imprime senhas.
 
-Como rodar:
+Como rodar (modo local — o recomendado):
     cd backend
-    APP_ENV=development venv/bin/python seed_demo.py
+    APP_ENV=development DATA_BACKEND=local venv/bin/python seed_demo.py
 
 Pode rodar mais de uma vez: a clínica e a equipe não são duplicadas.
 Pacientes/consultas/financeiro só são criados se a clínica ainda não tiver pacientes.
@@ -146,13 +146,15 @@ def main():
         print(f"[seed bloqueado] {e}", file=sys.stderr)
         return 2
 
-    # Imports tardios: só depois das travas de ambiente tocamos no Supabase.
+    # Imports tardios: só depois das travas de ambiente tocamos no banco.
+    # O cliente vem da camada única (app.database): no modo local, popula o
+    # PostgreSQL local; no modo supabase, o projeto configurado.
     from config import Config, validar_config
-    from supabase import create_client
+    validar_config(Config)
+    from app.database import cliente_admin
     from app.auth_utils import PERMISSOES_PADRAO
 
-    validar_config(Config)
-    admin = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
+    admin = cliente_admin()
     try:
         _executar(contas, PERMISSOES_PADRAO)
     except SeedBloqueado as e:

@@ -1,10 +1,8 @@
 from flask import Blueprint, request, jsonify
-from supabase import create_client
-from app.database import supabase
+from app.database import supabase, cliente_admin
 from app.auth_utils import get_token, get_contexto, exigir_clinica, tratar_erro, PERMISSOES_PADRAO
-from config import Config
 
-supabase_admin = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
+supabase_admin = cliente_admin()
 
 usuarios_bp = Blueprint("usuarios", __name__)
 

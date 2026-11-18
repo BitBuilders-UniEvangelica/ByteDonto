@@ -1,3 +1,8 @@
+> **⚠️ Substituído.** Este backend foi unificado ao `backend/`: o mesmo código agora roda
+> localmente com `DATA_BACKEND=local` (PostgreSQL local, auth local e storage em disco,
+> o mesmo adaptador que existia aqui). Use `backend/` — veja `backend/README.md`.
+> Esta pasta não recebe mais alterações e será removida após a validação da unificação.
+
 # backend_dev — API de desenvolvimento (PostgreSQL local)
 
 Cópia do `backend/` para **testes**. Em vez de usar o Supabase, usa o

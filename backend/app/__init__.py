@@ -66,6 +66,8 @@ def create_app():
     from app.dashboard.routes import dashboard_bp
     from app.planos.routes import planos_bp
     from app.imagens.routes import imagens_bp
+    from app.estoque.routes import estoque_bp
+    from app.esterilizacao.routes import esterilizacao_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(pacientes_bp, url_prefix="/api/pacientes")
@@ -76,10 +78,21 @@ def create_app():
     app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
     app.register_blueprint(planos_bp, url_prefix="/api/planos")
     app.register_blueprint(imagens_bp, url_prefix="/api/imagens")
+    app.register_blueprint(estoque_bp, url_prefix="/api/estoque")
+    app.register_blueprint(esterilizacao_bp, url_prefix="/api/esterilizacao")
+
+    if Config.DATA_BACKEND == "local":
+        # Só no modo local: entrega os arquivos do storage em disco (links assinados).
+        from app.storage_local import storage_bp
+        app.register_blueprint(storage_bp, url_prefix="/api/storage")
 
     @app.route("/api/health")
     @limiter.exempt
     def health():
-        return {"status": "ok", "message": "ByteDonto API rodando"}
+        resposta = {"status": "ok", "message": "ByteDonto API rodando"}
+        if Config.DATA_BACKEND == "local":
+            # Ajuda a conferir qual backend o frontend está usando (não exposto em produção).
+            resposta["ambiente"] = "local (PostgreSQL local)"
+        return resposta
 
     return app

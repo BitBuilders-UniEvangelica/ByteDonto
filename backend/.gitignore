@@ -9,6 +9,9 @@ __pycache__/
 venv/
 env/
 
+# Arquivos enviados no modo local (imagens/laudos de pacientes de teste)
+storage/
+
 # IDE
 .vscode/
 .idea/

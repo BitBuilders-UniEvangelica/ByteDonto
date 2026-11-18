@@ -2,6 +2,9 @@ flask
 flask-cors
 flask-limiter
 supabase
+# Provider local (DATA_BACKEND=local): PostgreSQL direto, com pool de conexões
+psycopg[binary]
+psycopg-pool
 python-dotenv
 pyjwt
 openai

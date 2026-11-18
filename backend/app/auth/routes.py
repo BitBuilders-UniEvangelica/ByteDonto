@@ -1,12 +1,10 @@
 from flask import Blueprint, request, jsonify, current_app
-from supabase import create_client
-from config import Config
-from app.database import supabase
+from app.database import supabase, cliente_admin, cliente_publico
 from app.extensions import limiter
 from app.validators import validar_email
 
-supabase_auth = create_client(Config.SUPABASE_URL, Config.SUPABASE_ANON_KEY)
-supabase_admin = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
+supabase_auth = cliente_publico()
+supabase_admin = cliente_admin()
 
 auth_bp = Blueprint("auth", __name__)
 
