@@ -4,8 +4,8 @@ from app.database import supabase
 from app.auditoria import registrar_alteracao
 from app.validators import campo_obrigatorio, validar_enum
 from app.auth_utils import (
-    get_token, get_contexto, exigir_permissao, exigir_clinica,
-    pertence_a_clinica, tratar_erro,
+    get_token, get_contexto, tem_permissao, exigir_permissao,
+    exigir_alguma_permissao, exigir_clinica, pertence_a_clinica, tratar_erro,
 )
 
 consultas_bp = Blueprint("consultas", __name__)
@@ -13,6 +13,41 @@ consultas_bp = Blueprint("consultas", __name__)
 STATUS_VALIDOS = {"Agendado", "Aguardando", "Cancelado", "Finalizado", "Faltou"}
 
 SELECT_COMPLETO = "*, pacientes(nome), dentista:usuarios!dentista_id(nome)"
+
+# Campos do atendimento que são registro clínico (prontuário).
+CAMPOS_CLINICOS = {"evolucao_clinica", "procedimentos_descritos"}
+# Campos de agenda (marcação/remarcação).
+CAMPOS_AGENDA = {"data_agendada", "duracao_minutos", "cadeira", "tipo_atendimento"}
+
+
+def _ocultar_evolucao(ctx, atendimentos):
+    """A evolução clínica só é devolvida a quem pode ver o prontuário."""
+    if not tem_permissao(ctx, "ver_prontuario"):
+        for a in atendimentos:
+            a.pop("evolucao_clinica", None)
+    return atendimentos
+
+
+def _exigir_permissao_atualizacao(ctx, payload):
+    """RBAC por campo do PUT /consultas/<id>."""
+    campos = set(payload.keys())
+    if campos & CAMPOS_CLINICOS:
+        exigir_permissao(ctx, "editar_prontuario")
+    if campos & CAMPOS_AGENDA:
+        exigir_permissao(ctx, "agendar_consultas")
+    if "queixa_principal" in campos:
+        # Registrada na marcação pela recepção ou pelo dentista no atendimento.
+        exigir_alguma_permissao(ctx, "agendar_consultas", "editar_prontuario")
+    if "status" in campos:
+        status = payload["status"]
+        if status == "Cancelado":
+            exigir_permissao(ctx, "cancelar_consultas")
+        elif status == "Finalizado":
+            # O dentista encerra o atendimento (painel do Especialista).
+            exigir_alguma_permissao(ctx, "editar_prontuario", "agendar_consultas")
+        else:
+            # Check-in, falta, reagendamento — fluxo da recepção.
+            exigir_permissao(ctx, "agendar_consultas")
 
 
 def _validar_duracao(d):
@@ -72,6 +107,7 @@ def listar_consultas():
 
     try:
         ctx = get_contexto(token)
+        exigir_permissao(ctx, "ver_agenda")
         clinica_id = ctx["clinica_id"]
         if not clinica_id:
             return jsonify([]), 200
@@ -88,7 +124,7 @@ def listar_consultas():
             query = query.eq("paciente_id", paciente_id)
 
         result = query.execute()
-        return jsonify(result.data), 200
+        return jsonify(_ocultar_evolucao(ctx, result.data or [])), 200
     except Exception as e:
         return tratar_erro(e)
 
@@ -160,7 +196,7 @@ def agendar_consulta():
             depois=result.data[0],
         )
 
-        return jsonify(completo.data), 201
+        return jsonify(_ocultar_evolucao(ctx, [completo.data])[0]), 201
     except Exception as e:
         return tratar_erro(e)
 
@@ -175,7 +211,9 @@ def atualizar_consulta(consulta_id):
         ctx = get_contexto(token)
         clinica_id = exigir_clinica(ctx)
         user_id = ctx["user_id"]
-        data = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify({"error": "Corpo da requisição inválido."}), 400
 
         CAMPOS_PERMITIDOS = {
             "evolucao_clinica", "status", "procedimentos_descritos", "queixa_principal",
@@ -193,6 +231,8 @@ def atualizar_consulta(consulta_id):
                 payload["duracao_minutos"] = _validar_duracao(payload["duracao_minutos"])
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
+
+        _exigir_permissao_atualizacao(ctx, payload)
 
         # Snapshot antes da alteração — auditoria
         atual = (
@@ -222,7 +262,7 @@ def atualizar_consulta(consulta_id):
             depois={k: result.data[0].get(k) for k in payload.keys()},
         )
 
-        return jsonify(result.data[0]), 200
+        return jsonify(_ocultar_evolucao(ctx, [result.data[0]])[0]), 200
     except Exception as e:
         return tratar_erro(e)
 

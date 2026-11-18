@@ -2,7 +2,8 @@ from flask import Blueprint, request, jsonify
 from app.database import supabase
 from app.validators import campo_obrigatorio
 from app.auth_utils import (
-    get_token, get_contexto, exigir_clinica, pertence_a_clinica, tratar_erro,
+    get_token, get_contexto, exigir_clinica, exigir_permissao,
+    pertence_a_clinica, tratar_erro,
 )
 
 planos_bp = Blueprint("planos", __name__)
@@ -20,6 +21,7 @@ def listar_planos():
 
     try:
         ctx = get_contexto(token)
+        exigir_permissao(ctx, "ver_prontuario")
         clinica_id = ctx["clinica_id"]
         if not clinica_id:
             return jsonify([]), 200
@@ -55,6 +57,7 @@ def criar_plano():
 
     try:
         ctx = get_contexto(token)
+        exigir_permissao(ctx, "editar_prontuario")
         clinica_id = exigir_clinica(ctx)
         user_id = ctx["user_id"]
         data = request.get_json(silent=True) or {}
@@ -129,6 +132,7 @@ def atualizar_plano(plano_id):
 
     try:
         ctx = get_contexto(token)
+        exigir_permissao(ctx, "editar_prontuario")
         clinica_id = exigir_clinica(ctx)
         data = request.get_json(silent=True) or {}
 
@@ -170,6 +174,7 @@ def atualizar_item(plano_id, item_id):
 
     try:
         ctx = get_contexto(token)
+        exigir_permissao(ctx, "editar_prontuario")
         clinica_id = exigir_clinica(ctx)
         data = request.get_json(silent=True) or {}
 
@@ -288,6 +293,7 @@ def deletar_plano(plano_id):
 
     try:
         ctx = get_contexto(token)
+        exigir_permissao(ctx, "editar_prontuario")
         clinica_id = exigir_clinica(ctx)
 
         check = (

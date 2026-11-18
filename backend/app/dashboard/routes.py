@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.database import supabase
-from app.auth_utils import get_token, get_contexto, eh_dono_da_clinica, tratar_erro
+from app.auth_utils import get_token, get_contexto, eh_dono_da_clinica, tem_permissao, tratar_erro
 from datetime import date
 
 dashboard_bp = Blueprint("dashboard", __name__)
@@ -15,6 +15,15 @@ METRICAS_ZERADAS = {
     "receita_mes": 0,
     "pendente_mes": 0,
 }
+
+# Métricas financeiras só vão para quem tem a permissão 'ver_financeiro'.
+METRICAS_FINANCEIRAS = ("receita_mes", "pendente_mes")
+
+
+def _filtrar_metricas(ctx, metricas):
+    if not tem_permissao(ctx, "ver_financeiro"):
+        return {k: v for k, v in metricas.items() if k not in METRICAS_FINANCEIRAS}
+    return metricas
 
 
 @dashboard_bp.route("/metricas", methods=["GET"])
@@ -38,7 +47,7 @@ def metricas():
 
         # Usuário ainda sem clínica vinculada — devolve métricas zeradas
         if not clinica_id:
-            return jsonify(METRICAS_ZERADAS), 200
+            return jsonify(_filtrar_metricas(ctx, dict(METRICAS_ZERADAS))), 200
 
         hoje = date.today().isoformat()
         primeiro_dia_mes = date.today().replace(day=1).isoformat()
@@ -87,22 +96,24 @@ def metricas():
             1 for m in (membros.data or []) if m.get("papel") == "Especialista"
         )
 
-        # Receita e pendências do mês
-        fat_mes = (
-            supabase.table("faturamento")
-            .select("valor, status_pagamento")
-            .eq("clinica_id", clinica_id)
-            .gte("created_at", f"{primeiro_dia_mes}T00:00:00")
-            .execute()
-        )
-        receita_mes = sum(
-            float(f.get("valor") or 0) for f in fat_mes.data if f.get("status_pagamento") == "Pago"
-        )
-        pendente_mes = sum(
-            float(f.get("valor") or 0) for f in fat_mes.data if f.get("status_pagamento") == "Pendente"
-        )
+        # Receita e pendências do mês (só consultadas por quem pode ver o financeiro)
+        receita_mes = pendente_mes = 0
+        if tem_permissao(ctx, "ver_financeiro"):
+            fat_mes = (
+                supabase.table("faturamento")
+                .select("valor, status_pagamento")
+                .eq("clinica_id", clinica_id)
+                .gte("created_at", f"{primeiro_dia_mes}T00:00:00")
+                .execute()
+            )
+            receita_mes = sum(
+                float(f.get("valor") or 0) for f in fat_mes.data if f.get("status_pagamento") == "Pago"
+            )
+            pendente_mes = sum(
+                float(f.get("valor") or 0) for f in fat_mes.data if f.get("status_pagamento") == "Pendente"
+            )
 
-        return jsonify({
+        return jsonify(_filtrar_metricas(ctx, {
             "total_pacientes": total_pacientes,
             "consultas_hoje": consultas_hoje,
             "total_consultas": total_consultas,
@@ -111,6 +122,6 @@ def metricas():
             "total_membros": total_membros,
             "receita_mes": receita_mes,
             "pendente_mes": pendente_mes,
-        }), 200
+        })), 200
     except Exception as e:
         return tratar_erro(e)

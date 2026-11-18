@@ -1,13 +1,31 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from supabase import create_client
 from config import Config
 from app.database import supabase
 from app.extensions import limiter
+from app.validators import validar_email
 
 supabase_auth = create_client(Config.SUPABASE_URL, Config.SUPABASE_ANON_KEY)
 supabase_admin = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
 
 auth_bp = Blueprint("auth", __name__)
+
+
+# Limites de tamanho dos campos do cadastro (o bcrypt do Supabase Auth ignora
+# o que passa de 72 bytes, então senhas maiores são recusadas explicitamente).
+NOME_MAX = 120
+EMAIL_MAX = 254
+SENHA_MIN = 8
+SENHA_MAX = 72
+
+# Resposta ÚNICA para cadastro aceito — idêntica quando o e-mail já existe, para
+# não permitir descobrir quais e-mails têm conta (enumeração de usuários).
+MENSAGEM_CADASTRO_OK = "Conta criada com sucesso. Faça login para continuar."
+
+
+def _email_ja_cadastrado(erro):
+    msg = str(erro).lower()
+    return "already been registered" in msg or "already registered" in msg or "already exists" in msg
 
 
 @auth_bp.route("/registro", methods=["POST"])
@@ -19,41 +37,71 @@ def registro():
     Cria usuário no Supabase Auth + perfil na tabela usuarios com papel='Dono'.
     A clínica é criada separadamente após o registro.
     """
-    data = request.get_json()
-    nome = (data.get("nome") or "").strip()
-    email = (data.get("email") or "").strip()
-    password = (data.get("password") or "").strip()
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Corpo da requisição inválido. Envie um JSON com nome, email e password."}), 400
+
+    campos = {}
+    for chave in ("nome", "email", "password"):
+        valor = data.get(chave)
+        if valor is not None and not isinstance(valor, str):
+            return jsonify({"error": "Nome, email e senha devem ser texto"}), 400
+        campos[chave] = (valor or "").strip()
+    nome, email, password = campos["nome"], campos["email"].lower(), campos["password"]
 
     if not all([nome, email, password]):
         return jsonify({"error": "Nome, email e senha são obrigatórios"}), 400
 
-    if len(password) < 8:
-        return jsonify({"error": "A senha deve ter no mínimo 8 caracteres"}), 400
+    if len(nome) > NOME_MAX:
+        return jsonify({"error": f"O nome deve ter no máximo {NOME_MAX} caracteres"}), 400
 
+    try:
+        if len(email) > EMAIL_MAX:
+            raise ValueError
+        validar_email(email)
+    except ValueError:
+        return jsonify({"error": "E-mail inválido"}), 400
+
+    if len(password) < SENHA_MIN:
+        return jsonify({"error": "A senha deve ter no mínimo 8 caracteres"}), 400
+    if len(password.encode("utf-8")) > SENHA_MAX:
+        return jsonify({"error": f"A senha deve ter no máximo {SENHA_MAX} caracteres"}), 400
+
+    # 1. Conta no Supabase Auth
     try:
         auth_response = supabase_admin.auth.admin.create_user({
             "email": email,
             "password": password,
             "email_confirm": True,
         })
-
         novo_id = auth_response.user.id
+    except Exception as e:
+        if _email_ja_cadastrado(e):
+            # Mesma resposta do sucesso: não revela que o e-mail já tem conta.
+            # Quem é o dono do e-mail entra com a senha que já tem.
+            current_app.logger.info("Cadastro recusado: e-mail já existente")
+            return jsonify({"message": MENSAGEM_CADASTRO_OK}), 201
+        current_app.logger.exception("Falha ao criar usuário no Supabase Auth")
+        return jsonify({"error": "Não foi possível concluir o cadastro. Tente novamente mais tarde."}), 500
 
+    # 2. Perfil de proprietário. Se falhar, desfaz a conta do Auth para não
+    #    deixar um usuário órfão (que bloquearia novas tentativas com o e-mail).
+    try:
         supabase_admin.table("usuarios").insert({
             "id": novo_id,
             "nome": nome,
             "papel": "Dono",
             "permissoes": {},
         }).execute()
+    except Exception:
+        current_app.logger.exception("Falha ao criar perfil do proprietário no cadastro")
+        try:
+            supabase_admin.auth.admin.delete_user(novo_id)
+        except Exception:
+            current_app.logger.exception("Falha ao desfazer usuário do Auth após erro no cadastro")
+        return jsonify({"error": "Não foi possível concluir o cadastro. Tente novamente mais tarde."}), 500
 
-        return jsonify({"message": "Conta criada com sucesso. Faça login para continuar."}), 201
-
-    except Exception as e:
-        error_msg = str(e)
-        if "already been registered" in error_msg or "already registered" in error_msg:
-            return jsonify({"error": "Este e-mail já está cadastrado"}), 409
-        return jsonify({"error": error_msg}), 500
-
+    return jsonify({"message": MENSAGEM_CADASTRO_OK}), 201
 
 
 @auth_bp.route("/login", methods=["POST"])
@@ -158,9 +206,9 @@ def login():
             }
         }), 200
 
-    except Exception as e:
+    except Exception:
         # Não classifica falhas no banco como credenciais inválidas.
-        print(f"Erro ao preparar perfil/clínica no login: {e}")
+        current_app.logger.exception("Erro ao preparar perfil/clínica no login")
 
         return jsonify({
             "error": "Não foi possível carregar o perfil ou preparar a clínica."
@@ -203,8 +251,8 @@ def me():
     try:
         user_response = supabase.auth.get_user(token)
         user = user_response.user
-    except Exception as e:
-        return jsonify({"error": "Token inválido", "detail": str(e)}), 401
+    except Exception:
+        return jsonify({"error": "Token inválido"}), 401
 
     if not user:
         return jsonify({"error": "Token inválido"}), 401
@@ -213,11 +261,9 @@ def me():
     try:
         perfil_response = supabase.table("usuarios").select("*").eq("id", user.id).execute()
         perfil_data = perfil_response.data[0] if perfil_response.data else None
-    except Exception as e:
-        return jsonify({
-            "error": "Erro ao buscar perfil do usuário. Verifique se as tabelas do banco foram criadas.",
-            "detail": str(e)
-        }), 500
+    except Exception:
+        current_app.logger.exception("Erro ao buscar perfil do usuário em /me")
+        return jsonify({"error": "Erro ao buscar perfil do usuário."}), 500
 
     return jsonify({
         "id": user.id,

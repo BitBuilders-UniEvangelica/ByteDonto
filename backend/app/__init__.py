@@ -2,10 +2,15 @@ import os
 from flask import Flask, jsonify
 from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
-from config import Config
+from config import Config, validar_config
 from app.extensions import limiter
 
 def create_app():
+    # Interrompe a inicialização se algum segredo obrigatório estiver ausente
+    # ou inseguro. Precisa rodar ANTES de importar os blueprints, que criam os
+    # clientes do Supabase no import.
+    validar_config(Config)
+
     app = Flask(__name__)
     app.config.from_object(Config)
 
@@ -39,6 +44,17 @@ def create_app():
         return jsonify({
             "error": "Muitas requisições. Aguarde um instante e tente novamente."
         }), 429
+
+    @app.errorhandler(413)
+    def corpo_muito_grande(e):
+        return jsonify({
+            "error": "Arquivo muito grande. O tamanho máximo permitido é 10 MB."
+        }), 413
+
+    @app.errorhandler(500)
+    def erro_interno(e):
+        # Nunca devolve detalhes internos (stack trace, mensagem da exceção).
+        return jsonify({"error": "Erro interno do servidor."}), 500
 
     # Registrar blueprints
     from app.auth.routes import auth_bp

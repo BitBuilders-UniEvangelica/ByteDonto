@@ -1,7 +1,9 @@
 from flask import Blueprint, request, jsonify
 from app.database import supabase
 from app.validators import campo_obrigatorio, validar_cnpj
-from app.auth_utils import get_token, tratar_erro
+from app.auth_utils import (
+    get_token, get_contexto, exigir_papel, eh_dono_da_clinica, tratar_erro,
+)
 
 clinicas_bp = Blueprint("clinicas", __name__)
 
@@ -39,8 +41,9 @@ def gravar_clinica(operacao, payload, clinica_id=None):
         raise
 
 def get_user_id(token):
-    """Resolve o id do usuário autenticado a partir do token."""
-    return supabase.auth.get_user(token).user.id
+    """Resolve o id do usuário autenticado (401 se o token for inválido;
+    403 se a conta estiver desativada)."""
+    return get_contexto(token)["user_id"]
 
 
 def get_user_clinica_id(token):
@@ -70,10 +73,14 @@ def criar_clinica():
         return jsonify({"error": "Não autorizado"}), 401
 
     try:
-        user_response = supabase.auth.get_user(token)
-        user_id = user_response.user.id
-        
-        data = request.get_json(silent=True) or {}
+        ctx = get_contexto(token)
+        # Só proprietários criam clínicas (a nova clínica vira a ativa do usuário).
+        exigir_papel(ctx, "Dono")
+        user_id = ctx["user_id"]
+
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify({"error": "Corpo da requisição inválido."}), 400
 
         # O frontend envia "nome"; a coluna real da tabela é "nome_fantasia".
         if data.get("nome") and not data.get("nome_fantasia"):
@@ -192,10 +199,14 @@ def atualizar_clinica(clinica_id):
 
     try:
         user_id = get_user_id(token)
-        if not pode_acessar_clinica(user_id, clinica_id):
+        # Editar dados cadastrais da clínica é exclusivo do proprietário dela.
+        # Membros (Recepção/Especialista) podem apenas visualizar.
+        if not eh_dono_da_clinica(user_id, clinica_id):
             return jsonify({"error": "Você não tem permissão para atualizar esta clínica"}), 403
 
-        data = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify({"error": "Corpo da requisição inválido."}), 400
 
         # O frontend envia "nome"; a coluna real da tabela é "nome_fantasia".
         if data.get("nome") and not data.get("nome_fantasia"):

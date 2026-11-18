@@ -1,9 +1,11 @@
 from flask import Blueprint, request, jsonify
-from werkzeug.utils import secure_filename
 from uuid import uuid4
 from supabase import create_client
 from app.database import supabase
-from app.auth_utils import get_token, get_user_clinica, tratar_erro
+from app.auth_utils import (
+    get_token, get_contexto, exigir_clinica, exigir_alguma_permissao,
+    tem_permissao, tratar_erro,
+)
 from config import Config
 
 imagens_bp = Blueprint("imagens", __name__)
@@ -20,11 +22,70 @@ TAMANHO_MAXIMO_BYTES = 10 * 1024 * 1024  # 10 MB
 
 TIPOS_VALIDOS = {"imagem", "laudo", "termo_consentimento", "termo_lgpd"}
 
+# RBAC por tipo de arquivo. Imagens clínicas e laudos fazem parte do prontuário;
+# termos (LGPD/consentimento) são coletados também pela recepção.
+TIPOS_CLINICOS = {"imagem", "laudo"}
+PERMISSOES_LEITURA = {
+    "clinico": ("ver_prontuario",),
+    "termo": ("ver_pacientes", "ver_prontuario"),
+}
+PERMISSOES_ESCRITA = {
+    "clinico": ("editar_prontuario",),
+    "termo": ("editar_pacientes", "editar_prontuario"),
+}
+
+# MIME real -> extensões compatíveis. O MIME é SEMPRE determinado pelo
+# conteúdo do arquivo (magic bytes), nunca pelo Content-Type do cliente.
+EXTENSOES_POR_MIME = {
+    "image/png": {"png"},
+    "image/jpeg": {"jpg", "jpeg"},
+    "image/gif": {"gif"},
+    "image/webp": {"webp"},
+    "application/pdf": {"pdf"},
+}
+
+
+def _categoria(tipo):
+    return "clinico" if tipo in TIPOS_CLINICOS else "termo"
+
+
+def pode_ler_tipo(ctx, tipo):
+    return any(tem_permissao(ctx, c) for c in PERMISSOES_LEITURA[_categoria(tipo)])
+
+
+def exigir_escrita_tipo(ctx, tipo):
+    exigir_alguma_permissao(ctx, *PERMISSOES_ESCRITA[_categoria(tipo)])
+
+
+def extensao_do_arquivo(filename):
+    if not filename or "." not in filename:
+        return None
+    return filename.rsplit(".", 1)[1].lower()
+
 
 def extensao_permitida(filename):
-    if "." not in filename:
-        return False
-    return filename.rsplit(".", 1)[1].lower() in EXTENSOES_PERMITIDAS
+    return extensao_do_arquivo(filename) in EXTENSOES_PERMITIDAS
+
+
+def detectar_mime(conteudo):
+    """Identifica o tipo real do arquivo pelas assinaturas (magic bytes).
+
+    Retorna o MIME ou None se o conteúdo não for de um formato permitido.
+    """
+    if not conteudo:
+        return None
+    if conteudo.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if conteudo.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if conteudo[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    if len(conteudo) >= 12 and conteudo[:4] == b"RIFF" and conteudo[8:12] == b"WEBP":
+        return "image/webp"
+    # Estrito: exige a assinatura no início (evita arquivos poliglotas).
+    if conteudo.startswith(b"%PDF-"):
+        return "application/pdf"
+    return None
 
 
 def gerar_signed_url(storage_path):
@@ -46,7 +107,8 @@ def upload_imagem():
         return jsonify({"error": "Nao autorizado"}), 401
 
     try:
-        _, clinica_id = get_user_clinica(token)
+        ctx = get_contexto(token)
+        clinica_id = exigir_clinica(ctx)
 
         paciente_id = request.form.get("paciente_id")
         if not paciente_id:
@@ -55,6 +117,8 @@ def upload_imagem():
         tipo = request.form.get("tipo", "imagem")
         if tipo not in TIPOS_VALIDOS:
             tipo = "imagem"
+
+        exigir_escrita_tipo(ctx, tipo)
 
         if "file" not in request.files:
             return jsonify({"error": "Nenhum arquivo enviado"}), 400
@@ -82,15 +146,27 @@ def upload_imagem():
         if paciente.data.get("clinica_id") != clinica_id:
             return jsonify({"error": "Acesso negado a este paciente"}), 403
 
-        file_bytes = file.read()
+        # Lê no máximo 1 byte além do limite: basta para saber se estourou.
+        file_bytes = file.read(TAMANHO_MAXIMO_BYTES + 1)
         if len(file_bytes) > TAMANHO_MAXIMO_BYTES:
             return jsonify({
                 "error": "Arquivo muito grande. O tamanho máximo permitido é 10 MB."
             }), 400
+        if not file_bytes:
+            return jsonify({"error": "Arquivo vazio."}), 400
 
-        filename_unico = f"{uuid4().hex}_{secure_filename(file.filename)}"
-        storage_path = f"{clinica_id}/{paciente_id}/{filename_unico}"
-        content_type = file.content_type or "application/octet-stream"
+        # Conteúdo real (magic bytes) tem que ser de um formato permitido E
+        # compatível com a extensão informada. O Content-Type do cliente é ignorado.
+        content_type = detectar_mime(file_bytes)
+        extensao = extensao_do_arquivo(file.filename)
+        if not content_type or extensao not in EXTENSOES_POR_MIME[content_type]:
+            return jsonify({
+                "error": "O conteúdo do arquivo não corresponde a uma imagem "
+                         "(png, jpg, jpeg, webp, gif) ou PDF válido."
+            }), 400
+
+        # Nome no storage gerado pelo servidor: único e sem nada vindo do cliente.
+        storage_path = f"{clinica_id}/{paciente_id}/{uuid4().hex}.{extensao}"
 
         supabase_admin.storage.from_(BUCKET).upload(
             storage_path,
@@ -131,7 +207,11 @@ def listar_imagens():
         return jsonify({"error": "paciente_id e obrigatorio"}), 400
 
     try:
-        _, clinica_id = get_user_clinica(token)
+        ctx = get_contexto(token)
+        exigir_alguma_permissao(ctx, "ver_pacientes", "ver_prontuario")
+        clinica_id = ctx["clinica_id"]
+        if not clinica_id:
+            return jsonify([]), 200
 
         result = (
             supabase.table("paciente_imagens")
@@ -146,6 +226,9 @@ def listar_imagens():
         # Link curto (1h) — se o usuário deixar a aba aberta, recarregar refaz.
         imagens = []
         for img in result.data or []:
+            # Sem acesso ao prontuário: só os termos (LGPD/consentimento).
+            if not pode_ler_tipo(ctx, img.get("tipo") or "imagem"):
+                continue
             imagens.append({
                 **img,
                 "url": gerar_signed_url(img.get("storage_path")),
@@ -162,11 +245,12 @@ def deletar_imagem(imagem_id):
         return jsonify({"error": "Nao autorizado"}), 401
 
     try:
-        _, clinica_id = get_user_clinica(token)
+        ctx = get_contexto(token)
+        clinica_id = exigir_clinica(ctx)
 
         check = (
             supabase.table("paciente_imagens")
-            .select("id, storage_path")
+            .select("id, storage_path, tipo")
             .eq("id", imagem_id)
             .eq("clinica_id", clinica_id)
             .maybe_single()
@@ -176,10 +260,12 @@ def deletar_imagem(imagem_id):
         if not (check and check.data):
             return jsonify({"error": "Imagem nao encontrada"}), 404
 
+        exigir_escrita_tipo(ctx, check.data.get("tipo") or "imagem")
+
         storage_path = check.data["storage_path"]
 
         supabase_admin.storage.from_(BUCKET).remove([storage_path])
-        supabase.table("paciente_imagens").delete().eq("id", imagem_id).execute()
+        supabase.table("paciente_imagens").delete().eq("id", imagem_id).eq("clinica_id", clinica_id).execute()
 
         return jsonify({"message": "Imagem deletada com sucesso"}), 200
     except Exception as e:

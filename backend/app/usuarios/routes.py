@@ -1,35 +1,19 @@
 from flask import Blueprint, request, jsonify
 from supabase import create_client
 from app.database import supabase
-from app.auth_utils import get_token, get_contexto, tratar_erro
+from app.auth_utils import get_token, get_contexto, exigir_clinica, tratar_erro, PERMISSOES_PADRAO
 from config import Config
 
 supabase_admin = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
 
 usuarios_bp = Blueprint("usuarios", __name__)
 
-PERMISSOES_PADRAO = {
-    "Especialista": {
-        "ver_pacientes":      True,
-        "editar_pacientes":   False,
-        "ver_prontuario":     True,
-        "editar_prontuario":  True,
-        "ver_agenda":         True,
-        "agendar_consultas":  False,
-        "cancelar_consultas": False,
-        "ver_financeiro":     False,
-    },
-    "Recepção": {
-        "ver_pacientes":      True,
-        "editar_pacientes":   True,
-        "ver_prontuario":     False,
-        "editar_prontuario":  False,
-        "ver_agenda":         True,
-        "agendar_consultas":  True,
-        "cancelar_consultas": True,
-        "ver_financeiro":     True,
-    },
-}
+# PERMISSOES_PADRAO vem de app.auth_utils (fonte única de verdade do RBAC).
+
+# Campos da equipe visíveis a membros que não são o proprietário (agenda e
+# financeiro só precisam identificar o profissional). Permissões, percentual de
+# repasse etc. ficam restritos ao Dono.
+CAMPOS_EQUIPE_PUBLICOS = {"id", "nome", "papel", "cro", "ativo", "clinica_id"}
 
 
 def get_user_e_clinica(token):
@@ -45,7 +29,8 @@ def listar_equipe():
         return jsonify({"error": "Não autorizado"}), 401
 
     try:
-        _, clinica_id, _ = get_user_e_clinica(token)
+        ctx = get_contexto(token)
+        clinica_id = exigir_clinica(ctx)
 
         # select("*") — robusto: funciona com ou sem a coluna 'ativo'
         result = (
@@ -55,7 +40,13 @@ def listar_equipe():
             .order("created_at")
             .execute()
         )
-        return jsonify(result.data), 200
+        membros = result.data or []
+        if ctx.get("papel") != "Dono":
+            membros = [
+                {k: v for k, v in m.items() if k in CAMPOS_EQUIPE_PUBLICOS}
+                for m in membros
+            ]
+        return jsonify(membros), 200
     except Exception as e:
         return tratar_erro(e)
 
@@ -76,12 +67,21 @@ def criar_membro():
 
         if papel_solicitante != "Dono":
             return jsonify({"error": "Apenas o proprietário pode criar membros"}), 403
+        if not clinica_id:
+            return jsonify({"error": "Cadastre ou ative uma clínica antes de criar membros"}), 403
 
-        data = request.get_json(silent=True) or {}
-        nome = data.get("nome", "").strip()
-        email = data.get("email", "").strip()
-        senha = data.get("senha", "").strip()
-        papel = data.get("papel", "").strip()
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify({"error": "Corpo da requisição inválido."}), 400
+
+        def _texto(campo):
+            valor = data.get(campo)
+            return valor.strip() if isinstance(valor, str) else ""
+
+        nome = _texto("nome")
+        email = _texto("email")
+        senha = _texto("senha")
+        papel = _texto("papel")
 
         if not all([nome, email, senha, papel]):
             return jsonify({"error": "Nome, email, senha e papel são obrigatórios"}), 400

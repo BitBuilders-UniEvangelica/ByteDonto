@@ -7,6 +7,7 @@ tratamento de erro das rotas. A clínica considerada é sempre a ATIVA
 """
 
 from flask import request, jsonify, current_app
+from werkzeug.exceptions import HTTPException
 from app.database import supabase
 
 # Permissões padrão por papel — fonte única de verdade para o fallback do RBAC.
@@ -60,7 +61,7 @@ def get_contexto(token):
 
     res = (
         supabase.table("usuarios")
-        .select("clinica_id, papel, permissoes")
+        .select("clinica_id, papel, permissoes, ativo")
         .eq("id", user.id)
         .maybe_single()
         .execute()
@@ -68,6 +69,10 @@ def get_contexto(token):
     perfil = res.data if res else None
     if not perfil:
         return {"user_id": user.id, "clinica_id": None, "papel": None, "permissoes": {}}
+    # O login já barra contas desativadas, mas um token emitido ANTES da
+    # desativação continuaria válido até expirar. Barramos aqui também.
+    if perfil.get("ativo") is False:
+        raise AuthError("Seu acesso foi desativado.", 403)
     return {
         "user_id": user.id,
         "clinica_id": perfil.get("clinica_id"),
@@ -96,6 +101,12 @@ def tem_permissao(ctx, chave):
 def exigir_permissao(ctx, chave):
     """Levanta AuthError(403) se faltar a permissão."""
     if not tem_permissao(ctx, chave):
+        raise AuthError("Você não tem permissão para esta ação.", 403)
+
+
+def exigir_alguma_permissao(ctx, *chaves):
+    """Levanta AuthError(403) se o usuário não tiver NENHUMA das permissões."""
+    if not any(tem_permissao(ctx, c) for c in chaves):
         raise AuthError("Você não tem permissão para esta ação.", 403)
 
 
@@ -154,5 +165,9 @@ def tratar_erro(e):
     """
     if isinstance(e, AuthError):
         return jsonify({"error": e.mensagem}), e.status
+    if isinstance(e, HTTPException):
+        # Erros HTTP do Flask/Werkzeug (ex.: 413 corpo grande, 400 multipart
+        # malformado) seguem para os errorhandlers do app com o status correto.
+        raise e
     current_app.logger.exception("Erro não tratado em rota")
     return jsonify({"error": "Erro interno do servidor."}), 500
