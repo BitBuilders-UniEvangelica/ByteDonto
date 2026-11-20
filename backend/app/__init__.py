@@ -56,6 +56,10 @@ def create_app():
         # Nunca devolve detalhes internos (stack trace, mensagem da exceção).
         return jsonify({"error": "Erro interno do servidor."}), 500
 
+    # Toda escrita invalida o cache das leituras que ela altera (app/cache.py).
+    from app.cache import registrar_invalidacao
+    registrar_invalidacao(app)
+
     # Registrar blueprints
     from app.auth.routes import auth_bp
     from app.pacientes.routes import pacientes_bp

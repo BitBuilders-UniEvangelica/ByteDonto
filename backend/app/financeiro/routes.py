@@ -4,6 +4,7 @@ from flask import Blueprint, request, jsonify
 from app.database import supabase
 from app.validators import campo_obrigatorio, validar_valor, validar_enum
 from app.paginacao import buscar_pagina, envelope, ler_paginacao, quer_paginacao
+from app import cache
 from app.auth_utils import (
     get_token, get_contexto, exigir_permissao, exigir_clinica,
     pertence_a_clinica, tratar_erro,
@@ -269,8 +270,10 @@ def resumo_financeiro():
         ctx = get_contexto(token)
         exigir_permissao(ctx, "ver_financeiro")
         clinica_id = ctx["clinica_id"]
-        linhas = []
-        if clinica_id:
+        if not clinica_id:
+            return jsonify(_resumir([])), 200
+
+        def gerar():
             linhas = (
                 supabase.table("faturamento")
                 .select("valor, status_pagamento, forma_pagamento, created_at")
@@ -279,7 +282,9 @@ def resumo_financeiro():
                 .data
                 or []
             )
-        return jsonify(_resumir(linhas)), 200
+            return _resumir(linhas), 200
+
+        return cache.responder("financeiro", ctx, gerar)
     except Exception as e:
         return tratar_erro(e)
 

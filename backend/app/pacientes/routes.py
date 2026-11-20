@@ -5,6 +5,7 @@ from app.database import supabase
 from app.auditoria import registrar_alteracao
 from app.horarios import para_saida
 from app.paginacao import ler_paginacao, buscar_pagina, envelope
+from app import cache
 from app.validators import (
     campo_obrigatorio,
     validar_cpf,
@@ -148,6 +149,14 @@ def listar_pacientes():
 
         filtro = _filtro_busca(request.args.get("busca"))
 
+        def gerar():
+            itens, total = buscar_pagina(montar, pag)
+            ultimas = _ultimas_consultas(clinica_id, [p["id"] for p in itens])
+            for p in itens:
+                _ocultar_prontuario(ctx, p)
+                p["ultima_consulta"] = ultimas.get(p["id"])
+            return envelope(itens, pag, total), 200
+
         def montar():
             q = supabase.table("pacientes").select(COLUNAS_LISTA, count="exact").eq("clinica_id", clinica_id)
             if filtro:
@@ -155,12 +164,9 @@ def listar_pacientes():
             # id desempata pacientes criados no mesmo instante (páginas estáveis)
             return q.order("created_at", desc=True).order("id")
 
-        itens, total = buscar_pagina(montar, pag)
-        ultimas = _ultimas_consultas(clinica_id, [p["id"] for p in itens])
-        for p in itens:
-            _ocultar_prontuario(ctx, p)
-            p["ultima_consulta"] = ultimas.get(p["id"])
-        return jsonify(envelope(itens, pag, total)), 200
+        # Cache por clínica + usuário + página/busca; invalidado em qualquer escrita
+        # de pacientes ou consultas.
+        return cache.responder("pacientes", ctx, gerar)
     except Exception as e:
         return tratar_erro(e)
 
@@ -190,7 +196,7 @@ def opcoes_pacientes():
         filtro = _filtro_busca(request.args.get("busca"))
         if filtro:
             q = q.or_(filtro).limit(20)
-        return jsonify(q.order("nome").execute().data or []), 200
+        return cache.responder("pacientes", ctx, lambda: (q.order("nome").execute().data or [], 200))
     except Exception as e:
         return tratar_erro(e)
 

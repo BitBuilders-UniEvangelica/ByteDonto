@@ -56,6 +56,9 @@ def limpar_banco():
     from config import Config
     if os.path.isdir(Config.STORAGE_DIR):
         shutil.rmtree(Config.STORAGE_DIR)
+    # O banco foi zerado por fora da API: o cache de leituras também.
+    from app import cache
+    cache.limpar_tudo()
 
 
 def consultar(query, params=None):
@@ -68,6 +71,9 @@ def executar(query, params=None):
     """Comando direto sem retorno (UPDATE/INSERT de preparação de cenário)."""
     with psycopg.connect(TEST_DATABASE_URL, autocommit=True) as conn:
         conn.execute(query, params)
+    # Escrita por fora da API (que é quem invalida o cache): descarta o cache.
+    from app import cache
+    cache.limpar_tudo()
 
 
 def foto_do_banco():

@@ -105,6 +105,8 @@ class Config:
     # Assina os tokens da auth local e os links do storage local. Sem fallback.
     JWT_SECRET = os.getenv("JWT_SECRET")
     JWT_EXPIRES_SECONDS = int(os.getenv("JWT_EXPIRES_SECONDS", "3600"))
+    # Cache curto das leituras frequentes (app/cache.py). 0 desliga.
+    CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", "30") or 0)
     STORAGE_DIR = os.path.abspath(os.getenv("STORAGE_DIR") or os.path.join(BASE_DIR, "storage"))
     PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "http://localhost:8001").rstrip("/")
 

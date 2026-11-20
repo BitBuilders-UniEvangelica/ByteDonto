@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.database import supabase, cliente_admin
+from app import cache
 from app.auth_utils import get_token, get_contexto, exigir_clinica, tratar_erro, PERMISSOES_PADRAO
 
 supabase_admin = cliente_admin()
@@ -36,20 +37,25 @@ def listar_equipe():
         # Só as colunas que cada papel pode ver (o banco nem lê permissões e
         # repasse para quem não é o proprietário).
         colunas = COLUNAS_EQUIPE_DONO if ctx.get("papel") == "Dono" else COLUNAS_EQUIPE_PUBLICAS
-        result = (
-            supabase.table("usuarios")
-            .select(colunas)
-            .eq("clinica_id", clinica_id)
-            .order("created_at")
-            .execute()
-        )
-        membros = result.data or []
-        if ctx.get("papel") != "Dono":
-            membros = [
-                {k: v for k, v in m.items() if k in CAMPOS_EQUIPE_PUBLICOS}
-                for m in membros
-            ]
-        return jsonify(membros), 200
+
+        def gerar():
+            result = (
+                supabase.table("usuarios")
+                .select(colunas)
+                .eq("clinica_id", clinica_id)
+                .order("created_at")
+                .execute()
+            )
+            membros = result.data or []
+            if ctx.get("papel") != "Dono":
+                membros = [
+                    {k: v for k, v in m.items() if k in CAMPOS_EQUIPE_PUBLICOS}
+                    for m in membros
+                ]
+            return membros, 200
+
+        # Profissionais/equipe: lidos em quase toda tela (agenda, financeiro, estoque).
+        return cache.responder("usuarios", ctx, gerar)
     except Exception as e:
         return tratar_erro(e)
 

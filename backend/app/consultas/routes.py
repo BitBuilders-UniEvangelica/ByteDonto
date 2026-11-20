@@ -28,6 +28,7 @@ from app.database import supabase
 from app.auditoria import registrar_alteracao
 from app.horarios import inicio_do_dia, normalizar_entrada, para_banco, para_saida
 from app.paginacao import buscar_pagina, envelope, ler_paginacao, quer_paginacao
+from app import cache
 from app.validators import campo_obrigatorio, validar_enum
 from app.auth_utils import (
     get_token, get_contexto, tem_permissao, exigir_permissao,
@@ -275,11 +276,18 @@ def listar_consultas():
                 query = query.gte("data_agendada", periodo[0]).lt("data_agendada", periodo[1])
             return query.order("data_agendada").order("id")
 
-        if pag:
-            itens, total = buscar_pagina(lambda: montar("exact"), pag)
-            return jsonify(envelope(_apresentar(ctx, itens), pag, total)), 200
-        result = montar().execute()
-        return jsonify(_apresentar(ctx, result.data or [])), 200
+        def gerar():
+            if pag:
+                itens, total = buscar_pagina(lambda: montar("exact"), pag)
+                return envelope(_apresentar(ctx, itens), pag, total), 200
+            return _apresentar(ctx, montar().execute().data or []), 200
+
+        # Agenda do período em cache só para quem NÃO vê prontuário (a resposta
+        # não tem evolução clínica) e fora do histórico de um paciente.
+        if periodo and not paciente_id and not tem_permissao(ctx, "ver_prontuario"):
+            return cache.responder("consultas", ctx, gerar)
+        payload, status = gerar()
+        return jsonify(payload), status
     except Exception as e:
         return tratar_erro(e)
 

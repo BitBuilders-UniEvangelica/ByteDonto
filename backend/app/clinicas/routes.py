@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.database import supabase
+from app import cache
 from app.validators import campo_obrigatorio, validar_cnpj
 from app.auth_utils import (
     get_token, get_contexto, exigir_papel, eh_dono_da_clinica, tratar_erro,
@@ -129,26 +130,30 @@ def listar_clinicas():
         perfil = supabase.table("usuarios").select("clinica_id").eq("id", user_id).maybe_single().execute()
         clinica_ativa_id = perfil.data.get("clinica_id") if (perfil and perfil.data) else None
 
-        # Clínicas que o usuário possui (é dono) — só o que a lista exibe;
-        # endereço, redes sociais e resumo vêm de GET /clinicas/<id>.
-        result = (
-            supabase.table("clinicas")
-            .select(COLUNAS_LISTA)
-            .eq("dono_id", user_id)
-            .order("created_at")
-            .execute()
-        )
-        clinicas = result.data or []
+        def gerar():
+            # Clínicas que o usuário possui (é dono) — só o que a lista exibe;
+            # endereço, redes sociais e resumo vêm de GET /clinicas/<id>.
+            result = (
+                supabase.table("clinicas")
+                .select(COLUNAS_LISTA)
+                .eq("dono_id", user_id)
+                .order("created_at")
+                .execute()
+            )
+            clinicas = result.data or []
 
-        # Membro sem clínicas próprias: cai de volta para a clínica ativa
-        if not clinicas and clinica_ativa_id:
-            fallback = supabase.table("clinicas").select(COLUNAS_LISTA).eq("id", clinica_ativa_id).execute()
-            clinicas = fallback.data or []
+            # Membro sem clínicas próprias: cai de volta para a clínica ativa
+            if not clinicas and clinica_ativa_id:
+                fallback = supabase.table("clinicas").select(COLUNAS_LISTA).eq("id", clinica_ativa_id).execute()
+                clinicas = fallback.data or []
 
-        for c in clinicas:
-            c["nome"] = c.get("nome_fantasia")
-            c["ativa"] = c.get("id") == clinica_ativa_id
-        return jsonify(clinicas), 200
+            for c in clinicas:
+                c["nome"] = c.get("nome_fantasia")
+                c["ativa"] = c.get("id") == clinica_ativa_id
+            return clinicas, 200
+
+        # Chave inclui a clínica ATIVA (muda ao trocar de clínica) e o usuário.
+        return cache.responder("clinicas", {"clinica_id": clinica_ativa_id, "user_id": user_id}, gerar)
     except Exception as e:
         return tratar_erro(e)
 
@@ -186,12 +191,16 @@ def get_clinica(clinica_id):
         if not pode_acessar_clinica(user_id, clinica_id):
             return jsonify({"error": "Você não tem permissão para acessar esta clínica"}), 403
 
-        result = supabase.table("clinicas").select("*").eq("id", clinica_id).maybe_single().execute()
-        clinica = (result.data if result else None) or {}
-        if not clinica:
-            return jsonify({"error": "Clínica não encontrada"}), 404
-        clinica["nome"] = clinica.get("nome_fantasia")
-        return jsonify(clinica), 200
+        def gerar():
+            result = supabase.table("clinicas").select("*").eq("id", clinica_id).maybe_single().execute()
+            clinica = (result.data if result else None) or {}
+            if not clinica:
+                return {"error": "Clínica não encontrada"}, 404
+            clinica["nome"] = clinica.get("nome_fantasia")
+            return clinica, 200
+
+        # A permissão já foi conferida acima; a chave inclui a clínica e o usuário.
+        return cache.responder("clinicas", {"clinica_id": clinica_id, "user_id": user_id}, gerar)
     except Exception as e:
         return tratar_erro(e)
 
