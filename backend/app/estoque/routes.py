@@ -175,10 +175,20 @@ def _apresentar_item(item, lotes):
     }
 
 
-def _lotes_com_saldo(clinica_id, item_id=None, item_ids=None):
+# Lista de itens: saldo/status/vencimento só precisam destas colunas dos lotes.
+COLUNAS_LOTE_RESUMO = "item_id, quantidade, validade"
+COLUNAS_ITEM_LISTA = (
+    "id, nome, categoria, unidade, estoque_minimo, fornecedor_id, localizacao, observacoes, ativo, "
+    "fornecedor:fornecedores_estoque!fornecedor_id(nome)"
+)
+COLUNAS_FORNECEDOR_LISTA = "id, nome, cnpj, telefone, email, ativo"
+
+
+def _lotes_com_saldo(clinica_id, item_id=None, item_ids=None,
+                     colunas="*, fornecedor:fornecedores_estoque!fornecedor_id(nome)"):
     query = (
         supabase.table("lotes_estoque")
-        .select("*, fornecedor:fornecedores_estoque!fornecedor_id(nome)")
+        .select(colunas)
         .eq("clinica_id", clinica_id).gt("quantidade", 0)
     )
     if item_id:
@@ -227,7 +237,7 @@ SELECT_MOVIMENTACAO = (
 def listar_fornecedores():
     try:
         _, clinica_id = _contexto_estoque()
-        query = supabase.table("fornecedores_estoque").select("*").eq("clinica_id", clinica_id)
+        query = supabase.table("fornecedores_estoque").select(COLUNAS_FORNECEDOR_LISTA).eq("clinica_id", clinica_id)
         if request.args.get("todos") != "1":
             query = query.eq("ativo", True)
         return jsonify(query.order("nome").execute().data), 200
@@ -331,7 +341,7 @@ def listar_itens():
         def montar(count=None):
             query = (
                 supabase.table("itens_estoque")
-                .select("*, fornecedor:fornecedores_estoque!fornecedor_id(nome)", count=count)
+                .select(COLUNAS_ITEM_LISTA, count=count)
                 .eq("clinica_id", clinica_id)
             )
             if request.args.get("todos") != "1":
@@ -341,10 +351,11 @@ def listar_itens():
         if pag:
             itens, total = buscar_pagina(lambda: montar("exact"), pag)
             # Só os lotes dos itens desta página.
-            lotes = _lotes_com_saldo(clinica_id, item_ids=[i["id"] for i in itens]) if itens else []
+            lotes = (_lotes_com_saldo(clinica_id, item_ids=[i["id"] for i in itens], colunas=COLUNAS_LOTE_RESUMO)
+                     if itens else [])
         else:
             itens, total = montar().execute().data or [], None
-            lotes = _lotes_com_saldo(clinica_id)
+            lotes = _lotes_com_saldo(clinica_id, colunas=COLUNAS_LOTE_RESUMO)
 
         por_item = {}
         for lote in lotes:

@@ -7,6 +7,9 @@ from app.auth_utils import (
 
 clinicas_bp = Blueprint("clinicas", __name__)
 
+# Colunas da lista de clínicas (tela "Minhas clínicas").
+COLUNAS_LISTA = "id, nome_fantasia, razao_social, cnpj"
+
 # Colunas reais da tabela 'clinicas' que o cliente pode gravar.
 # Obs.: o frontend envia "nome" — ele é mapeado para "nome_fantasia" abaixo.
 # 'resumo' e 'redes_sociais' dependem de migration_atualizacoes.sql; se ainda não
@@ -126,10 +129,11 @@ def listar_clinicas():
         perfil = supabase.table("usuarios").select("clinica_id").eq("id", user_id).maybe_single().execute()
         clinica_ativa_id = perfil.data.get("clinica_id") if (perfil and perfil.data) else None
 
-        # Clínicas que o usuário possui (é dono)
+        # Clínicas que o usuário possui (é dono) — só o que a lista exibe;
+        # endereço, redes sociais e resumo vêm de GET /clinicas/<id>.
         result = (
             supabase.table("clinicas")
-            .select("*")
+            .select(COLUNAS_LISTA)
             .eq("dono_id", user_id)
             .order("created_at")
             .execute()
@@ -138,7 +142,7 @@ def listar_clinicas():
 
         # Membro sem clínicas próprias: cai de volta para a clínica ativa
         if not clinicas and clinica_ativa_id:
-            fallback = supabase.table("clinicas").select("*").eq("id", clinica_ativa_id).execute()
+            fallback = supabase.table("clinicas").select(COLUNAS_LISTA).eq("id", clinica_ativa_id).execute()
             clinicas = fallback.data or []
 
         for c in clinicas:

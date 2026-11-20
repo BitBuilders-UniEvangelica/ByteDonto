@@ -11,6 +11,13 @@ from app.auth_utils import (
 
 financeiro_bp = Blueprint("financeiro", __name__)
 
+# Colunas da tabela de lançamentos (tela Financeiro e aba da ficha do paciente).
+SELECT_LISTA = (
+    "id, paciente_id, atendimento_id, plano_item_id, dentista_responsavel, created_at, valor, descricao, "
+    "forma_pagamento, status_pagamento, "
+    "pacientes(nome), dentista:usuarios!dentista_responsavel(nome)"
+)
+
 STATUS_PAGAMENTO_VALIDOS = {"Pago", "Pendente", "Cancelado"}
 FORMAS_PAGAMENTO_VALIDAS = {
     "Dinheiro", "Cartão Débito", "Cartão Crédito", "Pix", "Convênio",
@@ -41,7 +48,7 @@ def listar_lancamentos():
         def montar(count=None):
             query = (
                 supabase.table("faturamento")
-                .select("*, pacientes(nome), dentista:usuarios!dentista_responsavel(nome)", count=count)
+                .select(SELECT_LISTA, count=count)
                 .eq("clinica_id", clinica_id)
             )
             if status:

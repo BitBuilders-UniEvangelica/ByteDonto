@@ -33,6 +33,10 @@ ANAMNESE_OBRIGATORIA = ["alergias", "medicacoes", "condicoes"]
 # tem acesso ao prontuário. A anamnese é coletada pela recepção no cadastro,
 # então pode ser editada por quem edita pacientes OU por quem edita prontuário.
 CAMPOS_PRONTUARIO = {"odontograma"}
+
+# Colunas que a tela de lista mostra (nome, CPF, celular, status). Anamnese,
+# odontograma, endereço etc. só são lidos ao abrir a ficha (GET /<id>).
+COLUNAS_LISTA = "id, nome, cpf, telefone_whatsapp, status"
 CAMPOS_ANAMNESE = {"anamnese"}
 
 
@@ -145,7 +149,7 @@ def listar_pacientes():
         filtro = _filtro_busca(request.args.get("busca"))
 
         def montar():
-            q = supabase.table("pacientes").select("*", count="exact").eq("clinica_id", clinica_id)
+            q = supabase.table("pacientes").select(COLUNAS_LISTA, count="exact").eq("clinica_id", clinica_id)
             if filtro:
                 q = q.or_(filtro)
             # id desempata pacientes criados no mesmo instante (páginas estáveis)

@@ -34,15 +34,17 @@ def listar_planos():
             .execute()
         )
 
-        for plano in planos.data:
-            itens = (
-                supabase.table("plano_itens")
-                .select("*")
-                .eq("plano_id", plano["id"])
-                .order("ordem")
-                .execute()
-            )
-            plano["itens"] = itens.data
+        # Itens de TODOS os planos numa consulta só (antes: uma consulta por plano).
+        ids = [p["id"] for p in planos.data or []]
+        itens = (
+            supabase.table("plano_itens").select("*").in_("plano_id", ids).order("ordem").execute().data
+            if ids else []
+        )
+        por_plano = {}
+        for item in itens or []:
+            por_plano.setdefault(item["plano_id"], []).append(item)
+        for plano in planos.data or []:
+            plano["itens"] = por_plano.get(plano["id"], [])
 
         return jsonify(planos.data), 200
     except Exception as e:

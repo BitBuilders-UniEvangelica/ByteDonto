@@ -46,6 +46,13 @@ TRANSICOES = {
 PAPEIS_PROFISSIONAIS = {"Especialista", "Dono"}
 
 SELECT_COMPLETO = "*, pacientes(nome), dentista:usuarios!dentista_id(nome)"
+# Listagem (agenda, painel, histórico): só o que as telas exibem — sem
+# clinica_id, updated_by, created_at e updated_at.
+SELECT_LISTA = (
+    "id, paciente_id, dentista_id, data_agendada, duracao_minutos, cadeira, status, "
+    "tipo_atendimento, queixa_principal, procedimentos_descritos, evolucao_clinica, "
+    "pacientes(nome), dentista:usuarios!dentista_id(nome)"
+)
 
 # Campos do atendimento que são registro clínico (prontuário).
 CAMPOS_CLINICOS = {"evolucao_clinica", "procedimentos_descritos"}
@@ -258,7 +265,7 @@ def listar_consultas():
         def montar(count=None):
             query = (
                 supabase.table("atendimentos")
-                .select(SELECT_COMPLETO, count=count)
+                .select(SELECT_LISTA, count=count)
                 .eq("clinica_id", clinica_id)
             )
             if paciente_id:

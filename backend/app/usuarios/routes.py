@@ -12,6 +12,9 @@ usuarios_bp = Blueprint("usuarios", __name__)
 # financeiro só precisam identificar o profissional). Permissões, percentual de
 # repasse etc. ficam restritos ao Dono.
 CAMPOS_EQUIPE_PUBLICOS = {"id", "nome", "papel", "cro", "ativo", "clinica_id"}
+# O proprietário gerencia a equipe (permissões, % de repasse) e vê tudo da lista.
+COLUNAS_EQUIPE_DONO = "id, clinica_id, nome, papel, cro, ativo, permissoes, percentual_repasse, created_at"
+COLUNAS_EQUIPE_PUBLICAS = ", ".join(sorted(CAMPOS_EQUIPE_PUBLICOS))
 
 
 def get_user_e_clinica(token):
@@ -30,10 +33,12 @@ def listar_equipe():
         ctx = get_contexto(token)
         clinica_id = exigir_clinica(ctx)
 
-        # select("*") — robusto: funciona com ou sem a coluna 'ativo'
+        # Só as colunas que cada papel pode ver (o banco nem lê permissões e
+        # repasse para quem não é o proprietário).
+        colunas = COLUNAS_EQUIPE_DONO if ctx.get("papel") == "Dono" else COLUNAS_EQUIPE_PUBLICAS
         result = (
             supabase.table("usuarios")
-            .select("*")
+            .select(colunas)
             .eq("clinica_id", clinica_id)
             .order("created_at")
             .execute()
