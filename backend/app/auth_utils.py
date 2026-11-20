@@ -159,6 +159,12 @@ def pertence_a_clinica(tabela, registro_id, clinica_id, coluna="id"):
     return bool(res and res.data)
 
 
+def _identificador_invalido(e):
+    """UUID malformado — mesmo texto no PostgREST (código 22P02) e no psycopg local."""
+    texto = f"{getattr(e, 'message', '') or ''} {getattr(e, 'code', '') or ''} {e}"
+    return "invalid input syntax for type uuid" in texto
+
+
 def tratar_erro(e):
     """Converte exceções em respostas HTTP sem vazar detalhes internos.
 
@@ -171,5 +177,9 @@ def tratar_erro(e):
         # Erros HTTP do Flask/Werkzeug (ex.: 413 corpo grande, 400 multipart
         # malformado) seguem para os errorhandlers do app com o status correto.
         raise e
+    if _identificador_invalido(e):
+        # ID manipulado (ex.: /api/pacientes/abc): o banco recusa o UUID. Não é
+        # erro do servidor e não revela nada — 400 genérico.
+        return jsonify({"error": "Identificador inválido."}), 400
     current_app.logger.exception("Erro não tratado em rota")
     return jsonify({"error": "Erro interno do servidor."}), 500

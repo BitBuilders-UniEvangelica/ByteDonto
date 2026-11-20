@@ -38,9 +38,17 @@ def test_recepcao_fluxos_permitidos(client, cenario):
     assert client.get("/api/pacientes/", headers=h).status_code == 200
     r = client.put(f"/api/pacientes/{pac['id']}", headers=h, json={"rg": "123", "anamnese": {"alergias": "Dipirona"}})
     assert r.status_code == 200, r.get_json()
-    for status in ("Aguardando", "Faltou", "Cancelado"):
-        r = client.put(f"/api/consultas/{consulta.get_json()['id']}", headers=h, json={"status": status})
+    # Fluxos da agenda da recepção (botões de check-in, falta e cancelar):
+    # check-in e depois cancelamento num atendimento; falta em outro.
+    # (Faltou/Finalizado/Cancelado são finais — fluxo documentado.)
+    cid = consulta.get_json()["id"]
+    for status in ("Aguardando", "Cancelado"):
+        r = client.put(f"/api/consultas/{cid}", headers=h, json={"status": status})
         assert r.status_code == 200, (status, r.get_json())
+    outra = client.post("/api/consultas/", headers=h, json={
+        "paciente_id": pac["id"], "dentista_id": espec["id"], "data_agendada": "2026-01-11T10:00:00"}).get_json()
+    r = client.put(f"/api/consultas/{outra['id']}", headers=h, json={"status": "Faltou"})
+    assert r.status_code == 200, r.get_json()
     assert client.get("/api/financeiro/", headers=h).status_code == 200
     r = client.post("/api/imagens/upload", headers=h, content_type="multipart/form-data", data={
         "paciente_id": pac["id"], "tipo": "termo_consentimento", "file": (io.BytesIO(PDF), "termo.pdf")})

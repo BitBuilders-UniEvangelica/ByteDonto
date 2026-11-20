@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from uuid import uuid4
 from app.database import supabase, cliente_admin
+from app.auditoria import registrar_alteracao
 from app.auth_utils import (
     get_token, get_contexto, exigir_clinica, exigir_alguma_permissao,
     tem_permissao, tratar_erro,
@@ -84,6 +85,32 @@ def detectar_mime(conteudo):
     if conteudo.startswith(b"%PDF-"):
         return "application/pdf"
     return None
+
+
+def caminho_confere(registro, clinica_id):
+    """O arquivo precisa estar na pasta da clínica e do paciente do registro.
+
+    Defesa em profundidade: mesmo que um registro fosse adulterado no banco para
+    apontar para o arquivo de outra clínica, o link não é gerado."""
+    caminho = registro.get("storage_path") or ""
+    esperado = f"{clinica_id}/{registro.get('paciente_id')}/"
+    return caminho.startswith(esperado) and ".." not in caminho
+
+
+def _auditar(ctx, registro, acao):
+    """Operações sensíveis com documentos clínicos (Res. CFO 226/2020 / LGPD).
+
+    Registra metadados (nome, tipo, caminho) — nunca o conteúdo do arquivo."""
+    registrar_alteracao(
+        clinica_id=ctx["clinica_id"],
+        usuario_id=ctx["user_id"],
+        paciente_id=registro.get("paciente_id"),
+        tabela="paciente_imagens",
+        registro_id=registro["id"],
+        acao=acao,
+        antes={k: registro.get(k) for k in ("nome", "tipo", "storage_path")} if acao == "DELETE" else None,
+        depois={k: registro.get(k) for k in ("nome", "tipo", "storage_path")} if acao != "DELETE" else None,
+    )
 
 
 def gerar_signed_url(storage_path):
@@ -183,6 +210,7 @@ def upload_imagem():
         }
         result = supabase.table("paciente_imagens").insert(registro).execute()
         imagem = result.data[0]
+        _auditar(ctx, imagem, "INSERT")
 
         return jsonify({
             "id": imagem["id"],
@@ -227,6 +255,8 @@ def listar_imagens():
             # Sem acesso ao prontuário: só os termos (LGPD/consentimento).
             if not pode_ler_tipo(ctx, img.get("tipo") or "imagem"):
                 continue
+            if not caminho_confere(img, clinica_id):
+                continue
             imagens.append({
                 **img,
                 "url": gerar_signed_url(img.get("storage_path")),
@@ -248,7 +278,7 @@ def deletar_imagem(imagem_id):
 
         check = (
             supabase.table("paciente_imagens")
-            .select("id, storage_path, tipo")
+            .select("id, paciente_id, nome, storage_path, tipo")
             .eq("id", imagem_id)
             .eq("clinica_id", clinica_id)
             .maybe_single()
@@ -264,7 +294,46 @@ def deletar_imagem(imagem_id):
 
         supabase_admin.storage.from_(BUCKET).remove([storage_path])
         supabase.table("paciente_imagens").delete().eq("id", imagem_id).eq("clinica_id", clinica_id).execute()
+        _auditar(ctx, check.data, "DELETE")
 
         return jsonify({"message": "Imagem deletada com sucesso"}), 200
+    except Exception as e:
+        return tratar_erro(e)
+
+
+@imagens_bp.route("/<imagem_id>/download", methods=["GET"])
+def link_de_download(imagem_id):
+    """Gera um link assinado NOVO (1 h) para um documento, depois de conferir:
+    autenticação, clínica, paciente, permissão de leitura do tipo do documento e
+    o caminho no storage. O acesso é registrado na auditoria."""
+    token = get_token(request)
+    if not token:
+        return jsonify({"error": "Nao autorizado"}), 401
+
+    try:
+        ctx = get_contexto(token)
+        clinica_id = exigir_clinica(ctx)
+        res = (
+            supabase.table("paciente_imagens")
+            .select("id, paciente_id, nome, storage_path, tipo")
+            .eq("id", imagem_id)
+            .eq("clinica_id", clinica_id)
+            .maybe_single()
+            .execute()
+        )
+        registro = res.data if res else None
+        if not registro:
+            return jsonify({"error": "Imagem nao encontrada"}), 404
+        if not pode_ler_tipo(ctx, registro.get("tipo") or "imagem"):
+            return jsonify({"error": "Você não tem permissão para esta ação."}), 403
+        if not caminho_confere(registro, clinica_id):
+            return jsonify({"error": "Imagem nao encontrada"}), 404
+
+        url = gerar_signed_url(registro["storage_path"])
+        if not url:
+            return jsonify({"error": "Arquivo indisponível no armazenamento."}), 404
+        _auditar(ctx, registro, "ACESSO")
+        return jsonify({"id": registro["id"], "nome": registro["nome"], "tipo": registro.get("tipo"),
+                        "url": url, "expira_em_segundos": SIGNED_URL_TTL}), 200
     except Exception as e:
         return tratar_erro(e)

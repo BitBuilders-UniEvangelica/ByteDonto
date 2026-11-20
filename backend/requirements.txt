@@ -6,6 +6,8 @@ supabase
 psycopg[binary]
 psycopg-pool
 python-dotenv
+# Base de fusos horários (zoneinfo) independente do sistema operacional do deploy
+tzdata
 pyjwt
 openai
 langchain

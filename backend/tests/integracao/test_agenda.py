@@ -67,11 +67,6 @@ def test_fluxo_check_in_e_cancelamento(client, cenario):
     assert status.get(consulta["id"], "Cancelado") == "Cancelado"
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "RF-002 prevê validação de sobreposição de horários, mas a rota POST /api/consultas "
-    "ainda não verifica conflito. Quando a validação for implementada este teste passa "
-    "e o xfail deve ser removido."
-))
 def test_recusa_dois_horarios_sobrepostos_para_o_mesmo_dentista(client, cenario):
     dono = cenario.dono()
     especialista = cenario.membro(dono, "Especialista")

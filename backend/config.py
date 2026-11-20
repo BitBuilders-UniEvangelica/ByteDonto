@@ -115,6 +115,9 @@ class Config:
     EVOLUTION_API_URL = os.getenv("EVOLUTION_API_URL")
     EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY")
     EVOLUTION_INSTANCE = os.getenv("EVOLUTION_INSTANCE", "byedonto")
+    # Fuso da clínica: a agenda trabalha com HORÁRIO DE PAREDE neste fuso
+    # (ver app/horarios.py). Também define o "hoje" das métricas.
+    APP_TIMEZONE = os.getenv("APP_TIMEZONE", "America/Sao_Paulo")
     # Limite do corpo da requisição: 10 MB do arquivo + folga do multipart.
     # Acima disso o Flask responde 413 sem ler tudo para a memória.
     MAX_CONTENT_LENGTH = 11 * 1024 * 1024
@@ -146,6 +149,13 @@ def validar_config(config=Config):
         )
 
     problemas += _problemas_segredo("SECRET_KEY", getattr(config, "SECRET_KEY", None))
+
+    fuso = getattr(config, "APP_TIMEZONE", None) or "America/Sao_Paulo"
+    try:
+        from zoneinfo import ZoneInfo
+        ZoneInfo(fuso)
+    except Exception:
+        problemas.append("APP_TIMEZONE inválido (use um nome IANA, ex.: America/Sao_Paulo)")
 
     if modo == "local":
         # Produção nunca roda com banco/auth/storage locais.

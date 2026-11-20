@@ -24,7 +24,7 @@ Pacientes/consultas/financeiro só são criados se a clínica ainda não tiver p
 import os
 import random
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 AMBIENTES_PERMITIDOS = {"development", "local"}
 SENHA_MIN_SEED = 12
@@ -134,7 +134,9 @@ def garantir_perfil(uid, nome, papel, clinica_id=None, permissoes=None):
 
 
 def iso(dt):
-    return dt.astimezone(timezone.utc).isoformat()
+    """Horário de parede da clínica gravado como UTC (convenção da agenda, ver app/horarios.py)."""
+    from app.horarios import para_banco
+    return para_banco(dt.replace(tzinfo=None, second=0, microsecond=0).isoformat(timespec="seconds"))
 
 
 def main():
@@ -272,7 +274,8 @@ def _executar(contas, PERMISSOES_PADRAO):
             }).execute().data[0]
             pacientes.append(row)
 
-        agora = datetime.now(timezone.utc)
+        from app.horarios import fuso
+        agora = datetime.now(fuso())
         # Consultas: 1 finalizada, 1 hoje, 1 futura
         admin.table("atendimentos").insert([
             {"clinica_id": clinica_id, "paciente_id": pacientes[0]["id"], "dentista_id": espec_id,

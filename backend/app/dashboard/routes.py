@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.database import supabase
 from app.auth_utils import get_token, get_contexto, eh_dono_da_clinica, tem_permissao, tratar_erro
-from datetime import date
+from app.horarios import hoje as hoje_na_clinica, inicio_do_dia, fim_do_dia
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -49,8 +49,10 @@ def metricas():
         if not clinica_id:
             return jsonify(_filtrar_metricas(ctx, dict(METRICAS_ZERADAS))), 200
 
-        hoje = date.today().isoformat()
-        primeiro_dia_mes = date.today().replace(day=1).isoformat()
+        # "Hoje" no fuso da clínica (o servidor roda em UTC) e na mesma convenção
+        # de horário de parede da agenda (app/horarios.py).
+        dia = hoje_na_clinica()
+        primeiro_dia_mes = dia.replace(day=1).isoformat()
 
         # Total de pacientes ativos
         pacientes = (
@@ -66,8 +68,8 @@ def metricas():
             supabase.table("atendimentos")
             .select("id, status")
             .eq("clinica_id", clinica_id)
-            .gte("data_agendada", f"{hoje}T00:00:00")
-            .lte("data_agendada", f"{hoje}T23:59:59")
+            .gte("data_agendada", inicio_do_dia(dia))
+            .lte("data_agendada", fim_do_dia(dia))
             .execute()
         )
         consultas_hoje = len(consultas_hoje_res.data)

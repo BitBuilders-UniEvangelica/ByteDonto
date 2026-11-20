@@ -60,6 +60,19 @@ def supabase_simulado(banco):
             GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
             ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
             ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated, service_role;
+            -- Storage simulado (no Supabase é gerenciado por eles), num estado RUIM de propósito:
+            -- bucket de pacientes público e uma policy permissiva "acidental".
+            CREATE SCHEMA IF NOT EXISTS storage;
+            CREATE TABLE IF NOT EXISTS storage.buckets (id TEXT PRIMARY KEY, public BOOLEAN DEFAULT FALSE);
+            CREATE TABLE IF NOT EXISTS storage.objects (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(), bucket_id TEXT REFERENCES storage.buckets(id), name TEXT);
+            ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+            GRANT USAGE ON SCHEMA storage TO anon, authenticated, service_role;
+            GRANT ALL ON storage.objects, storage.buckets TO anon, authenticated, service_role;
+            INSERT INTO storage.buckets VALUES ('paciente-imagens', TRUE), ('avatars', TRUE);
+            CREATE POLICY leitura_acidental ON storage.objects FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+            INSERT INTO storage.objects (bucket_id, name) VALUES
+                ('paciente-imagens', 'clinica/paciente/rx.png'), ('avatars', 'logo.png');
         """)
         for caminho in SCHEMA_PRODUCAO + MIGRATIONS + MIGRATIONS:  # 2x: idempotência
             conn.execute(_ler(caminho))
@@ -72,7 +85,10 @@ def supabase_simulado(banco):
                             "VALUES (%s, 'Luva', 'Material', 'cx') RETURNING id", [clin_a]).fetchone()[0]
         lote = conn.execute("INSERT INTO lotes_estoque (clinica_id, item_id, quantidade) VALUES (%s, %s, 5) "
                             "RETURNING id", [clin_a, item]).fetchone()[0]
-    yield {"url": url, "dono": dono, "clinica_a": clin_a, "clinica_b": clin_b, "item": item, "lote": lote}
+        paciente = conn.execute("INSERT INTO pacientes (clinica_id, nome) VALUES (%s, 'Paciente') RETURNING id",
+                                [clin_a]).fetchone()[0]
+    yield {"url": url, "dono": dono, "clinica_a": clin_a, "clinica_b": clin_b, "item": item, "lote": lote,
+           "paciente": paciente}
     with psycopg.connect(url_admin(url), autocommit=True) as conn:
         conn.execute(sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(
             sql.Identifier(urlparse(url).path.lstrip("/"))))
@@ -198,3 +214,39 @@ def test_migrations_sao_aditivas():
     for caminho in MIGRATIONS:
         sem_comentarios = re.sub(r"--.*", "", _ler(caminho))
         assert not proibidos.search(sem_comentarios), os.path.basename(caminho)
+
+
+# ---- 0002: agenda (trigger) e documentos (storage) no schema de produção -----
+
+def test_trigger_da_agenda_no_schema_de_producao(supabase_simulado):
+    s = supabase_simulado
+    with psycopg.connect(s["url"], autocommit=True) as conn:
+        conn.execute("SET TimeZone = 'UTC'")
+        conn.execute("SET ROLE service_role")
+        conn.execute("INSERT INTO atendimentos (clinica_id, paciente_id, dentista_id, data_agendada) "
+                     "VALUES (%s, %s, %s, '2026-11-10T09:00:00+00:00')", [s["clinica_a"], s["paciente"], s["dono"]])
+        with pytest.raises(psycopg.errors.ExclusionViolation, match="CONFLITO_HORARIO"):
+            conn.execute("INSERT INTO atendimentos (clinica_id, paciente_id, dentista_id, data_agendada) "
+                         "VALUES (%s, %s, %s, '2026-11-10T09:15:00+00:00')", [s["clinica_a"], s["paciente"], s["dono"]])
+        # consecutivo e cancelado não conflitam
+        conn.execute("INSERT INTO atendimentos (clinica_id, paciente_id, dentista_id, data_agendada) "
+                     "VALUES (%s, %s, %s, '2026-11-10T09:30:00+00:00')", [s["clinica_a"], s["paciente"], s["dono"]])
+        conn.execute("INSERT INTO atendimentos (clinica_id, paciente_id, dentista_id, data_agendada, status) "
+                     "VALUES (%s, %s, %s, '2026-11-10T09:00:00+00:00', 'Cancelado')", [s["clinica_a"], s["paciente"], s["dono"]])
+        conn.execute("DELETE FROM atendimentos")
+
+
+def test_chave_publica_nao_le_documentos_mesmo_com_policy_acidental(supabase_simulado):
+    s = supabase_simulado
+    with psycopg.connect(s["url"]) as conn:
+        assert conn.execute("SELECT public FROM storage.buckets WHERE id = 'paciente-imagens'").fetchone()[0] is False
+        assert conn.execute("SELECT public FROM storage.buckets WHERE id = 'avatars'").fetchone()[0] is True
+    for papel in ("anon", "authenticated"):
+        visiveis = {b for (b,) in _como(s["url"], papel, "SELECT bucket_id FROM storage.objects")}
+        assert visiveis == {"avatars"}, "outros buckets seguem como estavam; o de pacientes some"
+        with pytest.raises(psycopg.errors.InsufficientPrivilege, match="row-level security"):
+            _como(s["url"], papel, "INSERT INTO storage.objects (bucket_id, name) VALUES ('paciente-imagens', 'x')")
+        assert _como(s["url"], papel, "DELETE FROM storage.objects WHERE bucket_id = 'paciente-imagens' RETURNING id") == []
+    # a API (service role) continua acessando
+    assert _como(s["url"], "service_role",
+                 "SELECT count(*) FROM storage.objects WHERE bucket_id = 'paciente-imagens'")[0][0] == 1

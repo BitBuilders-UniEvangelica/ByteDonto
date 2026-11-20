@@ -97,6 +97,38 @@ Travas: o banco precisa terminar em `_test` e ser local; ele é recriado a cada 
 O teste de migrations cria temporariamente `<nome>_rls_test` e os papéis
 `anon`/`authenticated`/`service_role` (se não existirem) e remove tudo ao final.
 
+## Regras da agenda (`app/consultas/routes.py` + trigger `atendimentos_validar`)
+
+- Um profissional não tem dois atendimentos simultâneos na clínica. Os intervalos são
+  `[início, início + duração)`, então 09:00–09:30 e 09:30–10:00 são permitidos.
+  Profissionais diferentes podem atender no mesmo horário. **Cancelado** não ocupa horário.
+- Conflitos simultâneos: o trigger no banco serializa as gravações de agenda da clínica
+  (`pg_advisory_xact_lock`) e confere o conflito depois do lock. Funciona nos dois modos.
+  Resposta: **409** com `codigo: conflito_horario` e o horário ocupado.
+- Status: `Agendado → Aguardando → Finalizado/Cancelado/Faltou` (Agendado também vai direto a
+  Cancelado/Faltou/Finalizado). Finalizado, Cancelado e Faltou são finais; atendimento
+  encerrado não é remarcado (409), mas aceita registro de evolução.
+- Paciente e clínica de um atendimento não mudam. O profissional tem que ser Especialista
+  ou Dono ativo da clínica. Duração de 5 a 480 min. Mesmo paciente no mesmo início = 409.
+- Toda criação/alteração vai para `auditoria_prontuario`. Cancelar duas vezes é idempotente.
+- **Horários:** `data_agendada` é o horário de parede da clínica (`APP_TIMEZONE`). A API
+  aceita com ou sem fuso, grava como `...+00:00` (independente do fuso da sessão do banco) e
+  devolve **sem fuso** (`2026-11-10T09:00:00`), o que todas as telas leem igual.
+  Antes, o painel do especialista e o registro clínico mostravam 3 h a menos.
+- Sobreposições antigas já gravadas não são alteradas nem impedem check-in/evolução; só
+  gravações que mudem horário, duração ou profissional são conferidas.
+
+## Documentos clínicos (`app/imagens/routes.py`)
+
+- Leitura por tipo: imagem/laudo exigem `ver_prontuario`; termos, `ver_pacientes` ou
+  `ver_prontuario`. Escrita/exclusão: `editar_prontuario` (clínicos) ou
+  `editar_pacientes`/`editar_prontuario` (termos).
+- `GET /api/imagens/<id>/download` gera um link assinado novo (1 h) depois de conferir
+  autenticação, clínica, permissão e se o arquivo está na pasta `clinica/paciente`; o acesso
+  é registrado na auditoria (`ACESSO`), assim como upload (`INSERT`) e exclusão (`DELETE`).
+- Nenhuma URL pública é gravada. Storage local: link preso ao arquivo, assinado e com
+  validade; Supabase: bucket privado + policy restritiva (migration 0002).
+
 ## Migrations no Supabase
 
 `migrations/0001_estoque_esterilizacao.sql` é aditiva e idempotente (só `IF NOT EXISTS`,
@@ -108,7 +140,13 @@ O teste de migrations cria temporariamente `<nome>_rls_test` e os papéis
 - RLS habilitado + policy `sem_acesso_direto` (RESTRICTIVE, nega tudo) + `REVOKE` de
   `anon`/`authenticated` nas tabelas e funções. Só a API (service role) acessa.
 
-Aplicação: **primeiro num projeto de homologação**. Use o SQL Editor ou
+`migrations/0002_agenda_e_documentos.sql` (aditiva e idempotente) cria o trigger
+`atendimentos_validar` (conflito de horário com lock transacional, transições de status,
+imutabilidade de paciente/clínica, duplicidade), o índice `atendimentos_agenda_profissional_idx`,
+marca o bucket `paciente-imagens` como privado e cria em `storage.objects` a policy
+RESTRICTIVE `paciente_imagens_sem_acesso_direto` (anon/authenticated não acessam esse bucket).
+
+Aplicação: **primeiro num projeto de homologação**, na ordem 0001 → 0002. Use o SQL Editor ou
 `psql "$CONEXAO" -f migrations/0001_estoque_esterilizacao.sql`. Depois confira:
 
 ```sql
