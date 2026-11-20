@@ -163,7 +163,7 @@ def test_recepcao_nao_recebe_odontograma_nem_evolucao(mundo):
     p = c.get(f"/api/pacientes/{mundo.paciente['id']}", headers=auth(t)).get_json()
     assert "odontograma" not in p
     assert p["anamnese"]["alergias"] == "Nega"  # anamnese segue visível (coletada no cadastro)
-    assert all("odontograma" not in x for x in c.get("/api/pacientes/", headers=auth(t)).get_json())
+    assert all("odontograma" not in x for x in c.get("/api/pacientes/", headers=auth(t)).get_json()["items"])
     consultas = c.get("/api/consultas/", headers=auth(t)).get_json()
     assert consultas and all("evolucao_clinica" not in x for x in consultas)
     assert consultas[0]["procedimentos_descritos"] == "Profilaxia"

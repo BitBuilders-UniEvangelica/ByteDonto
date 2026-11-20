@@ -169,6 +169,14 @@ def _fks():
 # Query builder (imita postgrest-py)
 # ============================================================
 
+_OPERADORES_OR = {"eq": "=", "neq": "<>", "like": "LIKE", "ilike": "ILIKE"}
+
+
+def _padrao_like(padrao):
+    """O PostgREST aceita * como curinga de LIKE (além de %)."""
+    return str(padrao).replace("*", "%")
+
+
 _EMBED_RE = re.compile(r"^(?:(\w+):)?(\w+)(?:!(\w+))?\((.*)\)$", re.S)
 
 
@@ -208,12 +216,18 @@ class QueryBuilder:
         self._filtros = []
         self._ordem = []
         self._limite = None
+        self._offset = None
+        self._contar = None       # None | "exact" — preenche APIResponse.count
         self._modo_single = None  # None | "single" | "maybe"
 
     # ---- operações ---------------------------------------------------------
     def select(self, colunas="*", count=None):
         self._operacao = "select"
         self._colunas = colunas or "*"
+        if count not in (None, "exact", "planned", "estimated"):
+            raise APIError(f"count inválido: {count!r}")
+        # planned/estimated no PostgREST são aproximações; aqui sempre exato.
+        self._contar = count
         return self
 
     def insert(self, payload, **_):
@@ -259,6 +273,29 @@ class QueryBuilder:
     def is_(self, coluna, valor):
         return self._filtro(coluna, "is", valor)
 
+    def like(self, coluna, padrao):
+        return self._filtro(coluna, "like", _padrao_like(padrao))
+
+    def ilike(self, coluna, padrao):
+        return self._filtro(coluna, "ilike", _padrao_like(padrao))
+
+    def or_(self, filtros, **_):
+        """Equivalente ao or_ do postgrest-py: "nome.ilike.%ana%,cpf.eq.123".
+
+        Suporta os operadores eq, neq, like e ilike (o que as rotas usam)."""
+        condicoes = []
+        for parte in _dividir_colunas(filtros):
+            coluna, operador, valor = (parte.split(".", 2) + [None, None])[:3]
+            if operador not in _OPERADORES_OR or valor is None or not coluna:
+                raise APIError(f"Filtro or_ inválido: {parte!r}")
+            if len(valor) >= 2 and valor[0] == valor[-1] == '"':
+                valor = valor[1:-1]
+            if operador in ("like", "ilike"):
+                valor = _padrao_like(valor)
+            condicoes.append((coluna, _OPERADORES_OR[operador], valor))
+        self._filtros.append((None, "or", condicoes))
+        return self
+
     # ---- modificadores -----------------------------------------------------
     def order(self, coluna, desc=False, **_):
         self._ordem.append((coluna, desc))
@@ -266,6 +303,20 @@ class QueryBuilder:
 
     def limit(self, n, **_):
         self._limite = int(n)
+        return self
+
+    def offset(self, n, **_):
+        self._offset = int(n)
+        return self
+
+    def range(self, inicio, fim, **_):
+        """Igual ao postgrest-py: intervalo INCLUSIVO de linhas (0-based).
+        range(0, 19) -> as 20 primeiras; range(20, 39) -> as 20 seguintes."""
+        inicio, fim = int(inicio), int(fim)
+        if inicio < 0 or fim < inicio:
+            raise APIError(f"Intervalo inválido: range({inicio}, {fim})")
+        self._offset = inicio
+        self._limite = fim - inicio + 1
         return self
 
     def single(self):
@@ -282,8 +333,18 @@ class QueryBuilder:
             return sql.SQL(""), []
         partes, params = [], []
         for coluna, operador, valor in self._filtros:
+            if operador == "or":
+                ors = []
+                for c, op, v in valor:
+                    ors.append(sql.SQL("{} {} %s").format(sql.Identifier(c), sql.SQL(op)))
+                    params.append(v)
+                partes.append(sql.SQL("(") + sql.SQL(" OR ").join(ors) + sql.SQL(")"))
+                continue
             ident = sql.Identifier(coluna)
-            if operador == "in":
+            if operador in ("like", "ilike"):
+                partes.append(sql.SQL("{} {} %s").format(ident, sql.SQL(operador.upper())))
+                params.append(valor)
+            elif operador == "in":
                 if not valor:
                     partes.append(sql.SQL("FALSE"))
                     continue
@@ -315,8 +376,9 @@ class QueryBuilder:
         tipos = _colunas(self._tabela)
         tabela = sql.Identifier(self._tabela)
 
+        total = None
         if self._operacao == "select":
-            linhas = self._executar_select(tipos)
+            linhas, total = self._executar_select(tipos)
         elif self._operacao == "insert":
             linhas = self._executar_insert(tabela, tipos)
         elif self._operacao == "update":
@@ -337,8 +399,8 @@ class QueryBuilder:
                 )
             if not linhas:
                 return None  # igual ao supabase-py: maybe_single() sem linha -> None
-            return APIResponse(linhas[0])
-        return APIResponse(linhas)
+            return APIResponse(linhas[0], total)
+        return APIResponse(linhas, total)
 
     def _executar_insert(self, tabela, tipos):
         linhas = self._payload if isinstance(self._payload, list) else [self._payload]
@@ -410,16 +472,26 @@ class QueryBuilder:
             )
         if self._limite is not None:
             query += sql.SQL(" LIMIT {}").format(sql.Literal(self._limite))
+        if self._offset:
+            query += sql.SQL(" OFFSET {}").format(sql.Literal(self._offset))
 
+        total = None
         with _conexao() as conn:
             linhas = [_json_ready(l) for l in conn.execute(query, params).fetchall()]
+            if self._contar:
+                # Mesmo WHERE, sem ORDER/LIMIT/OFFSET: total de linhas do filtro
+                # (o PostgREST devolve isso no Content-Range -> APIResponse.count).
+                total = conn.execute(
+                    sql.SQL("SELECT count(*) AS n FROM {}{}").format(sql.Identifier(self._tabela), where),
+                    params,
+                ).fetchone()["n"]
 
         for e in embeds:
             self._aplicar_embed(linhas, e)
         for linha in linhas:
             for c in extras:
                 linha.pop(c, None)
-        return linhas
+        return linhas, total
 
     def _resolver_embed(self, alias, alvo, dica, internas):
         """Descobre por qual chave estrangeira juntar (igual ao PostgREST)."""

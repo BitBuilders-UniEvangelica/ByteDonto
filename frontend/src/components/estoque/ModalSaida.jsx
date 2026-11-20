@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { apiGetItemEstoque, apiGetPacientes, apiGetEquipe, apiRegistrarSaidaEstoque } from "../../services/api";
+import { apiGetItemEstoque, apiGetPacientesOpcoes, apiGetEquipe, apiRegistrarSaidaEstoque } from "../../services/api";
 import { formatDate } from "../../utils/formatters";
 import ModalEstoque from "./ModalEstoque";
 import { MOTIVOS_SAIDA, hojeISO, formatQtd } from "./estoqueUtils";
@@ -33,7 +33,7 @@ export default function ModalSaida({ itens, itemFixo, onFechar, onSalvo }) {
     useEffect(() => {
         if (!token) return;
         // Quem não tem acesso a pacientes ou à equipe só não vê as opções
-        apiGetPacientes(token).then(p => setPacientes(Array.isArray(p) ? p : [])).catch(() => {});
+        apiGetPacientesOpcoes(token).then(setPacientes).catch(() => {});
         apiGetEquipe(token).then(e => setEquipe((Array.isArray(e) ? e : []).filter(m => m.ativo !== false))).catch(() => {});
     }, [token]);
 

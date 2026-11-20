@@ -1,11 +1,12 @@
 /* IMPORTS */
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../../../context/AuthContext";
 import {
     apiGetFinanceiro,
     apiCriarLancamento,
     apiAtualizarLancamento,
-    apiGetPacientes,
+    apiGetPacientesOpcoes,
+    apiGetResumoFinanceiro,
     apiGetRepasses,
     apiGetEquipe,
 } from "../../../services/api";
@@ -17,6 +18,7 @@ import { formatCurrency, formatDate } from "../../../utils/formatters";
 import { FilePlus, AlertTriangle } from "lucide-react";
 import { useFeedback } from "../../../hooks/useFeedback";
 import { Banner, BlocoCarregando } from "../../../components/feedback/Feedback";
+import Paginacao from "../../../components/paginacao/Paginacao";
 import "../../../styles/clinic.css";
 import "../../../styles/Forms.css";
 
@@ -29,6 +31,8 @@ const STATUS_STYLE = {
     Cancelado: { bg: "var(--DangerBack)", color: "var(--DangerText)" },
 };
 
+const POR_PAGINA = 20;
+
 const FORM_INICIAL = {
     paciente_id: "",
     dentista_responsavel: "",
@@ -39,18 +43,13 @@ const FORM_INICIAL = {
 };
 
 /* ---- GRÁFICO A: Receita por mês (barras verticais) ---- */
-function GraficoMensal({ lancamentos }) {
-    const meses = [];
-    for (let i = 5; i >= 0; i--) {
-        const d = new Date();
-        d.setMonth(d.getMonth() - i);
-        const chave = d.toISOString().slice(0, 7);
-        const label = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
-        const pago = lancamentos
-            .filter(l => l.status_pagamento === "Pago" && l.created_at?.startsWith(chave))
-            .reduce((s, l) => s + Number(l.valor || 0), 0);
-        meses.push({ label, pago });
-    }
+/* receita: [{ mes: "AAAA-MM", pago }] — últimos 6 meses, somados no servidor */
+function GraficoMensal({ receita }) {
+    const meses = receita.map(({ mes, pago }) => {
+        const [ano, m] = mes.split("-").map(Number);
+        const label = new Date(ano, m - 1, 1).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+        return { label, pago: Number(pago || 0) };
+    });
     const max = Math.max(...meses.map(m => m.pago), 1);
 
     return (
@@ -81,14 +80,9 @@ function GraficoMensal({ lancamentos }) {
 }
 
 /* ---- GRÁFICO B: Forma de pagamento (barras horizontais) ---- */
-function GraficoFormas({ lancamentos }) {
-    const pagos = lancamentos.filter(l => l.status_pagamento === "Pago");
-    const totais = {};
-    pagos.forEach(l => {
-        const f = l.forma_pagamento || "Outros";
-        totais[f] = (totais[f] || 0) + Number(l.valor || 0);
-    });
-    const entries = Object.entries(totais).sort((a, b) => b[1] - a[1]);
+/* porForma: [{ forma, valor }] — total pago por forma, somado no servidor */
+function GraficoFormas({ porForma }) {
+    const entries = porForma.map(f => [f.forma, Number(f.valor || 0)]);
     const max = Math.max(...entries.map(e => e[1]), 1);
     const CORES = ["var(--PrimaryColors)", "var(--PrimaryColorsTheme)", "var(--SuccessText)", "var(--WarningText)", "var(--DangerText)", "var(--TextColor75)"];
 
@@ -129,7 +123,10 @@ function Financial() {
     const opc_bar = useSidebar("financial");
 
     /* estados */
-    const [lancamentos, setLancamentos] = useState([]);
+    const [listaPag, setListaPag] = useState({ items: [], total: 0, per_page: POR_PAGINA });
+    const [pagina, setPagina] = useState(1);
+    const [carregandoLista, setCarregandoLista] = useState(false);
+    const [resumo, setResumo] = useState(null);
     const [pacientes, setPacientes] = useState([]);
     const [dentistas, setDentistas] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -151,19 +148,34 @@ function Financial() {
     const [repassesMes, setRepassesMes] = useState(() => new Date().toISOString().slice(0, 7));
     const [repassesLoading, setRepassesLoading] = useState(false);
 
+    /* Lista paginada: o servidor devolve só a página (20 lançamentos) já filtrada por status. */
+    function carregarLista(page, status) {
+        setCarregandoLista(true);
+        return apiGetFinanceiro(token, { page, perPage: POR_PAGINA, status: status === "Todos" ? undefined : status })
+            .then(d => setListaPag(d))
+            .catch(() => setErroCarregar(true))
+            .finally(() => setCarregandoLista(false));
+    }
+
+    /* Cards e gráficos: totais somados no servidor. */
+    function carregarResumo() {
+        return apiGetResumoFinanceiro(token)
+            .then(r => setResumo(r))
+            .catch(() => setErroCarregar(true));
+    }
+
     /* fetch inicial */
     function carregar() {
         if (!token) return;
         setLoading(true);
         setErroCarregar(false);
-        // Antes os erros viravam lista vazia em silêncio; agora o banner avisa.
-        const falhou = () => { setErroCarregar(true); return []; };
+        setPagina(1);
         Promise.all([
-            apiGetFinanceiro(token).catch(falhou),
-            apiGetPacientes(token).catch(() => []),
+            carregarLista(1, filtroStatus),
+            carregarResumo(),
+            apiGetPacientesOpcoes(token).catch(() => []),
             apiGetEquipe(token).catch(() => []),
-        ]).then(([f, p, e]) => {
-            setLancamentos(Array.isArray(f) ? f : []);
+        ]).then(([, , p, e]) => {
             setPacientes(Array.isArray(p) ? p : []);
             // Só quem atende: Especialista e Dono (cirurgiões-dentistas).
             const equipe = Array.isArray(e) ? e : [];
@@ -171,7 +183,20 @@ function Financial() {
         }).finally(() => setLoading(false));
     }
 
+    // Carga inicial só quando o token muda; filtro e página recarregam pelos handlers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(carregar, [token]);
+
+    function mudarFiltro(status) {
+        setFiltroStatus(status);
+        setPagina(1);
+        carregarLista(1, status);
+    }
+
+    function mudarPagina(page) {
+        setPagina(page);
+        carregarLista(page, filtroStatus);
+    }
 
     /* fetch repasses quando o mês muda (apenas para o Owner) */
     useEffect(() => {
@@ -183,23 +208,11 @@ function Financial() {
             .finally(() => setRepassesLoading(false));
     }, [token, repassesMes, isOwner]);
 
-    /* métricas derivadas */
-    const mesAtual = new Date().toISOString().slice(0, 7); // "2026-05"
-    const lancamentosMes = lancamentos.filter(l => l.created_at?.startsWith(mesAtual));
-
-    const totalPago = lancamentosMes
-        .filter(l => l.status_pagamento === "Pago")
-        .reduce((acc, l) => acc + Number(l.valor || 0), 0);
-
-    const totalPendente = lancamentosMes
-        .filter(l => l.status_pagamento === "Pendente")
-        .reduce((acc, l) => acc + Number(l.valor || 0), 0);
-
-    /* lista filtrada */
-    const filtrados = useMemo(() => {
-        if (filtroStatus === "Todos") return lancamentos;
-        return lancamentos.filter(l => l.status_pagamento === filtroStatus);
-    }, [lancamentos, filtroStatus]);
+    /* métricas (somadas no servidor) */
+    const totalPago = resumo?.pago_mes ?? 0;
+    const totalPendente = resumo?.pendente_mes ?? 0;
+    const totalLancamentos = resumo?.total_lancamentos ?? listaPag.total ?? 0;
+    const filtrados = listaPag.items || [];
 
     /* handlers */
     function abrirModal() {
@@ -221,7 +234,7 @@ function Financial() {
         setEnviando(true);
         setErroForm(null);
         try {
-            const novo = await apiCriarLancamento(token, {
+            await apiCriarLancamento(token, {
                 paciente_id: form.paciente_id,
                 dentista_responsavel: form.dentista_responsavel || undefined,
                 valor: Number(form.valor),
@@ -229,16 +242,11 @@ function Financial() {
                 forma_pagamento: form.forma_pagamento,
                 status_pagamento: form.status_pagamento,
             });
-            // A resposta do POST traz só o registro cru, sem os nomes que a
-            // listagem traz (pacientes.nome / dentista.nome). Preenche aqui com
-            // as listas já carregadas para a linha nova não aparecer com "—".
             const paciente = pacientes.find(p => p.id === form.paciente_id);
-            const dentista = dentistas.find(d => d.id === form.dentista_responsavel);
-            setLancamentos(prev => [{
-                ...novo,
-                pacientes: paciente ? { nome: paciente.nome } : null,
-                dentista: dentista ? { nome: dentista.nome } : null,
-            }, ...prev]);
+            // Recarrega a primeira página e os totais (o novo lançamento é o mais recente).
+            setPagina(1);
+            carregarLista(1, filtroStatus);
+            carregarResumo();
             setShowModal(false);
             toast({
                 tipo: "sucesso",
@@ -255,8 +263,9 @@ function Financial() {
     async function marcarComoPago(id) {
         setAtualizando(id);
         try {
-            const atualizado = await apiAtualizarLancamento(token, id, { status_pagamento: "Pago" });
-            setLancamentos(prev => prev.map(l => l.id === id ? { ...l, status_pagamento: "Pago", ...atualizado } : l));
+            await apiAtualizarLancamento(token, id, { status_pagamento: "Pago" });
+            carregarLista(pagina, filtroStatus);
+            carregarResumo();
             toast({ tipo: "sucesso", titulo: "Pagamento registrado", mensagem: "O lançamento foi marcado como pago." });
         } catch (err) {
             console.error("Erro ao atualizar lançamento", err);
@@ -391,16 +400,16 @@ function Financial() {
                     <div style={{ background: "var(--ThemeColor)", borderRadius: "14px", border: "1px solid var(--LineColor)", padding: "22px", boxShadow: "var(--shadow-sm)" }}>
                         <p style={{ margin: "0 0 0.25rem 0", fontSize: "13px", fontWeight: 700, color: "var(--TextColor75)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total de Lançamentos</p>
                         <p style={{ margin: 0, fontSize: "28px", fontWeight: 800, color: "var(--PrimaryColorsTheme)", fontFamily: "var(--font-secondary)" }}>
-                            {loading ? "—" : lancamentos.length}
+                            {loading ? "—" : totalLancamentos}
                         </p>
                     </div>
                 </div>
 
                 {/* ---- GRÁFICOS ---- */}
-                {!loading && lancamentos.length > 0 && (
+                {!loading && resumo && resumo.total_lancamentos > 0 && (
                     <div className="fin-graficos">
-                        <GraficoMensal lancamentos={lancamentos} />
-                        <GraficoFormas lancamentos={lancamentos} />
+                        <GraficoMensal receita={resumo.receita_mensal || []} />
+                        <GraficoFormas porForma={resumo.por_forma || []} />
                     </div>
                 )}
 
@@ -458,7 +467,7 @@ function Financial() {
                     {["Todos", ...STATUS_OPTIONS].map(s => (
                         <button
                             key={s}
-                            onClick={() => setFiltroStatus(s)}
+                            onClick={() => mudarFiltro(s)}
                             style={{
                                 padding: "8px 18px",
                                 borderRadius: "10px",
@@ -542,6 +551,14 @@ function Financial() {
                             </div>
                         </div>
                     )}
+                    <Paginacao
+                        page={pagina}
+                        perPage={listaPag.per_page || POR_PAGINA}
+                        total={listaPag.total || 0}
+                        onMudarPagina={mudarPagina}
+                        carregando={carregandoLista}
+                        rotulo="lançamentos"
+                    />
                 </div>
             </main>
         </>

@@ -102,7 +102,8 @@ export default function ViewPatient() {
         if (!pacienteId) return;
         setFinanceiroLoading(true);
         try {
-            const data = await apiGetFinanceiro(token);
+            // Só os lançamentos deste paciente (filtrados no servidor).
+            const data = await apiGetFinanceiro(token, { pacienteId });
             const lista = Array.isArray(data) ? data : [];
             setLancamentos(
                 lista.filter(l => String(l.paciente_id) === String(pacienteId))
@@ -117,7 +118,8 @@ export default function ViewPatient() {
     const carregarAtendimentos = async () => {
         if (!pacienteId) return;
         try {
-            const data = await apiGetConsultas(token);
+            // Só os atendimentos deste paciente (filtrados no servidor).
+            const data = await apiGetConsultas(token, { paciente_id: pacienteId });
             const lista = Array.isArray(data) ? data : [];
             const doPaciente = lista
                 .filter(c => String(c.paciente_id) === String(pacienteId))

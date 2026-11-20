@@ -21,12 +21,13 @@ Regras (ver também migrations/0002_agenda_e_documentos.sql, que as garante no b
 """
 
 import re
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from flask import Blueprint, request, jsonify
 from app.database import supabase
 from app.auditoria import registrar_alteracao
-from app.horarios import normalizar_entrada, para_banco, para_saida
+from app.horarios import inicio_do_dia, normalizar_entrada, para_banco, para_saida
+from app.paginacao import buscar_pagina, envelope, ler_paginacao, quer_paginacao
 from app.validators import campo_obrigatorio, validar_enum
 from app.auth_utils import (
     get_token, get_contexto, tem_permissao, exigir_permissao,
@@ -64,6 +65,24 @@ def _apresentar(ctx, atendimentos):
         if not ver_prontuario:
             a.pop("evolucao_clinica", None)
     return atendimentos
+
+
+def _ler_periodo(args):
+    """?data_inicio=AAAA-MM-DD&data_fim=AAAA-MM-DD (inclusivos, horário de parede da
+    clínica). Devolve (início, fim_exclusivo) para filtrar no banco, ou None."""
+    inicio, fim = args.get("data_inicio"), args.get("data_fim")
+    if not inicio and not fim:
+        return None
+    try:
+        d_inicio = date.fromisoformat(inicio or fim)
+        d_fim = date.fromisoformat(fim or inicio)
+    except ValueError:
+        raise ValueError("data_inicio/data_fim inválidas. Use o formato AAAA-MM-DD.")
+    if d_fim < d_inicio:
+        raise ValueError("data_fim não pode ser anterior a data_inicio.")
+    if (d_fim - d_inicio).days > 366:
+        raise ValueError("O período máximo da agenda é de 1 ano.")
+    return inicio_do_dia(d_inicio), inicio_do_dia(d_fim + timedelta(days=1))
 
 
 def _exigir_permissao_atualizacao(ctx, payload):
@@ -229,18 +248,30 @@ def listar_consultas():
         if not clinica_id:
             return jsonify([]), 200
 
-        query = (
-            supabase.table("atendimentos")
-            .select(SELECT_COMPLETO)
-            .eq("clinica_id", clinica_id)
-            .order("data_agendada")
-        )
-
+        try:
+            periodo = _ler_periodo(request.args)
+            pag = ler_paginacao(request.args) if quer_paginacao(request.args) else None
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
         paciente_id = request.args.get("paciente_id")
-        if paciente_id:
-            query = query.eq("paciente_id", paciente_id)
 
-        result = query.execute()
+        def montar(count=None):
+            query = (
+                supabase.table("atendimentos")
+                .select(SELECT_COMPLETO, count=count)
+                .eq("clinica_id", clinica_id)
+            )
+            if paciente_id:
+                query = query.eq("paciente_id", paciente_id)
+            if periodo:
+                # Agenda do dia/semana: o banco devolve só o período pedido.
+                query = query.gte("data_agendada", periodo[0]).lt("data_agendada", periodo[1])
+            return query.order("data_agendada").order("id")
+
+        if pag:
+            itens, total = buscar_pagina(lambda: montar("exact"), pag)
+            return jsonify(envelope(_apresentar(ctx, itens), pag, total)), 200
+        result = montar().execute()
         return jsonify(_apresentar(ctx, result.data or [])), 200
     except Exception as e:
         return tratar_erro(e)

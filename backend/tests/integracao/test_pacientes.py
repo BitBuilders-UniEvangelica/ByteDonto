@@ -58,4 +58,5 @@ def test_clinica_nao_ve_paciente_de_outra_clinica(client, cenario):
     assert r.status_code == 404
 
     lista_b = client.get("/api/pacientes/", headers=auth(dono_b["token"])).get_json()
-    assert paciente_a["id"] not in [p["id"] for p in lista_b]
+    assert paciente_a["id"] not in [p["id"] for p in lista_b["items"]]
+    assert lista_b["total"] == 0

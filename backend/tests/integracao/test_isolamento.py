@@ -57,7 +57,7 @@ def test_modulos_antigos_isolados(client, cenario, duas_clinicas):
     r = client.post("/api/imagens/upload", headers=h, content_type="multipart/form-data", data={
         "paciente_id": pb, "tipo": "imagem", "file": (io.BytesIO(PNG), "rx.png")})
     assert r.status_code == 403
-    assert client.get("/api/pacientes/", headers=h).get_json() == []
+    assert client.get("/api/pacientes/", headers=h).get_json()["items"] == []
     assert foto_do_banco() == antes
 
 

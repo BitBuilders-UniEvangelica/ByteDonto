@@ -2,7 +2,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
-import { apiGetPacientes, apiGetEquipe, apiCriarConsulta, apiGetConsultas, apiAtualizarConsulta } from "../../../services/api";
+import { apiGetEquipe, apiCriarConsulta, apiGetConsultas, apiAtualizarConsulta } from "../../../services/api";
+import { useBuscaPacientes } from "../../../hooks/useBuscaPacientes";
 import Section from "../../../components/section/SectionAuth";
 import SideBar from "../../../components/bar/SideBar";
 import Card from "../../../components/card/CardInfo";
@@ -46,11 +47,15 @@ function StatusPill({ status }) {
    (computador) os dois quadros continuam lado a lado. */
 const MEDIA_CELULAR = "(max-width: 768px)";
 
+/* Mesmo "hoje" que a tela sempre usou para separar as consultas do dia. */
+const hojeISO = () => new Date().toISOString().slice(0, 10);
+/* A agenda da recepção só mostra o dia: o servidor devolve só as consultas de hoje. */
+const filtroHoje = () => ({ data_inicio: hojeISO(), data_fim: hojeISO() });
+
 /* MAIN COMPONENT */
 function ReceptionDashboard() {
     const { token } = useAuth();
 
-    const [pacientes, setPacientes] = useState([]);
     const [especialistas, setEspecialistas] = useState([]);
     const [consultas, setConsultas] = useState([]);
 
@@ -96,11 +101,9 @@ function ReceptionDashboard() {
         setErroCarregar(false);
         const falhou = () => { setErroCarregar(true); return []; };
         Promise.all([
-            apiGetPacientes(token).catch(falhou),
             apiGetEquipe(token).catch(falhou),
-            apiGetConsultas(token).catch(falhou),
-        ]).then(([p, e, c]) => {
-            setPacientes(p);
+            apiGetConsultas(token, filtroHoje()).catch(falhou),
+        ]).then(([e, c]) => {
             setEspecialistas(e.filter(m => m.papel === "Especialista"));
             setConsultas(c);
         }).finally(() => setCarregando(false));
@@ -110,7 +113,7 @@ function ReceptionDashboard() {
 
     async function recarregarConsultas() {
         try {
-            const c = await apiGetConsultas(token);
+            const c = await apiGetConsultas(token, filtroHoje());
             setConsultas(c);
         } catch {
             /* mantém a lista atual se a recarga falhar */
@@ -136,22 +139,11 @@ function ReceptionDashboard() {
         }
     }
 
-    // Derivados de autocomplete
-    const filteredPatients = searchName.length > 1 && !selectedPatient
-        ? pacientes.filter(p =>
-            p.nome?.toLowerCase().includes(searchName.toLowerCase()) ||
-            p.cpf?.includes(searchName) ||
-            p.telefone_whatsapp?.includes(searchName)
-        )
-        : [];
-
-    const filteredQuick = quickSearch.length > 1
-        ? pacientes.filter(p =>
-            p.nome?.toLowerCase().includes(quickSearch.toLowerCase()) ||
-            p.cpf?.includes(quickSearch) ||
-            p.telefone_whatsapp?.includes(quickSearch)
-        )
-        : [];
+    // Autocomplete: a busca (nome, CPF ou telefone) é feita no servidor.
+    const sugestoesAgendamento = useBuscaPacientes(token, selectedPatient ? "" : searchName);
+    const sugestoesRapidas = useBuscaPacientes(token, quickSearch);
+    const filteredPatients = searchName.length > 1 && !selectedPatient ? sugestoesAgendamento : [];
+    const filteredQuick = quickSearch.length > 1 ? sugestoesRapidas : [];
 
     function abrirModal() {
         setAgForm(FORM_INICIAL);
@@ -190,7 +182,7 @@ function ReceptionDashboard() {
         }
     }
 
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = hojeISO();
     const consultasHoje = consultas
         .filter(c => c.data_agendada?.startsWith(hoje))
         .sort((a, b) => (a.data_agendada || "").localeCompare(b.data_agendada || ""));

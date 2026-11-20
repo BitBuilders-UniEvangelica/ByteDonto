@@ -111,7 +111,7 @@ def test_recepcao_ve_so_o_necessario(m):
     paciente = _req(m, "recep", "get", "/api/pacientes/{p}").get_json()
     assert paciente["anamnese"]["alergias"] == "Penicilina"
     assert "odontograma" not in paciente
-    assert all("odontograma" not in p for p in _req(m, "recep", "get", "/api/pacientes/").get_json())
+    assert all("odontograma" not in p for p in _req(m, "recep", "get", "/api/pacientes/").get_json()["items"])
     historico = _req(m, "recep", "get", "/api/consultas/?paciente_id={p}").get_json()
     assert historico and all("evolucao_clinica" not in c for c in historico)
 

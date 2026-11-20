@@ -26,6 +26,7 @@ from datetime import date, datetime, timedelta, timezone
 from flask import Blueprint, request, jsonify
 from app.database import supabase
 from app.validators import validar_enum
+from app.paginacao import buscar_pagina, envelope, ler_paginacao, quer_paginacao
 from app.auth_utils import (
     get_token, get_contexto, exigir_permissao, exigir_clinica, tratar_erro, pertence_a_clinica,
 )
@@ -174,7 +175,7 @@ def _apresentar_item(item, lotes):
     }
 
 
-def _lotes_com_saldo(clinica_id, item_id=None):
+def _lotes_com_saldo(clinica_id, item_id=None, item_ids=None):
     query = (
         supabase.table("lotes_estoque")
         .select("*, fornecedor:fornecedores_estoque!fornecedor_id(nome)")
@@ -182,6 +183,8 @@ def _lotes_com_saldo(clinica_id, item_id=None):
     )
     if item_id:
         query = query.eq("item_id", item_id)
+    if item_ids is not None:
+        query = query.in_("item_id", item_ids)
     return query.order("validade").execute().data or []
 
 
@@ -320,19 +323,36 @@ def listar_itens():
     """Itens ativos com saldo, status e próximo vencimento. ?todos=1 inclui inativos."""
     try:
         _, clinica_id = _contexto_estoque()
-        query = (
-            supabase.table("itens_estoque")
-            .select("*, fornecedor:fornecedores_estoque!fornecedor_id(nome)")
-            .eq("clinica_id", clinica_id)
-        )
-        if request.args.get("todos") != "1":
-            query = query.eq("ativo", True)
-        itens = query.order("nome").execute().data or []
+        try:
+            pag = ler_paginacao(request.args) if quer_paginacao(request.args) else None
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+
+        def montar(count=None):
+            query = (
+                supabase.table("itens_estoque")
+                .select("*, fornecedor:fornecedores_estoque!fornecedor_id(nome)", count=count)
+                .eq("clinica_id", clinica_id)
+            )
+            if request.args.get("todos") != "1":
+                query = query.eq("ativo", True)
+            return query.order("nome").order("id")
+
+        if pag:
+            itens, total = buscar_pagina(lambda: montar("exact"), pag)
+            # Só os lotes dos itens desta página.
+            lotes = _lotes_com_saldo(clinica_id, item_ids=[i["id"] for i in itens]) if itens else []
+        else:
+            itens, total = montar().execute().data or [], None
+            lotes = _lotes_com_saldo(clinica_id)
 
         por_item = {}
-        for lote in _lotes_com_saldo(clinica_id):
+        for lote in lotes:
             por_item.setdefault(lote["item_id"], []).append(lote)
-        return jsonify([_apresentar_item(i, por_item.get(i["id"], [])) for i in itens]), 200
+        apresentados = [_apresentar_item(i, por_item.get(i["id"], [])) for i in itens]
+        if pag:
+            return jsonify(envelope(apresentados, pag, total)), 200
+        return jsonify(apresentados), 200
     except Exception as e:
         return _tratar(e)
 
@@ -523,17 +543,31 @@ def registrar_saida():
 
 @estoque_bp.route("/movimentacoes", methods=["GET"])
 def listar_movimentacoes():
-    """Filtros: ?item_id=  ?tipo=Entrada|Saída  ?limit= (padrão 200, máx. 1000)."""
+    """Filtros: ?item_id=  ?tipo=Entrada|Saída  ?limit= (padrão 200, máx. 1000).
+    Com ?page=&per_page= devolve {items, page, per_page, total} (20 a 50 por página)."""
     try:
         _, clinica_id = _contexto_estoque()
-        query = supabase.table("movimentacoes_estoque").select(SELECT_MOVIMENTACAO).eq("clinica_id", clinica_id)
-        if request.args.get("item_id"):
-            query = query.eq("item_id", request.args["item_id"])
         tipo = request.args.get("tipo")
-        if tipo:
-            if tipo not in ("Entrada", "Saída"):
-                return jsonify({"error": "Tipo inválido."}), 400
-            query = query.eq("tipo", tipo)
+        if tipo and tipo not in ("Entrada", "Saída"):
+            return jsonify({"error": "Tipo inválido."}), 400
+        try:
+            pag = ler_paginacao(request.args) if quer_paginacao(request.args) else None
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+
+        def montar(count=None):
+            q = supabase.table("movimentacoes_estoque").select(SELECT_MOVIMENTACAO, count=count).eq("clinica_id", clinica_id)
+            if request.args.get("item_id"):
+                q = q.eq("item_id", request.args["item_id"])
+            if tipo:
+                q = q.eq("tipo", tipo)
+            return q
+
+        if pag:
+            itens, total = buscar_pagina(
+                lambda: montar("exact").order("data", desc=True).order("created_at", desc=True).order("id"), pag)
+            return jsonify(envelope(itens, pag, total)), 200
+        query = montar()
         try:
             limite = max(1, min(int(request.args.get("limit", 200)), 1000))
         except ValueError:

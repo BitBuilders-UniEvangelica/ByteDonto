@@ -34,13 +34,36 @@ export async function apiMe(token) {
 }
 
 /* --- PACIENTES --- */
-export async function apiGetPacientes(token) {
-    const res = await fetch(`${API_URL}/api/pacientes/`, {
+/* Monta a query string ignorando valores vazios. */
+function qs(params = {}) {
+    const q = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== "") q.set(k, v);
+    });
+    const s = q.toString();
+    return s ? `?${s}` : "";
+}
+
+/* Lista PAGINADA: { items, page, per_page, total }.
+   A busca (nome, CPF ou telefone) é feita no banco. */
+export async function apiGetPacientes(token, { page = 1, perPage = 20, busca = "" } = {}) {
+    const res = await fetch(`${API_URL}/api/pacientes/` + qs({ page, per_page: perPage, busca }), {
         headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Erro ao buscar pacientes");
     return data;
+}
+
+/* Lista curta (id, nome, CPF, telefone) para campos de seleção.
+   Com busca: até 20 resultados (autocomplete). Sem busca: todos, por nome. */
+export async function apiGetPacientesOpcoes(token, busca = "") {
+    const res = await fetch(`${API_URL}/api/pacientes/opcoes` + qs({ busca }), {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Erro ao buscar pacientes");
+    return Array.isArray(data) ? data : [];
 }
 
 export async function apiGetPaciente(token, pacienteId) {
@@ -81,8 +104,10 @@ export async function apiAtualizarPaciente(token, pacienteId, pacienteData) {
 }
 
 /* --- CONSULTAS --- */
-export async function apiGetConsultas(token) {
-    const res = await fetch(`${API_URL}/api/consultas/`, {
+/* filtros opcionais: { paciente_id, data_inicio, data_fim } (datas AAAA-MM-DD).
+   Sem page/per_page a resposta continua sendo uma lista. */
+export async function apiGetConsultas(token, filtros = {}) {
+    const res = await fetch(`${API_URL}/api/consultas/` + qs(filtros), {
         headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -260,15 +285,30 @@ export async function apiAtualizarPermissoes(token, usuarioId, permissoes) {
 }
 
 /* --- FINANCEIRO --- */
-export async function apiGetFinanceiro(token, status = null) {
-    const url = status
-        ? `${API_URL}/api/financeiro/?status_pagamento=${encodeURIComponent(status)}`
-        : `${API_URL}/api/financeiro/`;
+/* Com { page } devolve { items, page, per_page, total, resumo_mes };
+   sem page devolve a lista (usado na ficha do paciente com pacienteId). */
+export async function apiGetFinanceiro(token, { status, page, perPage, pacienteId } = {}) {
+    const url = `${API_URL}/api/financeiro/` + qs({
+        status_pagamento: status,
+        page,
+        per_page: page ? perPage || 20 : undefined,
+        paciente_id: pacienteId,
+    });
     const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Erro ao buscar lançamentos financeiros");
+    return data;
+}
+
+/* Totais dos cards e gráficos (somados no servidor). */
+export async function apiGetResumoFinanceiro(token) {
+    const res = await fetch(`${API_URL}/api/financeiro/resumo`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Erro ao buscar o resumo financeiro");
     return data;
 }
 

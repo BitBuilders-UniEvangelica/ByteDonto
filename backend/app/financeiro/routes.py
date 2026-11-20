@@ -3,6 +3,7 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify
 from app.database import supabase
 from app.validators import campo_obrigatorio, validar_valor, validar_enum
+from app.paginacao import buscar_pagina, envelope, ler_paginacao, quer_paginacao
 from app.auth_utils import (
     get_token, get_contexto, exigir_permissao, exigir_clinica,
     pertence_a_clinica, tratar_erro,
@@ -29,19 +30,30 @@ def listar_lancamentos():
         if not clinica_id:
             return jsonify([]), 200
 
-        query = (
-            supabase.table("faturamento")
-            .select("*, pacientes(nome), dentista:usuarios!dentista_responsavel(nome)")
-            .eq("clinica_id", clinica_id)
-            .order("created_at", desc=True)
-        )
-
+        try:
+            pag = ler_paginacao(request.args) if quer_paginacao(request.args) else None
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
         # Aceita ?status= ou ?status_pagamento= (o frontend usa o segundo).
         status = request.args.get("status") or request.args.get("status_pagamento")
-        if status:
-            query = query.eq("status_pagamento", status)
+        paciente_id = request.args.get("paciente_id")
 
-        result = query.execute()
+        def montar(count=None):
+            query = (
+                supabase.table("faturamento")
+                .select("*, pacientes(nome), dentista:usuarios!dentista_responsavel(nome)", count=count)
+                .eq("clinica_id", clinica_id)
+            )
+            if status:
+                query = query.eq("status_pagamento", status)
+            if paciente_id:
+                query = query.eq("paciente_id", paciente_id)
+            return query.order("created_at", desc=True).order("id")
+
+        if pag:
+            itens, total = buscar_pagina(lambda: montar("exact"), pag)
+            return jsonify(envelope(itens, pag, total)), 200
+        result = montar().execute()
         return jsonify(result.data), 200
     except Exception as e:
         return tratar_erro(e)
@@ -229,6 +241,83 @@ def repasses_dentista():
         return jsonify({"mes": mes, "itens": relatorio}), 200
     except Exception as e:
         return tratar_erro(e)
+
+
+@financeiro_bp.route("/resumo", methods=["GET"])
+def resumo_financeiro():
+    """Números dos cards e gráficos da tela Financeiro, já somados no servidor.
+
+    Antes a tela baixava TODOS os lançamentos (com joins) para somar no navegador;
+    agora a lista é paginada e os totais vêm daqui (só 4 colunas, sem joins):
+      pago_mes / pendente_mes  — mês corrente (UTC, igual à tela)
+      total_lancamentos        — quantidade de lançamentos da clínica
+      receita_mensal           — pago nos últimos 6 meses [{mes, pago}]
+      por_forma                — pago por forma de pagamento [{forma, valor}]
+    """
+    token = get_token(request)
+    if not token:
+        return jsonify({"error": "Não autorizado"}), 401
+
+    try:
+        ctx = get_contexto(token)
+        exigir_permissao(ctx, "ver_financeiro")
+        clinica_id = ctx["clinica_id"]
+        linhas = []
+        if clinica_id:
+            linhas = (
+                supabase.table("faturamento")
+                .select("valor, status_pagamento, forma_pagamento, created_at")
+                .eq("clinica_id", clinica_id)
+                .execute()
+                .data
+                or []
+            )
+        return jsonify(_resumir(linhas)), 200
+    except Exception as e:
+        return tratar_erro(e)
+
+
+def _ultimos_meses(n, hoje=None):
+    hoje = hoje or datetime.utcnow()
+    ano, mes = hoje.year, hoje.month
+    meses = []
+    for _ in range(n):
+        meses.append(f"{ano:04d}-{mes:02d}")
+        mes -= 1
+        if mes == 0:
+            ano, mes = ano - 1, 12
+    return list(reversed(meses))
+
+
+def _resumir(linhas, hoje=None):
+    meses = _ultimos_meses(6, hoje)
+    mes_atual = meses[-1]
+    pago_mes = pendente_mes = 0.0
+    por_mes = defaultdict(float)
+    por_forma = defaultdict(float)
+    for l in linhas:
+        valor = float(l.get("valor") or 0)
+        status = l.get("status_pagamento")
+        mes = str(l.get("created_at") or "")[:7]
+        if mes == mes_atual:
+            if status == "Pago":
+                pago_mes += valor
+            elif status == "Pendente":
+                pendente_mes += valor
+        if status == "Pago":
+            por_mes[mes] += valor
+            por_forma[l.get("forma_pagamento") or "Outros"] += valor
+    return {
+        "mes": mes_atual,
+        "pago_mes": round(pago_mes, 2),
+        "pendente_mes": round(pendente_mes, 2),
+        "total_lancamentos": len(linhas),
+        "receita_mensal": [{"mes": m, "pago": round(por_mes[m], 2)} for m in meses],
+        "por_forma": [
+            {"forma": f, "valor": round(v, 2)}
+            for f, v in sorted(por_forma.items(), key=lambda kv: kv[1], reverse=True)
+        ],
+    }
 
 
 def _proximo_mes(mes):

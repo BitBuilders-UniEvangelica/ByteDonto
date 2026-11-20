@@ -1,7 +1,10 @@
+import re
 from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify
 from app.database import supabase
 from app.auditoria import registrar_alteracao
+from app.horarios import para_saida
+from app.paginacao import ler_paginacao, buscar_pagina, envelope
 from app.validators import (
     campo_obrigatorio,
     validar_cpf,
@@ -75,8 +78,96 @@ def _validar_anamnese(anamnese, exigir_obrigatorios=False):
     return anamnese
 
 
+def _termos_busca(texto):
+    """Normaliza o ?busca= para o filtro do banco.
+
+    Devolve (termo_nome, termo_digitos). Remove caracteres que têm significado
+    na sintaxe de filtros do PostgREST (vírgula, ponto, parênteses, aspas, curingas),
+    então o texto do usuário nunca vira parte da expressão do filtro."""
+    texto = re.sub(r"[^\w\s@-]", "", (texto or "").strip())[:100].strip()
+    digitos = re.sub(r"\D", "", texto)
+    return texto, digitos
+
+
+def _filtro_busca(texto):
+    """Expressão or_ (nome OU CPF OU telefone) — executada no banco."""
+    nome, digitos = _termos_busca(texto)
+    if not nome:
+        return None
+    condicoes = [f"nome.ilike.%{nome}%"]
+    if digitos:
+        condicoes += [f"cpf.ilike.%{digitos}%", f"telefone_whatsapp.ilike.%{digitos}%"]
+    return ",".join(condicoes)
+
+
+def _ultimas_consultas(clinica_id, paciente_ids):
+    """Data do atendimento mais recente de cada paciente da página (só desses ids)."""
+    if not paciente_ids:
+        return {}
+    linhas = (
+        supabase.table("atendimentos")
+        .select("paciente_id, data_agendada")
+        .eq("clinica_id", clinica_id)
+        .in_("paciente_id", paciente_ids)
+        .execute()
+        .data
+        or []
+    )
+    ultima = {}
+    for l in linhas:
+        atual = ultima.get(l["paciente_id"])
+        if l.get("data_agendada") and (atual is None or l["data_agendada"] > atual):
+            ultima[l["paciente_id"]] = l["data_agendada"]
+    return {pid: para_saida(v) for pid, v in ultima.items()}
+
+
 @pacientes_bp.route("/", methods=["GET"])
 def listar_pacientes():
+    """Lista paginada: ?page=1&per_page=20 (20 a 50) e ?busca= (nome, CPF ou telefone).
+
+    Resposta: {"items": [...], "page", "per_page", "total"}. Cada item traz
+    `ultima_consulta` (antes a tela baixava TODAS as consultas para calcular isso)."""
+    token = get_token(request)
+    if not token:
+        return jsonify({"error": "Não autorizado"}), 401
+
+    try:
+        ctx = get_contexto(token)
+        exigir_permissao(ctx, "ver_pacientes")
+        try:
+            pag = ler_paginacao(request.args)
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        clinica_id = ctx["clinica_id"]
+        if not clinica_id:
+            return jsonify(envelope([], pag, 0)), 200
+
+        filtro = _filtro_busca(request.args.get("busca"))
+
+        def montar():
+            q = supabase.table("pacientes").select("*", count="exact").eq("clinica_id", clinica_id)
+            if filtro:
+                q = q.or_(filtro)
+            # id desempata pacientes criados no mesmo instante (páginas estáveis)
+            return q.order("created_at", desc=True).order("id")
+
+        itens, total = buscar_pagina(montar, pag)
+        ultimas = _ultimas_consultas(clinica_id, [p["id"] for p in itens])
+        for p in itens:
+            _ocultar_prontuario(ctx, p)
+            p["ultima_consulta"] = ultimas.get(p["id"])
+        return jsonify(envelope(itens, pag, total)), 200
+    except Exception as e:
+        return tratar_erro(e)
+
+
+@pacientes_bp.route("/opcoes", methods=["GET"])
+def opcoes_pacientes():
+    """Lista curta para campos de seleção (agendar consulta, lançamento, saída de estoque).
+
+    Só id/nome/CPF/telefone. Com ?busca= devolve no máximo 20 resultados
+    (autocomplete); sem busca, devolve todos os pacientes, ordenados por nome,
+    com essas 4 colunas — para os <select> que listam a clínica inteira."""
     token = get_token(request)
     if not token:
         return jsonify({"error": "Não autorizado"}), 401
@@ -87,8 +178,15 @@ def listar_pacientes():
         clinica_id = ctx["clinica_id"]
         if not clinica_id:
             return jsonify([]), 200
-        result = supabase.table("pacientes").select("*").eq("clinica_id", clinica_id).order("created_at", desc=True).execute()
-        return jsonify([_ocultar_prontuario(ctx, p) for p in (result.data or [])]), 200
+        q = (
+            supabase.table("pacientes")
+            .select("id, nome, cpf, telefone_whatsapp")
+            .eq("clinica_id", clinica_id)
+        )
+        filtro = _filtro_busca(request.args.get("busca"))
+        if filtro:
+            q = q.or_(filtro).limit(20)
+        return jsonify(q.order("nome").execute().data or []), 200
     except Exception as e:
         return tratar_erro(e)
 
