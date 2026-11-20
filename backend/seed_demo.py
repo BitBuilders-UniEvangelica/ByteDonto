@@ -74,6 +74,31 @@ def ler_configuracao(env=None):
 admin = None  # cliente Supabase (service role) criado em main(), após as verificações
 
 
+CNPJ_DEMO = "11222333000181"
+
+
+def gerar_cnpj():
+    """Gera um CNPJ válido (matriz 0001, dígitos verificadores corretos)."""
+    base = [random.randint(0, 9) for _ in range(8)] + [0, 0, 0, 1]
+
+    def dv(nums):
+        pesos = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2][-len(nums):]
+        resto = sum(n * p for n, p in zip(nums, pesos)) % 11
+        return 0 if resto < 2 else 11 - resto
+
+    d1 = dv(base)
+    d2 = dv(base + [d1])
+    return "".join(map(str, base + [d1, d2]))
+
+
+def cnpj_livre():
+    """CNPJ_DEMO se ainda não estiver em uso; senão, um CNPJ válido aleatório livre."""
+    cnpj = CNPJ_DEMO
+    while admin.table("clinicas").select("id").eq("cnpj", cnpj).execute().data:
+        cnpj = gerar_cnpj()
+    return cnpj
+
+
 def gerar_cpf():
     """Gera um CPF válido (com dígitos verificadores corretos)."""
     base = [random.randint(0, 9) for _ in range(9)]
@@ -141,6 +166,10 @@ def iso(dt):
 
 def main():
     global admin
+    # Carrega o backend/.env antes das travas (sem sobrescrever variáveis já
+    # exportadas no shell, que continuam tendo prioridade).
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
     try:
         verificar_ambiente()
         contas = ler_configuracao()
@@ -189,7 +218,9 @@ def _executar(contas, PERMISSOES_PADRAO):
         base_clinica = {
             "nome_fantasia": "OdontoByte — Clínica Modelo",
             "razao_social": "OdontoByte Serviços Odontológicos LTDA",
-            "cnpj": "11222333000181",
+            # Outro proprietário pode já ter a clínica demo (seed rodado com outros
+            # e-mails); nesse caso usa um CNPJ válido livre em vez de colidir.
+            "cnpj": cnpj_livre(),
             "dono_id": owner_id,
         }
         extras = {
