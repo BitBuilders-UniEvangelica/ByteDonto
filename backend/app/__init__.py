@@ -56,6 +56,10 @@ def create_app():
         # Nunca devolve detalhes internos (stack trace, mensagem da exceção).
         return jsonify({"error": "Erro interno do servidor."}), 500
 
+    # Cabeçalhos de segurança HTTP em todas as respostas (app/seguranca.py).
+    from app.seguranca import registrar_cabecalhos
+    registrar_cabecalhos(app)
+
     # Toda escrita invalida o cache das leituras que ela altera (app/cache.py).
     from app.cache import registrar_invalidacao
     registrar_invalidacao(app)
