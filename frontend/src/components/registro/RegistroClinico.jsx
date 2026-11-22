@@ -3,7 +3,7 @@ import { Plus, X } from "lucide-react";
 import { useFeedback } from "../../hooks/useFeedback";
 import { Banner, BlocoCarregando } from "../feedback/Feedback";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const API_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8000").replace(/\/+$/, "");
 
 const STATUS_BADGE = {
     "Agendado":   { bg: "var(--PrimaryColorsBack)", color: "var(--PrimaryColorsTheme)", label: "Agendado" },

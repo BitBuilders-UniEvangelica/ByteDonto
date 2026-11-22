@@ -1,5 +1,6 @@
 /* API BASE URL — troca para a URL do Render quando fizer o deploy */
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+// Remove barras finais: "https://api.exemplo.com/" viraria "//api/..." e o redirect quebra o CORS.
+const API_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8000").replace(/\/+$/, "");
 
 /* --- AUTH --- */
 export async function apiRegistro(nome, email, password) {
