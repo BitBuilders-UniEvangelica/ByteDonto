@@ -4,11 +4,9 @@ import Button from "../../components/buttons/ButtonsRediBorder";
 import Footer from "../../components/footer/FooterNotAuth";
 import '../../styles/LandingPage.css'
 
-import { useNavigate } from "react-router-dom";
 
 /* MAIN COMPONENT */
 function LandingPage() {
-    const navigate = useNavigate();
 
     return (
         <div className="landing-wrapper">

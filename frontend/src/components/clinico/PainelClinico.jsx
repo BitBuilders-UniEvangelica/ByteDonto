@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AlertTriangle, Stethoscope, Syringe, ShieldAlert } from "lucide-react";
-import { classificarASA, calcularDoseAnestesico, calcularIMC, ANESTESICOS, ASA_DESCRICAO, ROMANO } from "../../utils/clinico";
+import { classificarASA, calcularDoseAnestesico, ANESTESICOS, ASA_DESCRICAO, ROMANO } from "../../utils/clinico";
+
+const RE_CARDIO = /cardio|infarto|arritmia|angina|marca-?passo|hipertens/;
+const RE_HEPATO = /hepat|cirrose|fígado|figado/;
+const RE_GESTANTE = /gestante|grávida|gravida/;
 
 /* Banner fixo: o cálculo é de apoio; a decisão é do cirurgião-dentista. */
 function AvisoResponsabilidade() {
@@ -16,27 +20,33 @@ function AvisoResponsabilidade() {
 
 export default function PainelClinico({ anamnese = {}, idade = null, asaManual = "", onAsaChange }) {
     const sugestaoASA = useMemo(() => classificarASA(anamnese), [anamnese]);
-    const imc = calcularIMC(anamnese.peso_kg, anamnese.altura_cm);
 
     // Estado local da calculadora de dose
-    const [pesoCalc, setPesoCalc] = useState("");
+    const pesoAnamnese = anamnese.peso_kg;
+    const temPeso = pesoAnamnese != null && pesoAnamnese !== "";
+    const [pesoCalc, setPesoCalc] = useState(() => (temPeso ? String(pesoAnamnese) : ""));
     const [anestesico, setAnestesico] = useState("lido2_epi");
     const condTxt = `${anamnese.condicoes || ""} ${anamnese.medicacoes || ""}`.toLowerCase();
-    const [cardiopata, setCardiopata] = useState(false);
-    const [hepatopata, setHepatopata] = useState(false);
-    const [gestante, setGestante] = useState(false);
+    const [cardiopata, setCardiopata] = useState(() => RE_CARDIO.test(condTxt));
+    const [hepatopata, setHepatopata] = useState(() => RE_HEPATO.test(condTxt));
+    const [gestante, setGestante] = useState(() => RE_GESTANTE.test(condTxt));
 
     // A anamnese chega vazia ({}) e é preenchida depois (fetch/edição). Sem isto,
     // o peso e as condições ficariam "presos" no valor inicial e a dose sairia errada.
-    useEffect(() => {
-        if (anamnese.peso_kg != null && anamnese.peso_kg !== "") setPesoCalc(String(anamnese.peso_kg));
-    }, [anamnese.peso_kg]);
-
-    useEffect(() => {
-        setCardiopata(/cardio|infarto|arritmia|angina|marca-?passo|hipertens/.test(condTxt));
-        setHepatopata(/hepat|cirrose|fígado|figado/.test(condTxt));
-        setGestante(/gestante|grávida|gravida/.test(condTxt));
-    }, [condTxt]);
+    // Ajuste durante a renderização quando a anamnese muda (padrão do React para
+    // estado derivado de props), mantendo o que o usuário marcou manualmente até lá.
+    const [pesoVisto, setPesoVisto] = useState(pesoAnamnese);
+    if (pesoAnamnese !== pesoVisto) {
+        setPesoVisto(pesoAnamnese);
+        if (temPeso) setPesoCalc(String(pesoAnamnese));
+    }
+    const [condVista, setCondVista] = useState(condTxt);
+    if (condTxt !== condVista) {
+        setCondVista(condTxt);
+        setCardiopata(RE_CARDIO.test(condTxt));
+        setHepatopata(RE_HEPATO.test(condTxt));
+        setGestante(RE_GESTANTE.test(condTxt));
+    }
 
     const resultado = useMemo(
         () => calcularDoseAnestesico(pesoCalc, anestesico, { idade, cardiopata, hepatopata, gestante }),
