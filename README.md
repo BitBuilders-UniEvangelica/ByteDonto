@@ -84,4 +84,20 @@ variáveis de cada modo, testes e migrations: [`backend/README.md`](backend/READ
 🔗 **Link do GitHub:** [BitBuilders-UniEvangelica](https://github.com/BitBuilders-UniEvangelica/ByteDonto)
 
 **Atenção para as Variáveis de Ambiente:**  
-Tanto o frontend quanto o backend dependem de variáveis sensíveis (`.env` com chaves de API, URLs de banco de dados, etc.). Essas chaves não sobem para o GitHub por questões de segurança. Para o sistema funcionar 100%, peça para alguém do grupo compartilhar com você como preencher o seu arquivo `.env` localmente.
+Tanto o frontend quanto o backend dependem de variáveis sensíveis (`.env` com URLs de banco de dados, chaves de assinatura, etc.). Elas não sobem para o GitHub e **não devem ser trocadas por mensagem**:
+
+- **Desenvolvimento:** copie `backend/.env.example` e `frontend/.env.example` para `.env` e gere as suas próprias chaves (o comando está no próprio exemplo). Cada pessoa usa o seu banco local.
+- **Produção:** os segredos ficam só nas variáveis de ambiente do provedor de hospedagem, configuradas pelo painel dele.
+- A API **não sobe** sem as chaves obrigatórias, nem com chaves curtas ou de exemplo.
+
+## 🌿 Fluxo de branches
+
+- `main` é o que está publicado; ninguém faz commit direto nele.
+- Cada tarefa vai num branch próprio: `feat/…` (funcionalidade), `fix/…` (correção), `chore/…` (manutenção), `test/…` (testes).
+- A entrega no `main` é por Pull Request. O CI (`.github/workflows/ci.yml`) roda os testes do backend, o lint do frontend e a auditoria de dependências; o PR só entra com o CI verde.
+
+## 📚 Documentação
+
+- Este README: visão geral e como rodar o projeto.
+- `backend/README.md`: detalhes do backend (banco por configuração, testes, migrações).
+- `docs/pi/`: notas de trabalho do Documento de Projeto Integrador (não fazem parte do código).
