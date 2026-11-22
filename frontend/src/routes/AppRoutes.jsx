@@ -1,6 +1,7 @@
 /* IMPORTS OF COMPONENTS */
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
-import { AuthProvider, useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext";
+import { AuthProvider } from "../context/AuthProvider";
 import ScrollToTop from "./ScrollToTop";
 import { FeedbackProvider } from "../components/feedback/Feedback";
 

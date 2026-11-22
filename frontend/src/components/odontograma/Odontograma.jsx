@@ -116,10 +116,6 @@ function keyDeZona(dado, faceKey) {
     return "Higido";
 }
 
-function corDeZona(dado, faceKey) {
-    return STATUS[keyDeZona(dado, faceKey)] || STATUS.Higido;
-}
-
 /* Mapa estado -> id do gradiente de preenchimento (defs únicos, ver OdontogramaDefs) */
 const FILL_ID = {
     "Higido": "od-fill-higido",
